@@ -71,3 +71,20 @@ export default defineConfig([
   },
 ])
 ```
+
+## Docker
+
+Build image:
+
+```bash
+docker build -t trip-frontend:local .
+```
+
+Run container:
+
+```bash
+docker run --rm -p 3000:80 trip-frontend:local
+```
+
+Frontend URL inside local Docker run:
+- `http://localhost:3000`
