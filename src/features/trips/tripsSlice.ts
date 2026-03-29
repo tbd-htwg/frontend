@@ -1,13 +1,5 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-
-export interface Trip {
-  userId: number;
-  title: string;
-  destination: string;
-  startDate: string;
-  shortDescription: string;
-  longDescription: string;
-}
+import type { Trip } from "../../models/Trip";
 
 // Initial State: BspData Array von Trips
 export const initialState: Trip[] = [];

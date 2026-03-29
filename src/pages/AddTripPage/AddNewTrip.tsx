@@ -1,8 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import "./AddNewTrip.css";
 import { useState } from "react";
-import type { Trip } from "../../features/trips/tripsSlice";
 import { useSelector } from "react-redux";
+import type { Trip } from "../../models/Trip";
 
 const AddNewTrip: React.FC = () => {
   const navigate = useNavigate();
@@ -20,6 +20,7 @@ const AddNewTrip: React.FC = () => {
       body: JSON.stringify({ ...newTrip, userId: currentUser.id }),
     }).then((response) => {
       console.log("New Trip:", response);
+      console.log({ ...newTrip, userId: currentUser.id });
     });
   };
 

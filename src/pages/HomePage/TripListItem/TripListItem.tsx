@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
-import type { Trip } from "../../../features/trips/tripsSlice";
 
 import "./TripListItem.css";
+import type { Trip } from "../../../models/Trip";
 
 interface TripListItemProps {
   trip: Trip;
@@ -16,8 +16,8 @@ function TripListItem({ trip }: TripListItemProps) {
 
   return (
     <div id="item-container">
-      <h2>{trip.title}</h2>
-      <p>{trip.shortDescription}</p>
+      <h2>Reiseziel: {trip.title}</h2>
+      <p>Reisedatum: {trip.startDate}</p>
       <button onClick={switchToDetailPage}>Details</button>
     </div>
   );

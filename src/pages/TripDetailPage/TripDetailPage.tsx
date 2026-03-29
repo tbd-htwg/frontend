@@ -1,15 +1,22 @@
-import { useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 
 import "./TripDetailPage.css";
+import { useState } from "react";
+import type { Trip } from "../../models/Trip";
 
 const TripDetailPage: React.FC = () => {
   const navigate = useNavigate();
 
+  const [trip, setTrip] = useState({} as Trip);
+
   const { id } = useParams();
 
-  const tripList = useSelector((state) => state.trips);
-  const trip = tripList.find((t) => t.id === Number(id));
+  fetch(`http://localhost:8080/v1/trips/${id}`)
+    .then((response) => response.json())
+    .then((data) => {
+      console.log("Trip Detail:", data);
+      setTrip(data);
+    });
 
   const backToTripList = () => {
     navigate("/");
@@ -18,10 +25,11 @@ const TripDetailPage: React.FC = () => {
   return (
     <>
       <div id="trip-detail-container">
-        <h1>{trip.title}</h1>
-        <p>{trip.shortDescription}</p>
-        <p>{trip.longDescription}</p>
-        <p>{trip.destination}</p>
+        <h1>Title: {trip.title}</h1>
+        <p>Reisedatum: {trip.startDate}</p>
+        <p>Reisebeschreibung: {trip.shortDescription}</p>
+        <p>Detailbeschreibung: {trip.longDescription}</p>
+        <p>Reiseziel: {trip.destination}</p>
 
         <div>
           <button onClick={backToTripList}>Zurück zur Trip-Liste</button>

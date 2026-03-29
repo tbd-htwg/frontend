@@ -1,4 +1,4 @@
-import React, { use, useEffect } from "react";
+import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import "./TripListPage.css";
@@ -10,25 +10,33 @@ const TripListPage: React.FC = () => {
   const tripList = useSelector((state) => state.trips);
   const dispatch = useDispatch();
 
+  const currentUser = useSelector((state) => state.user);
+
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch("http://localhost:8080/v1/trips")
+    if (!currentUser || !currentUser.id) return;
+
+    fetch("http://localhost:8080/v1/users/" + currentUser.id)
       .then((response) => response.json())
       .then((data) => {
-        dispatch(setTrips(data));
+        dispatch(setTrips(data.trips));
       });
-  }, [dispatch]);
+  }, [dispatch, currentUser]);
 
   return (
     <div id="trip-list-page-container">
-      <h1>TripListPage</h1>
+      <h1>Meine Reisen - Anzahl: {tripList.length}</h1>
 
-      {tripList.map((trip) => (
-        <div key={trip.id} className="trip-item">
-          <TripListItem trip={trip} />
-        </div>
-      ))}
+      {tripList.length > 0 ? (
+        tripList.map((trip) => (
+          <div key={trip.id} className="trip-item">
+            <TripListItem trip={trip} />
+          </div>
+        ))
+      ) : (
+        <p>Nicht eingeloggt / Keine Reisen gefunden</p>
+      )}
 
       <button onClick={() => navigate("/newTrip")}>Add New Trip</button>
     </div>

@@ -3,8 +3,9 @@ import React, { useState } from "react";
 import "./LoginPage.css"; // optional für Styling
 
 import { useSelector, useDispatch } from "react-redux";
-import { userSlice, type User } from "../../features/user/userSlice";
+import { userSlice } from "../../features/user/userSlice";
 import { useNavigate } from "react-router-dom";
+import type { User } from "../../models/User";
 
 const LoginPage: React.FC = () => {
   const user = useSelector((state) => state.user);
