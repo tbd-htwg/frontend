@@ -2,11 +2,12 @@ import { useSelector } from "react-redux";
 import "./Header.css"; // optional für Styling
 
 import { useNavigate } from "react-router-dom";
+import type { RootState } from "../../store";
 
 function Header() {
   const navigate = useNavigate();
 
-  const currentUser = useSelector((state) => state.user);
+  const currentUser = useSelector((state: RootState) => state.user);
 
   return (
     <header id="app-header">

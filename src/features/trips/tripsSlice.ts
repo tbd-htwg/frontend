@@ -8,7 +8,7 @@ export const tripsSlice = createSlice({
   name: "trips", // Name des Slices
   initialState,
   reducers: {
-    setTrips: (state, action: PayloadAction<Trip[]>) => {
+    setTrips: (_state, action: PayloadAction<Trip[]>) => {
       return action.payload;
     },
     addTrip: (state, action: PayloadAction<Trip>) => {

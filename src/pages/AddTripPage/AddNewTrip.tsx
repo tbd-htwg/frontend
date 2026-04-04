@@ -3,16 +3,17 @@ import "./AddNewTrip.css";
 import { useState } from "react";
 import { useSelector } from "react-redux";
 import type { Trip } from "../../models/Trip";
+import type { RootState } from "../../store";
 
-const AddNewTrip: React.FC = () => {
+function AddNewTrip() {
   const navigate = useNavigate();
 
-  const currentUser = useSelector((state) => state.user);
+  const currentUser = useSelector((state: RootState) => state.user);
 
   const [newTrip, setNewTrip] = useState<Trip>({} as Trip);
 
   const saveTripToDb = () => {
-    fetch("http://localhost:8080/v1/trips", {
+    fetch("/v1/trips", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -96,6 +97,6 @@ const AddNewTrip: React.FC = () => {
       </div>
     </div>
   );
-};
+}
 
 export default AddNewTrip;
