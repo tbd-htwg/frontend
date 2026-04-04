@@ -3,21 +3,22 @@ import { useDispatch, useSelector } from "react-redux";
 
 import "./TripListPage.css";
 import TripListItem from "../TripListItem/TripListItem";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { setTrips } from "../../../features/trips/tripsSlice";
+import type { AppDispatch, RootState } from "../../../store";
 
 const TripListPage: React.FC = () => {
-  const tripList = useSelector((state) => state.trips);
-  const dispatch = useDispatch();
+  const tripList = useSelector((state: RootState) => state.trips);
+  const dispatch = useDispatch<AppDispatch>();
 
-  const currentUser = useSelector((state) => state.user);
+  const currentUser = useSelector((state: RootState) => state.user);
 
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!currentUser || !currentUser.id) return;
 
-    fetch("http://localhost:8080/v1/users/" + currentUser.id)
+    fetch("/v1/users/" + currentUser.id)
       .then((response) => response.json())
       .then((data) => {
         dispatch(setTrips(data.trips));

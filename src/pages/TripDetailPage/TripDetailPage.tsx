@@ -1,22 +1,26 @@
 import { useNavigate, useParams } from "react-router-dom";
 
 import "./TripDetailPage.css";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Trip } from "../../models/Trip";
 
-const TripDetailPage: React.FC = () => {
+function TripDetailPage() {
   const navigate = useNavigate();
 
   const [trip, setTrip] = useState({} as Trip);
 
   const { id } = useParams();
 
-  fetch(`http://localhost:8080/v1/trips/${id}`)
-    .then((response) => response.json())
-    .then((data) => {
-      console.log("Trip Detail:", data);
-      setTrip(data);
-    });
+  useEffect(() => {
+    if (!id) return;
+
+    fetch(`/v1/trips/${id}`)
+      .then((response) => response.json())
+      .then((data) => {
+        console.log("Trip Detail:", data);
+        setTrip(data);
+      });
+  }, [id]);
 
   const backToTripList = () => {
     navigate("/");
@@ -37,6 +41,6 @@ const TripDetailPage: React.FC = () => {
       </div>
     </>
   );
-};
+}
 
 export default TripDetailPage;

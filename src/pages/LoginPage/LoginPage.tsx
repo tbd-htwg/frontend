@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 
 import "./LoginPage.css"; // optional für Styling
 
@@ -6,10 +6,11 @@ import { useSelector, useDispatch } from "react-redux";
 import { userSlice } from "../../features/user/userSlice";
 import { useNavigate } from "react-router-dom";
 import type { User } from "../../models/User";
+import type { AppDispatch, RootState } from "../../store";
 
-const LoginPage: React.FC = () => {
-  const user = useSelector((state) => state.user);
-  const dispatch = useDispatch();
+function LoginPage() {
+  const user = useSelector((state: RootState) => state.user);
+  const dispatch = useDispatch<AppDispatch>();
 
   // Local state für Inputfelder
   const [userName, setUserName] = useState("");
@@ -23,7 +24,7 @@ const LoginPage: React.FC = () => {
       email: userMail,
     };
 
-    fetch("http://localhost:8080/v1/users", {
+    fetch("/v1/users", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -69,6 +70,6 @@ const LoginPage: React.FC = () => {
       <button onClick={() => navigate("/")}> Go Back </button>
     </div>
   );
-};
+}
 
 export default LoginPage;
