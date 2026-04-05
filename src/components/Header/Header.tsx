@@ -12,6 +12,7 @@ function Header() {
   return (
     <header id="app-header">
       <h1>Travel Planner</h1>
+      <p>CI/CD works!</p>
 
       <div id="button-container">
         <button onClick={() => navigate("/contact")}> Contact </button>
