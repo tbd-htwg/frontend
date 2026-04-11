@@ -60,15 +60,15 @@ export function Layout() {
       <footer className="border-t border-slate-200 bg-white">
         <div className="mx-auto max-w-5xl px-4 py-8">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-            Contact
+            <Link
+              to="/impressum"
+              className="text-slate-600 transition-colors hover:text-slate-900 hover:underline"
+            >
+              Contact
+            </Link>
           </h2>
           <p className="mt-2 text-sm text-slate-600">
-            Group members: <span className="font-medium text-slate-800">Your Name</span>
-            {', '}
-            <span className="font-medium text-slate-800">Teammate Name</span>
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            Edit this section in <code className="rounded bg-slate-100 px-1">Layout.tsx</code>.
+            Impressum with team list, e-mail addresses, and matriculation numbers.
           </p>
         </div>
       </footer>

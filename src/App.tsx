@@ -8,6 +8,7 @@ import { ProfilePage } from './pages/ProfilePage'
 import { RegisterPage } from './pages/RegisterPage'
 import { TripDetailPage } from './pages/TripDetailPage'
 import { TripEditPage } from './pages/TripEditPage'
+import { ImpressumPage } from './pages/ImpressumPage'
 import { TripNewPage } from './pages/TripNewPage'
 
 export function App() {
@@ -17,6 +18,7 @@ export function App() {
         <Routes>
           <Route element={<Layout />}>
             <Route index element={<HomePage />} />
+            <Route path="impressum" element={<ImpressumPage />} />
             <Route path="login" element={<LoginPage />} />
             <Route path="register" element={<RegisterPage />} />
             <Route
