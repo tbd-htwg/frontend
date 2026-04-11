@@ -1,0 +1,661 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Trip Planning API",
+        "description": "REST API for managing users and trips.",
+        "version": "v1"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8080",
+            "description": "Generated server url"
+        }
+    ],
+    "paths": {
+        "/v1/users/{id}": {
+            "get": {
+                "tags": [
+                    "user-controller"
+                ],
+                "operationId": "getUserById",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserDetailsResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "user-controller"
+                ],
+                "operationId": "replaceUser",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UserPutRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "user-controller"
+                ],
+                "operationId": "deleteUser",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "user-controller"
+                ],
+                "operationId": "updateUserPartially",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UserPatchRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/trips/{id}": {
+            "get": {
+                "tags": [
+                    "trip-controller"
+                ],
+                "operationId": "get",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TripDetailsResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "trip-controller"
+                ],
+                "operationId": "replace",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TripPutRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TripDetailsResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "trip-controller"
+                ],
+                "operationId": "delete",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "trip-controller"
+                ],
+                "operationId": "patch",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TripPatchRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TripDetailsResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/users": {
+            "get": {
+                "tags": [
+                    "user-controller"
+                ],
+                "operationId": "listUsers",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/UserResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "user-controller"
+                ],
+                "operationId": "register",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UserCreateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/trips": {
+            "get": {
+                "tags": [
+                    "trip-controller"
+                ],
+                "operationId": "list",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/TripListItemResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "trip-controller"
+                ],
+                "operationId": "create",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TripCreateRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TripDetailsResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "UserPutRequest": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "example": "jane.doe@example.com",
+                        "minLength": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Jane Doe",
+                        "maxLength": 255,
+                        "minLength": 0
+                    }
+                },
+                "required": [
+                    "email",
+                    "name"
+                ]
+            },
+            "UserResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "email": {
+                        "type": "string",
+                        "example": "jane.doe@example.com"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Jane Doe"
+                    }
+                }
+            },
+            "TripPutRequest": {
+                "type": "object",
+                "properties": {
+                    "userId": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "title": {
+                        "type": "string",
+                        "example": "Family trip to Norway",
+                        "maxLength": 255,
+                        "minLength": 0
+                    },
+                    "destination": {
+                        "type": "string",
+                        "example": "Bergen",
+                        "maxLength": 255,
+                        "minLength": 0
+                    },
+                    "startDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-08-01"
+                    },
+                    "shortDescription": {
+                        "type": "string",
+                        "example": "Coastal road trip",
+                        "maxLength": 80,
+                        "minLength": 0
+                    },
+                    "longDescription": {
+                        "type": "string",
+                        "example": "Updated route, hotels, and activities.",
+                        "minLength": 1
+                    }
+                },
+                "required": [
+                    "destination",
+                    "longDescription",
+                    "shortDescription",
+                    "startDate",
+                    "title",
+                    "userId"
+                ]
+            },
+            "TripDetailsResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 42
+                    },
+                    "title": {
+                        "type": "string",
+                        "example": "Family trip to Norway"
+                    },
+                    "destination": {
+                        "type": "string",
+                        "example": "Oslo"
+                    },
+                    "startDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-07-15"
+                    },
+                    "shortDescription": {
+                        "type": "string",
+                        "example": "Summer holiday with the kids"
+                    },
+                    "longDescription": {
+                        "type": "string",
+                        "example": "Full itinerary, budget notes, and packing list."
+                    }
+                }
+            },
+            "UserCreateRequest": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "example": "jane.doe@example.com",
+                        "minLength": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Jane Doe",
+                        "maxLength": 255,
+                        "minLength": 0
+                    }
+                },
+                "required": [
+                    "email",
+                    "name"
+                ]
+            },
+            "TripCreateRequest": {
+                "type": "object",
+                "properties": {
+                    "userId": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "title": {
+                        "type": "string",
+                        "example": "Family trip to Norway",
+                        "maxLength": 255,
+                        "minLength": 0
+                    },
+                    "destination": {
+                        "type": "string",
+                        "example": "Oslo",
+                        "maxLength": 255,
+                        "minLength": 0
+                    },
+                    "startDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-07-15"
+                    },
+                    "shortDescription": {
+                        "type": "string",
+                        "example": "Summer holiday with the kids",
+                        "maxLength": 80,
+                        "minLength": 0
+                    },
+                    "longDescription": {
+                        "type": "string",
+                        "example": "Full itinerary, budget notes, and packing list.",
+                        "minLength": 1
+                    }
+                },
+                "required": [
+                    "destination",
+                    "longDescription",
+                    "shortDescription",
+                    "startDate",
+                    "title",
+                    "userId"
+                ]
+            },
+            "UserPatchRequest": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "example": "jane.new@example.com"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Jane D.",
+                        "maxLength": 255,
+                        "minLength": 0
+                    }
+                }
+            },
+            "TripPatchRequest": {
+                "type": "object",
+                "properties": {
+                    "userId": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 2
+                    },
+                    "title": {
+                        "type": "string",
+                        "example": "Renamed trip title",
+                        "maxLength": 255,
+                        "minLength": 0
+                    },
+                    "destination": {
+                        "type": "string",
+                        "example": "Trondheim",
+                        "maxLength": 255,
+                        "minLength": 0
+                    },
+                    "startDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-09-10"
+                    },
+                    "shortDescription": {
+                        "type": "string",
+                        "example": "New subtitle",
+                        "maxLength": 80,
+                        "minLength": 0
+                    },
+                    "longDescription": {
+                        "type": "string",
+                        "example": "Only fields you send are updated."
+                    }
+                }
+            },
+            "TripListItemResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 42
+                    },
+                    "title": {
+                        "type": "string",
+                        "example": "Family trip to Norway"
+                    },
+                    "startDate": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-07-15"
+                    }
+                }
+            },
+            "UserDetailsResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                        "example": 1
+                    },
+                    "email": {
+                        "type": "string",
+                        "example": "jane.doe@example.com"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Jane Doe"
+                    },
+                    "trips": {
+                        "type": "array",
+                        "description": "Trips owned by this user",
+                        "items": {
+                            "$ref": "#/components/schemas/TripListItemResponse"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
