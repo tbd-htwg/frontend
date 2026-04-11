@@ -1,8 +1,8 @@
-/** Empty string uses same-origin `/v1` (Vite dev proxy). Otherwise full base URL without trailing slash. */
+/** Empty string uses same-origin `/v1` (Vite dev proxy; Caddy in production). Otherwise full base URL without trailing slash. */
 export function getApiBaseUrl(): string {
   const v = import.meta.env.VITE_API_BASE_URL
   if (v === '') return ''
-  return (v ?? 'http://localhost:8080').replace(/\/$/, '')
+  return (v ?? '').replace(/\/$/, '')
 }
 
 export class ApiError extends Error {
