@@ -1,8 +1,8 @@
-/** Empty string uses same-origin `/v1` (Vite dev proxy; Caddy in production). Otherwise full base URL without trailing slash. */
+/** Unset/empty uses same-origin `/api/v2` (Vite dev proxy; Caddy in production). Otherwise full base URL without trailing slash. */
 export function getApiBaseUrl(): string {
   const v = import.meta.env.VITE_API_BASE_URL
-  if (v === '') return ''
-  return (v ?? '').replace(/\/$/, '')
+  if (v === '' || v == null) return '/api/v2'
+  return v.replace(/\/$/, '')
 }
 
 export class ApiError extends Error {
@@ -24,7 +24,27 @@ async function parseJson<T>(res: Response): Promise<T> {
 
 async function request(path: string, init?: RequestInit): Promise<Response> {
   const base = getApiBaseUrl()
-  const url = `${base}${path}`
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+  let url: string
+
+  if (/^https?:\/\//.test(path)) {
+    url = path
+  } else if (!base) {
+    url = normalizedPath
+  } else if (/^https?:\/\//.test(base)) {
+    const baseUrl = new URL(base)
+    const basePath = baseUrl.pathname.replace(/\/$/, '')
+    if (normalizedPath === basePath || normalizedPath.startsWith(`${basePath}/`)) {
+      url = `${baseUrl.origin}${normalizedPath}`
+    } else {
+      url = `${base}${normalizedPath}`
+    }
+  } else if (normalizedPath === base || normalizedPath.startsWith(`${base}/`)) {
+    url = normalizedPath
+  } else {
+    url = `${base}${normalizedPath}`
+  }
+
   const res = await fetch(url, init)
   if (!res.ok) {
     const errText = await res.text()

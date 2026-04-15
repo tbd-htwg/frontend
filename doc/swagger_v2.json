@@ -7,12 +7,12 @@
     },
     "servers": [
         {
-            "url": "http://localhost:8080",
+            "url": "http://localhost:8080/api/v2",
             "description": "Generated server url"
         }
     ],
     "paths": {
-        "/accommodations": {
+        "/api/v2/accommodations": {
             "get": {
                 "tags": [
                     "accom-entity-entity-controller"
@@ -108,7 +108,7 @@
                 }
             }
         },
-        "/accommodations/search/findByName": {
+        "/api/v2/accommodations/search/findByName": {
             "get": {
                 "tags": [
                     "accom-entity-search-controller"
@@ -140,7 +140,7 @@
                 }
             }
         },
-        "/accommodations/search/findByNameContaining": {
+        "/api/v2/accommodations/search/findByNameContaining": {
             "get": {
                 "tags": [
                     "accom-entity-search-controller"
@@ -172,7 +172,7 @@
                 }
             }
         },
-        "/accommodations/{id}": {
+        "/api/v2/accommodations/{id}": {
             "get": {
                 "tags": [
                     "accom-entity-entity-controller"
@@ -325,7 +325,7 @@
                 }
             }
         },
-        "/accommodations/{id}/trips": {
+        "/api/v2/accommodations/{id}/trips": {
             "get": {
                 "tags": [
                     "accom-entity-property-reference-controller"
@@ -503,7 +503,7 @@
                 }
             }
         },
-        "/accommodations/{id}/trips/{propertyId}": {
+        "/api/v2/accommodations/{id}/trips/{propertyId}": {
             "get": {
                 "tags": [
                     "accom-entity-property-reference-controller"
@@ -578,7 +578,7 @@
                 }
             }
         },
-        "/comments": {
+        "/api/v2/comments": {
             "get": {
                 "tags": [
                     "comment-entity-entity-controller"
@@ -674,7 +674,7 @@
                 }
             }
         },
-        "/comments/search/deleteByUserId": {
+        "/api/v2/comments/search/deleteByUserId": {
             "get": {
                 "tags": [
                     "comment-entity-search-controller"
@@ -700,7 +700,7 @@
                 }
             }
         },
-        "/comments/search/findByTripIdOrderByCreatedAtDesc": {
+        "/api/v2/comments/search/findByTripIdOrderByCreatedAtDesc": {
             "get": {
                 "tags": [
                     "comment-entity-search-controller"
@@ -733,7 +733,7 @@
                 }
             }
         },
-        "/comments/{id}": {
+        "/api/v2/comments/{id}": {
             "get": {
                 "tags": [
                     "comment-entity-entity-controller"
@@ -886,7 +886,7 @@
                 }
             }
         },
-        "/comments/{id}/trip": {
+        "/api/v2/comments/{id}/trip": {
             "get": {
                 "tags": [
                     "comment-entity-property-reference-controller"
@@ -1064,7 +1064,7 @@
                 }
             }
         },
-        "/comments/{id}/trip/{propertyId}": {
+        "/api/v2/comments/{id}/trip/{propertyId}": {
             "get": {
                 "tags": [
                     "comment-entity-property-reference-controller"
@@ -1139,7 +1139,7 @@
                 }
             }
         },
-        "/comments/{id}/user": {
+        "/api/v2/comments/{id}/user": {
             "get": {
                 "tags": [
                     "comment-entity-property-reference-controller"
@@ -1317,7 +1317,7 @@
                 }
             }
         },
-        "/comments/{id}/user/{propertyId}": {
+        "/api/v2/comments/{id}/user/{propertyId}": {
             "get": {
                 "tags": [
                     "comment-entity-property-reference-controller"
@@ -1392,7 +1392,7 @@
                 }
             }
         },
-        "/locations": {
+        "/api/v2/locations": {
             "get": {
                 "tags": [
                     "location-entity-entity-controller"
@@ -1488,7 +1488,7 @@
                 }
             }
         },
-        "/locations/search/findByName": {
+        "/api/v2/locations/search/findByName": {
             "get": {
                 "tags": [
                     "location-entity-search-controller"
@@ -1520,7 +1520,7 @@
                 }
             }
         },
-        "/locations/{id}": {
+        "/api/v2/locations/{id}": {
             "get": {
                 "tags": [
                     "location-entity-entity-controller"
@@ -1673,7 +1673,7 @@
                 }
             }
         },
-        "/profile": {
+        "/api/v2/profile": {
             "get": {
                 "tags": [
                     "profile-controller"
@@ -1693,7 +1693,7 @@
                 }
             }
         },
-        "/profile/accommodations": {
+        "/api/v2/profile/accommodations": {
             "get": {
                 "tags": [
                     "profile-controller"
@@ -1723,7 +1723,7 @@
                 }
             }
         },
-        "/profile/comments": {
+        "/api/v2/profile/comments": {
             "get": {
                 "tags": [
                     "profile-controller"
@@ -1753,7 +1753,7 @@
                 }
             }
         },
-        "/profile/locations": {
+        "/api/v2/profile/locations": {
             "get": {
                 "tags": [
                     "profile-controller"
@@ -1783,7 +1783,7 @@
                 }
             }
         },
-        "/profile/transports": {
+        "/api/v2/profile/transports": {
             "get": {
                 "tags": [
                     "profile-controller"
@@ -1813,7 +1813,7 @@
                 }
             }
         },
-        "/profile/trip-locations": {
+        "/api/v2/profile/trip-locations": {
             "get": {
                 "tags": [
                     "profile-controller"
@@ -1843,7 +1843,7 @@
                 }
             }
         },
-        "/profile/trips": {
+        "/api/v2/profile/trips": {
             "get": {
                 "tags": [
                     "profile-controller"
@@ -1873,7 +1873,7 @@
                 }
             }
         },
-        "/profile/users": {
+        "/api/v2/profile/users": {
             "get": {
                 "tags": [
                     "profile-controller"
@@ -1903,7 +1903,7 @@
                 }
             }
         },
-        "/transports": {
+        "/api/v2/transports": {
             "get": {
                 "tags": [
                     "transport-entity-entity-controller"
@@ -1999,7 +1999,7 @@
                 }
             }
         },
-        "/transports/search/findByType": {
+        "/api/v2/transports/search/findByType": {
             "get": {
                 "tags": [
                     "transport-entity-search-controller"
@@ -2031,7 +2031,7 @@
                 }
             }
         },
-        "/transports/{id}": {
+        "/api/v2/transports/{id}": {
             "get": {
                 "tags": [
                     "transport-entity-entity-controller"
@@ -2184,7 +2184,7 @@
                 }
             }
         },
-        "/transports/{id}/trips": {
+        "/api/v2/transports/{id}/trips": {
             "get": {
                 "tags": [
                     "transport-entity-property-reference-controller"
@@ -2362,7 +2362,7 @@
                 }
             }
         },
-        "/transports/{id}/trips/{propertyId}": {
+        "/api/v2/transports/{id}/trips/{propertyId}": {
             "get": {
                 "tags": [
                     "transport-entity-property-reference-controller"
@@ -2437,7 +2437,7 @@
                 }
             }
         },
-        "/trip-locations": {
+        "/api/v2/trip-locations": {
             "get": {
                 "tags": [
                     "trip-location-entity-entity-controller"
@@ -2533,7 +2533,7 @@
                 }
             }
         },
-        "/trip-locations/search/findByTripId": {
+        "/api/v2/trip-locations/search/findByTripId": {
             "get": {
                 "tags": [
                     "trip-location-entity-search-controller"
@@ -2566,7 +2566,7 @@
                 }
             }
         },
-        "/trip-locations/{id}": {
+        "/api/v2/trip-locations/{id}": {
             "get": {
                 "tags": [
                     "trip-location-entity-entity-controller"
@@ -2719,7 +2719,7 @@
                 }
             }
         },
-        "/trip-locations/{id}/location": {
+        "/api/v2/trip-locations/{id}/location": {
             "get": {
                 "tags": [
                     "trip-location-entity-property-reference-controller"
@@ -2897,7 +2897,7 @@
                 }
             }
         },
-        "/trip-locations/{id}/location/{propertyId}": {
+        "/api/v2/trip-locations/{id}/location/{propertyId}": {
             "get": {
                 "tags": [
                     "trip-location-entity-property-reference-controller"
@@ -2972,7 +2972,7 @@
                 }
             }
         },
-        "/trip-locations/{id}/trip": {
+        "/api/v2/trip-locations/{id}/trip": {
             "get": {
                 "tags": [
                     "trip-location-entity-property-reference-controller"
@@ -3150,7 +3150,7 @@
                 }
             }
         },
-        "/trip-locations/{id}/trip/{propertyId}": {
+        "/api/v2/trip-locations/{id}/trip/{propertyId}": {
             "get": {
                 "tags": [
                     "trip-location-entity-property-reference-controller"
@@ -3225,7 +3225,7 @@
                 }
             }
         },
-        "/trips": {
+        "/api/v2/trips": {
             "get": {
                 "tags": [
                     "trip-entity-entity-controller"
@@ -3321,7 +3321,7 @@
                 }
             }
         },
-        "/trips/search/countLikes": {
+        "/api/v2/trips/search/countLikes": {
             "get": {
                 "tags": [
                     "trip-entity-search-controller"
@@ -3355,7 +3355,7 @@
                 }
             }
         },
-        "/trips/search/deleteByUserId": {
+        "/api/v2/trips/search/deleteByUserId": {
             "get": {
                 "tags": [
                     "trip-entity-search-controller"
@@ -3381,7 +3381,7 @@
                 }
             }
         },
-        "/trips/search/findByLikedByUsersId": {
+        "/api/v2/trips/search/findByLikedByUsersId": {
             "get": {
                 "tags": [
                     "trip-entity-search-controller"
@@ -3414,7 +3414,7 @@
                 }
             }
         },
-        "/trips/search/findByUserId": {
+        "/api/v2/trips/search/findByUserId": {
             "get": {
                 "tags": [
                     "trip-entity-search-controller"
@@ -3447,7 +3447,7 @@
                 }
             }
         },
-        "/trips/{id}": {
+        "/api/v2/trips/{id}": {
             "get": {
                 "tags": [
                     "trip-entity-entity-controller"
@@ -3600,7 +3600,7 @@
                 }
             }
         },
-        "/trips/{id}/accommodations": {
+        "/api/v2/trips/{id}/accommodations": {
             "get": {
                 "tags": [
                     "trip-entity-property-reference-controller"
@@ -3778,7 +3778,7 @@
                 }
             }
         },
-        "/trips/{id}/accommodations/{propertyId}": {
+        "/api/v2/trips/{id}/accommodations/{propertyId}": {
             "get": {
                 "tags": [
                     "trip-entity-property-reference-controller"
@@ -3853,7 +3853,7 @@
                 }
             }
         },
-        "/trips/{id}/likedByUsers": {
+        "/api/v2/trips/{id}/likedByUsers": {
             "get": {
                 "tags": [
                     "trip-entity-property-reference-controller"
@@ -4031,7 +4031,7 @@
                 }
             }
         },
-        "/trips/{id}/likedByUsers/{propertyId}": {
+        "/api/v2/trips/{id}/likedByUsers/{propertyId}": {
             "get": {
                 "tags": [
                     "trip-entity-property-reference-controller"
@@ -4106,7 +4106,7 @@
                 }
             }
         },
-        "/trips/{id}/transports": {
+        "/api/v2/trips/{id}/transports": {
             "get": {
                 "tags": [
                     "trip-entity-property-reference-controller"
@@ -4284,7 +4284,7 @@
                 }
             }
         },
-        "/trips/{id}/transports/{propertyId}": {
+        "/api/v2/trips/{id}/transports/{propertyId}": {
             "get": {
                 "tags": [
                     "trip-entity-property-reference-controller"
@@ -4359,7 +4359,7 @@
                 }
             }
         },
-        "/trips/{id}/user": {
+        "/api/v2/trips/{id}/user": {
             "get": {
                 "tags": [
                     "trip-entity-property-reference-controller"
@@ -4537,7 +4537,7 @@
                 }
             }
         },
-        "/trips/{id}/user/{propertyId}": {
+        "/api/v2/trips/{id}/user/{propertyId}": {
             "get": {
                 "tags": [
                     "trip-entity-property-reference-controller"
@@ -4612,7 +4612,7 @@
                 }
             }
         },
-        "/users": {
+        "/api/v2/users": {
             "get": {
                 "tags": [
                     "user-entity-entity-controller"
@@ -4708,7 +4708,7 @@
                 }
             }
         },
-        "/users/search/findByEmail": {
+        "/api/v2/users/search/findByEmail": {
             "get": {
                 "tags": [
                     "user-entity-search-controller"
@@ -4740,7 +4740,7 @@
                 }
             }
         },
-        "/users/{id}": {
+        "/api/v2/users/{id}": {
             "get": {
                 "tags": [
                     "user-entity-entity-controller"
@@ -4893,7 +4893,7 @@
                 }
             }
         },
-        "/users/{id}/likedTrips": {
+        "/api/v2/users/{id}/likedTrips": {
             "get": {
                 "tags": [
                     "user-entity-property-reference-controller"
@@ -5071,7 +5071,7 @@
                 }
             }
         },
-        "/users/{id}/likedTrips/{propertyId}": {
+        "/api/v2/users/{id}/likedTrips/{propertyId}": {
             "get": {
                 "tags": [
                     "user-entity-property-reference-controller"

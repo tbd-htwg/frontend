@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { findTripsByUserId } from '../api/trips'
 import { useAuth } from '../context/AuthContext'
 
-/** Trip IDs owned by the logged-in user (from GET /v1/users/{id}). */
+/** Trip IDs owned by the logged-in user (from GET /api/v2/users/{id}). */
 export function useOwnedTripIds() {
   const { user } = useAuth()
   const { pathname } = useLocation()
