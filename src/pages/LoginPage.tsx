@@ -57,6 +57,7 @@ export function LoginPage() {
         <button
           type="submit"
           disabled={submitting}
+          aria-label={submitting ? 'Signing in' : 'Sign in'}
           className="w-full rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
         >
           {submitting ? 'Signing in…' : 'Sign in'}
@@ -64,7 +65,7 @@ export function LoginPage() {
       </form>
       <p className="mt-4 text-center text-sm text-slate-600">
         No account?{' '}
-        <Link to="/register" className="font-medium text-slate-900 underline">
+        <Link to="/register" aria-label="Go to registration page" className="font-medium text-slate-900 underline">
           Register
         </Link>
       </p>

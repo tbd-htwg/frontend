@@ -1,8 +1,8 @@
-/** Empty string uses same-origin `/v1` (Vite dev proxy; Caddy in production). Otherwise full base URL without trailing slash. */
+/** Unset/empty uses same-origin `/api/v2` (Vite dev proxy; Caddy in production). Otherwise full base URL without trailing slash. */
 export function getApiBaseUrl(): string {
   const v = import.meta.env.VITE_API_BASE_URL
-  if (v === '') return ''
-  return (v ?? '').replace(/\/$/, '')
+  if (v === '' || v == null) return '/api/v2'
+  return v.replace(/\/$/, '')
 }
 
 export class ApiError extends Error {
@@ -22,19 +22,30 @@ async function parseJson<T>(res: Response): Promise<T> {
   return JSON.parse(text) as T
 }
 
-export async function requestJson<T>(
-  path: string,
-  init?: RequestInit,
-): Promise<T> {
+async function request(path: string, init?: RequestInit): Promise<Response> {
   const base = getApiBaseUrl()
-  const url = `${base}${path}`
-  const res = await fetch(url, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...init?.headers,
-    },
-  })
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+  let url: string
+
+  if (/^https?:\/\//.test(path)) {
+    url = path
+  } else if (!base) {
+    url = normalizedPath
+  } else if (/^https?:\/\//.test(base)) {
+    const baseUrl = new URL(base)
+    const basePath = baseUrl.pathname.replace(/\/$/, '')
+    if (normalizedPath === basePath || normalizedPath.startsWith(`${basePath}/`)) {
+      url = `${baseUrl.origin}${normalizedPath}`
+    } else {
+      url = `${base}${normalizedPath}`
+    }
+  } else if (normalizedPath === base || normalizedPath.startsWith(`${base}/`)) {
+    url = normalizedPath
+  } else {
+    url = `${base}${normalizedPath}`
+  }
+
+  const res = await fetch(url, init)
   if (!res.ok) {
     const errText = await res.text()
     throw new ApiError(
@@ -43,26 +54,39 @@ export async function requestJson<T>(
       errText,
     )
   }
+  return res
+}
+
+export async function requestJson<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
+  const res = await request(path, {
+    ...init,
+    headers: {
+      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...init?.headers,
+    },
+  })
   if (res.status === 204) return undefined as T
   return parseJson<T>(res)
 }
 
 export async function requestVoid(path: string, init?: RequestInit): Promise<void> {
-  const base = getApiBaseUrl()
-  const url = `${base}${path}`
-  const res = await fetch(url, {
+  await request(path, {
     ...init,
     headers: {
-      ...init?.headers,
       ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...init?.headers,
     },
   })
-  if (!res.ok) {
-    const errText = await res.text()
-    throw new ApiError(
-      errText || res.statusText || 'Request failed',
-      res.status,
-      errText,
-    )
-  }
+}
+
+export async function requestText(
+  path: string,
+  init?: RequestInit,
+): Promise<string> {
+  const res = await request(path, init)
+  if (res.status === 204) return ''
+  return res.text()
 }

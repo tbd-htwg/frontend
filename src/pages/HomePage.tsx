@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { listTrips } from '../api/trips'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faPenToSquare } from '@fortawesome/free-solid-svg-icons'
+import { listTrips, searchTripsByLikedUser } from '../api/trips'
 import { ApiError } from '../api/client'
+import { useAuth } from '../context/AuthContext'
 import { useOwnedTripIds } from '../hooks/useOwnedTripIds'
 import type { TripListItemResponse } from '../types/api'
 
@@ -19,14 +22,21 @@ function formatDate(iso: string) {
 
 export function HomePage() {
   const [trips, setTrips] = useState<TripListItemResponse[]>([])
+  const [query, setQuery] = useState('')
+  const [likedOnly, setLikedOnly] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { ownedTripIds } = useOwnedTripIds()
+  const { user } = useAuth()
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    listTrips()
+    const loader =
+      likedOnly && user
+        ? searchTripsByLikedUser(user.id)
+        : listTrips()
+    loader
       .then((data) => {
         if (!cancelled) setTrips(data)
       })
@@ -45,7 +55,17 @@ export function HomePage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [likedOnly, user])
+
+  const filteredTrips = trips.filter((trip) => {
+    const q = query.trim().toLowerCase()
+    if (!q) return true
+    return (
+      trip.title.toLowerCase().includes(q) ||
+      trip.destination.toLowerCase().includes(q) ||
+      trip.shortDescription.toLowerCase().includes(q)
+    )
+  })
 
   return (
     <div>
@@ -53,6 +73,25 @@ export function HomePage() {
       <p className="mt-1 text-slate-600">
         Trips from every traveller on the platform.
       </p>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by title and description"
+          aria-label="Search trips by title and description"
+          className="w-full max-w-md rounded-md border border-slate-300 px-3 py-2 text-sm"
+        />
+        {user && (
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={likedOnly}
+              onChange={(e) => setLikedOnly(e.target.checked)}
+            />
+            Show trips I liked
+          </label>
+        )}
+      </div>
 
       {loading && <p className="mt-6 text-slate-500">Loading trips…</p>}
       {error && (
@@ -61,13 +100,13 @@ export function HomePage() {
         </p>
       )}
 
-      {!loading && !error && trips.length === 0 && (
+      {!loading && !error && filteredTrips.length === 0 && (
         <p className="mt-6 text-slate-600">No trips yet.</p>
       )}
 
-      {!loading && !error && trips.length > 0 && (
-        <ul className="mt-6 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white shadow-sm">
-          {trips.map((t) => (
+      {!loading && !error && filteredTrips.length > 0 && (
+        <ul className="mt-6 divide-y divide-slate-300 rounded-lg border border-slate-300 bg-white shadow-sm">
+          {filteredTrips.map((t) => (
             <li
               key={t.id}
               className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
@@ -75,17 +114,22 @@ export function HomePage() {
               <div>
                 <Link
                   to={`/trips/${t.id}`}
+                  aria-label={`Open trip ${t.title}`}
                   className="font-medium text-slate-900 hover:underline"
                 >
                   {t.title}
                 </Link>
-                <p className="text-sm text-slate-600">{formatDate(t.startDate)}</p>
+                <p className="text-sm text-slate-600">
+                  {t.destination} · {formatDate(t.startDate)}
+                </p>
               </div>
               {ownedTripIds.has(t.id) && (
                 <Link
                   to={`/trips/${t.id}/edit`}
-                  className="text-sm font-medium text-slate-700 hover:underline"
+                  aria-label={`Edit trip ${t.title}`}
+                  className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:underline"
                 >
+                  <FontAwesomeIcon icon={faPenToSquare} aria-hidden="true" />
                   Edit
                 </Link>
               )}

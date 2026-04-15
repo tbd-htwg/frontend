@@ -1,6 +1,6 @@
 # Trip Planner (frontend)
 
-Single-page app for managing leisure trips: browse everyone’s trips, register, sign in by name, and maintain your profile and your own trips against the REST API described in `doc/swagger_v1.json`.
+Single-page app for managing leisure trips: browse everyone’s trips, register, sign in by name, and maintain your profile and your own trips against the REST API described in `doc/swagger_v2.json`.
 
 ## Technologies
 
@@ -17,4 +17,4 @@ Single-page app for managing leisure trips: browse everyone’s trips, register,
 2. Start the API on `http://localhost:8080` (see the course backend).
 3. From this directory: `npm run dev` — Vite serves the app with **hot module replacement** (default URL is printed in the terminal, usually `http://localhost:5173`).
 
-Optional: copy `.env.example` to `.env` and set `VITE_API_BASE_URL` if your API is not on `http://localhost:8080`. Use an empty value to rely on the dev proxy to `/v1` (same origin as Vite).
+Optional: copy `.env.example` to `.env` and set `VITE_API_BASE_URL` if your API is not on `http://localhost:8080/api/v2`. Leave it unset or empty to rely on the dev proxy and same-origin `/api/v2`.

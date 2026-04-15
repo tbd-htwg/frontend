@@ -10,6 +10,7 @@ import { TripDetailPage } from './pages/TripDetailPage'
 import { TripEditPage } from './pages/TripEditPage'
 import { ImpressumPage } from './pages/ImpressumPage'
 import { TripNewPage } from './pages/TripNewPage'
+import { UserProfilePage } from './pages/UserProfilePage'
 
 export function App() {
   return (
@@ -45,6 +46,7 @@ export function App() {
                 </ProtectedRoute>
               }
             />
+            <Route path="users/:id" element={<UserProfilePage />} />
             <Route path="trips/:id" element={<TripDetailPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

@@ -30,7 +30,9 @@ function loadStoredUser(): UserResponse | null {
     if (
       typeof parsed?.id === 'number' &&
       typeof parsed?.email === 'string' &&
-      typeof parsed?.name === 'string'
+      typeof parsed?.name === 'string' &&
+      typeof parsed?.imageUrl === 'string' &&
+      typeof parsed?.description === 'string'
     ) {
       return parsed
     }
@@ -66,7 +68,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const register = useCallback(async (email: string, name: string) => {
-    const created = await registerUser({ email: email.trim(), name: name.trim() })
+    const created = await registerUser({
+      email: email.trim(),
+      name: name.trim(),
+      description: '',
+      imageUrl: '',
+    })
     setUser(created)
   }, [])
 
