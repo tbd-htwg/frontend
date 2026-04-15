@@ -1,4 +1,6 @@
 import type {
+  HalCollection,
+  HalEntity,
   UserCreateRequest,
   UserDetailsResponse,
   UserPatchRequest,
@@ -6,42 +8,86 @@ import type {
   UserResponse,
 } from '../types/api'
 import { requestJson, requestVoid } from './client'
+import { embeddedItems, idFromEntity } from './hal'
+import { findTripsByUserId } from './trips'
 
-export function listUsers(): Promise<UserResponse[]> {
-  return requestJson<UserResponse[]>('/v1/users', { method: 'GET' })
+type UserEntityBody = {
+  email?: string
+  name?: string
+  imageUrl?: string
+  description?: string
 }
 
-export function registerUser(body: UserCreateRequest): Promise<UserResponse> {
-  return requestJson<UserResponse>('/v1/users', {
+function toUser(entity: HalEntity<UserEntityBody>): UserResponse {
+  return {
+    id: idFromEntity(entity),
+    email: entity.email ?? '',
+    name: entity.name ?? '',
+    imageUrl: entity.imageUrl ?? '',
+    description: entity.description ?? '',
+  }
+}
+
+type UserCollection = HalCollection<HalEntity<UserEntityBody>>
+
+export async function listUsers(): Promise<UserResponse[]> {
+  const model = await requestJson<UserCollection>('/users', { method: 'GET' })
+  return embeddedItems(model, 'users').map(toUser)
+}
+
+export async function registerUser(body: UserCreateRequest): Promise<UserResponse> {
+  const entity = await requestJson<HalEntity<UserEntityBody>>('/users', {
     method: 'POST',
     body: JSON.stringify(body),
   })
+  return toUser(entity)
 }
 
-export function getUserById(id: number): Promise<UserDetailsResponse> {
-  return requestJson<UserDetailsResponse>(`/v1/users/${id}`, { method: 'GET' })
+export async function findUserByEmail(email: string): Promise<UserResponse | null> {
+  try {
+    const entity = await requestJson<HalEntity<UserEntityBody>>(
+      `/users/search/findByEmail?email=${encodeURIComponent(email)}`,
+      { method: 'GET' },
+    )
+    return toUser(entity)
+  } catch {
+    return null
+  }
 }
 
-export function replaceUser(
+export async function getUserById(id: number): Promise<UserDetailsResponse> {
+  const [entity, trips] = await Promise.all([
+    requestJson<HalEntity<UserEntityBody>>(`/users/${id}`, { method: 'GET' }),
+    findTripsByUserId(id),
+  ])
+  return {
+    ...toUser(entity),
+    trips,
+  }
+}
+
+export async function replaceUser(
   id: number,
   body: UserPutRequest,
 ): Promise<UserResponse> {
-  return requestJson<UserResponse>(`/v1/users/${id}`, {
+  const entity = await requestJson<HalEntity<UserEntityBody>>(`/users/${id}`, {
     method: 'PUT',
     body: JSON.stringify(body),
   })
+  return toUser(entity)
 }
 
-export function patchUser(
+export async function patchUser(
   id: number,
   body: UserPatchRequest,
 ): Promise<UserResponse> {
-  return requestJson<UserResponse>(`/v1/users/${id}`, {
+  const entity = await requestJson<HalEntity<UserEntityBody>>(`/users/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(body),
   })
+  return toUser(entity)
 }
 
 export function deleteUser(id: number): Promise<void> {
-  return requestVoid(`/v1/users/${id}`, { method: 'DELETE' })
+  return requestVoid(`/users/${id}`, { method: 'DELETE' })
 }

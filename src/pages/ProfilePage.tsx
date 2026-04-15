@@ -22,6 +22,7 @@ export function ProfilePage() {
   const [details, setDetails] = useState<UserDetailsResponse | null>(null)
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -37,6 +38,7 @@ export function ProfilePage() {
           setDetails(d)
           setEmail(d.email)
           setName(d.name)
+          setDescription(d.description)
         }
       })
       .catch((err) => {
@@ -65,12 +67,14 @@ export function ProfilePage() {
       const updated = await patchUser(user.id, {
         email: email.trim(),
         name: name.trim(),
+        description: description.trim(),
       })
       updateSessionUser(updated)
       const fresh = await getUserById(user.id)
       setDetails(fresh)
       setEmail(fresh.email)
       setName(fresh.name)
+      setDescription(fresh.description)
     } catch (err) {
       setSaveError(
         err instanceof Error ? err.message : 'Could not update profile.',
@@ -98,6 +102,22 @@ export function ProfilePage() {
         <>
           <section className="mt-8 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-medium text-slate-900">Edit details</h2>
+            <div className="mt-4 flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 text-xl">
+                👤
+              </div>
+              <div className="text-sm text-slate-700">
+                <p className="font-medium">Profile image placeholder</p>
+                <p>Image upload will be enabled once backend upload APIs are available.</p>
+              </div>
+              <button
+                type="button"
+                disabled
+                className="ml-auto rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-500"
+              >
+                Upload image (coming soon)
+              </button>
+            </div>
             <form onSubmit={handleSave} className="mt-4 max-w-md space-y-4">
               {saveError && (
                 <div
@@ -130,6 +150,21 @@ export function ProfilePage() {
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="description"
+                  className="block text-sm font-medium text-slate-700"
+                >
+                  Description
+                </label>
+                <textarea
+                  id="description"
+                  rows={3}
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
               <button

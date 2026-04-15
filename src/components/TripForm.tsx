@@ -149,6 +149,13 @@ export function TripForm({
           }
         />
       </div>
+      <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
+        <p className="font-medium text-slate-800">Transport & accommodation</p>
+        <p className="mt-1">
+          Structure for transport and accommodation is available in the backend.
+          Dedicated edit controls can be added in a follow-up iteration.
+        </p>
+      </div>
       <div className="flex gap-3 pt-2">
         <button
           type="submit"
