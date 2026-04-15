@@ -103,10 +103,12 @@ export function ProfilePage() {
 
       {!loading && !error && details && (
         <>
-          <div className="mt-3 flex items-center gap-3 rounded-md border border-slate-300 bg-slate-100 p-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 text-xl">
-              <FontAwesomeIcon icon={faUser} aria-label="Profile image placeholder" />
-            </div>
+          <div className="mt-3 flex items-center gap-3 text-sm rounded-md border border-slate-300 bg-slate-100 p-3">
+            <FontAwesomeIcon
+              icon={faUser}
+              className="shrink-0 text-slate-600"
+              aria-hidden="true"
+            />
             <div className="text-sm text-slate-700">
               <p>{details.email}</p>
               <p>{details.description || 'No profile description yet.'}</p>
@@ -114,6 +116,11 @@ export function ProfilePage() {
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-600">
+            <FontAwesomeIcon
+              icon={faUser}
+              className="shrink-0 text-slate-600"
+              aria-hidden="true"
+            />
             <p>This is your profile.</p>
             <button
               type="button"

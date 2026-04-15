@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faHeart, faImage, faPenToSquare } from '@fortawesome/free-solid-svg-icons'
+import {
+  faGear,
+  faHeart,
+  faImage,
+  faMinus,
+  faPenToSquare,
+  faPlus,
+  faUser,
+} from '@fortawesome/free-solid-svg-icons'
 import {
   addTripAccommodation,
   createAccommodation,
@@ -61,6 +69,10 @@ export function TripDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isOwner, setIsOwner] = useState(false)
+  const [showTripManagement, setShowTripManagement] = useState(false)
+  const [showTransportAddPanel, setShowTransportAddPanel] = useState(false)
+  const [showAccommodationAddPanel, setShowAccommodationAddPanel] = useState(false)
+  const [showLocationAddPanel, setShowLocationAddPanel] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [likeCount, setLikeCount] = useState(0)
   const [likedByMe, setLikedByMe] = useState(false)
@@ -196,6 +208,21 @@ export function TripDetailPage() {
       cancelled = true
     }
   }, [tripId, user])
+
+  useEffect(() => {
+    setShowTripManagement(false)
+    setShowTransportAddPanel(false)
+    setShowAccommodationAddPanel(false)
+    setShowLocationAddPanel(false)
+  }, [tripId])
+
+  useEffect(() => {
+    if (!showTripManagement) {
+      setShowTransportAddPanel(false)
+      setShowAccommodationAddPanel(false)
+      setShowLocationAddPanel(false)
+    }
+  }, [showTripManagement])
 
   async function handleDelete() {
     if (!trip || !isOwner) return
@@ -483,7 +510,7 @@ export function TripDetailPage() {
                 </p>
               )}
             </div>
-            {isOwner && (
+            {isOwner && showTripManagement && (
               <div className="flex flex-wrap gap-2">
                 <Link
                   to={`/trips/${trip.id}/edit`}
@@ -506,6 +533,28 @@ export function TripDetailPage() {
             )}
           </div>
 
+          {isOwner && (
+            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-600">
+              <FontAwesomeIcon
+                icon={faUser}
+                className="shrink-0 text-slate-600"
+                aria-hidden="true"
+              />
+              <p>This is your trip.</p>
+              <button
+                type="button"
+                onClick={() => setShowTripManagement((prev) => !prev)}
+                aria-label={
+                  showTripManagement ? 'Hide trip management controls' : 'Show trip management controls'
+                }
+                className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50"
+              >
+                <FontAwesomeIcon icon={faGear} aria-hidden="true" />
+                {showTripManagement ? 'Hide management' : 'Manage trip'}
+              </button>
+            </div>
+          )}
+
           <p className="mt-6 text-sm font-medium text-slate-700">Short description</p>
           <p className="mt-1 text-slate-800">{trip.shortDescription}</p>
 
@@ -514,9 +563,29 @@ export function TripDetailPage() {
 
           <div className="flex flex-col">
             <section className="order-3 mt-8 rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
               <h2 className="text-lg font-medium text-slate-900">Transport in this trip</h2>
-              <span className="text-sm text-slate-600">{tripTransports.length} entries</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-600">{tripTransports.length} entries</span>
+                {isOwner && showTripManagement && tripTransports.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowTransportAddPanel((prev) => !prev)}
+                    aria-expanded={showTransportAddPanel}
+                    aria-label={
+                      showTransportAddPanel
+                        ? 'Hide add or create transport'
+                        : 'Show add or create transport'
+                    }
+                    className="inline-flex items-center justify-center rounded-md border border-slate-300 p-2 text-slate-700 hover:bg-slate-50"
+                  >
+                    <FontAwesomeIcon
+                      icon={showTransportAddPanel ? faMinus : faPlus}
+                      aria-hidden="true"
+                    />
+                  </button>
+                )}
+              </div>
             </div>
             {tripTransports.length === 0 ? (
               <p className="mt-3 text-sm text-slate-600">No transport added yet.</p>
@@ -528,7 +597,7 @@ export function TripDetailPage() {
                       <div>
                         <p className="text-sm font-medium text-slate-900">{entry.type}</p>
                       </div>
-                      {isOwner && (
+                      {isOwner && showTripManagement && (
                         <button
                           type="button"
                           onClick={() => void handleRemoveTransport(entry.id)}
@@ -545,7 +614,9 @@ export function TripDetailPage() {
               </ul>
             )}
 
-            {isOwner && (
+            {isOwner &&
+              showTripManagement &&
+              (tripTransports.length === 0 || showTransportAddPanel) && (
               <div className="mt-4 rounded-md border border-slate-300 bg-slate-100 p-3">
                 <h3 className="text-sm font-medium text-slate-800">Add transport</h3>
                 <p className="mt-1 text-xs text-slate-600">
@@ -665,9 +736,29 @@ export function TripDetailPage() {
             </section>
 
             <section className="order-2 mt-8 rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
               <h2 className="text-lg font-medium text-slate-900">Accommodation in this trip</h2>
-              <span className="text-sm text-slate-600">{tripAccommodations.length} entries</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-600">{tripAccommodations.length} entries</span>
+                {isOwner && showTripManagement && tripAccommodations.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAccommodationAddPanel((prev) => !prev)}
+                    aria-expanded={showAccommodationAddPanel}
+                    aria-label={
+                      showAccommodationAddPanel
+                        ? 'Hide add or create accommodation'
+                        : 'Show add or create accommodation'
+                    }
+                    className="inline-flex items-center justify-center rounded-md border border-slate-300 p-2 text-slate-700 hover:bg-slate-50"
+                  >
+                    <FontAwesomeIcon
+                      icon={showAccommodationAddPanel ? faMinus : faPlus}
+                      aria-hidden="true"
+                    />
+                  </button>
+                )}
+              </div>
             </div>
             {tripAccommodations.length === 0 ? (
               <p className="mt-3 text-sm text-slate-600">No accommodation added yet.</p>
@@ -681,7 +772,7 @@ export function TripDetailPage() {
                         <p className="text-sm text-slate-700">{entry.type}</p>
                         <p className="text-sm text-slate-600">{entry.address}</p>
                       </div>
-                      {isOwner && (
+                      {isOwner && showTripManagement && (
                         <button
                           type="button"
                           onClick={() => void handleRemoveAccommodation(entry.id)}
@@ -698,7 +789,9 @@ export function TripDetailPage() {
               </ul>
             )}
 
-            {isOwner && (
+            {isOwner &&
+              showTripManagement &&
+              (tripAccommodations.length === 0 || showAccommodationAddPanel) && (
               <div className="mt-4 rounded-md border border-slate-300 bg-slate-100 p-3">
                 <h3 className="text-sm font-medium text-slate-800">Add accommodation</h3>
                 <p className="mt-1 text-xs text-slate-600">
@@ -851,9 +944,29 @@ export function TripDetailPage() {
             </section>
 
             <section className="order-1 mt-8 rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
               <h2 className="text-lg font-medium text-slate-900">Locations in this trip</h2>
-              <span className="text-sm text-slate-600">{tripLocations.length} entries</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-600">{tripLocations.length} entries</span>
+                {isOwner && showTripManagement && tripLocations.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowLocationAddPanel((prev) => !prev)}
+                    aria-expanded={showLocationAddPanel}
+                    aria-label={
+                      showLocationAddPanel
+                        ? 'Hide add or create location'
+                        : 'Show add or create location'
+                    }
+                    className="inline-flex items-center justify-center rounded-md border border-slate-300 p-2 text-slate-700 hover:bg-slate-50"
+                  >
+                    <FontAwesomeIcon
+                      icon={showLocationAddPanel ? faMinus : faPlus}
+                      aria-hidden="true"
+                    />
+                  </button>
+                )}
+              </div>
             </div>
             {tripLocations.length === 0 ? (
               <p className="mt-3 text-sm text-slate-600">No locations added yet.</p>
@@ -877,7 +990,7 @@ export function TripDetailPage() {
                           Upload location image (coming soon)
                         </button>
                       </div>
-                      {isOwner && (
+                      {isOwner && showTripManagement && (
                         <button
                           type="button"
                           onClick={() => void handleRemoveLocation(entry.id)}
@@ -894,7 +1007,9 @@ export function TripDetailPage() {
               </ul>
             )}
 
-            {isOwner && (
+            {isOwner &&
+              showTripManagement &&
+              (tripLocations.length === 0 || showLocationAddPanel) && (
               <div className="mt-4 rounded-md border border-slate-300 bg-slate-100 p-3">
                 <h3 className="text-sm font-medium text-slate-800">Add location</h3>
                 <p className="mt-1 text-xs text-slate-600">
