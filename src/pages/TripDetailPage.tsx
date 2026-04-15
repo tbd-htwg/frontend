@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faHeart, faImage, faPenToSquare } from '@fortawesome/free-solid-svg-icons'
 import {
   addTripAccommodation,
   createAccommodation,
@@ -471,7 +473,11 @@ export function TripDetailPage() {
               {tripOwner && Number.isFinite(tripOwner.id) && (
                 <p className="mt-1 text-sm text-slate-600">
                   by{' '}
-                  <Link to={`/users/${tripOwner.id}`} className="font-medium hover:underline">
+                  <Link
+                    to={`/users/${tripOwner.id}`}
+                    aria-label={`Open profile of ${tripOwner.name}`}
+                    className="font-medium hover:underline"
+                  >
                     @{tripOwner.name}
                   </Link>
                 </p>
@@ -481,14 +487,17 @@ export function TripDetailPage() {
               <div className="flex flex-wrap gap-2">
                 <Link
                   to={`/trips/${trip.id}/edit`}
-                  className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-50"
+                  aria-label="Edit this trip"
+                  className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-50"
                 >
+                  <FontAwesomeIcon icon={faPenToSquare} aria-hidden="true" />
                   Edit
                 </Link>
                 <button
                   type="button"
                   onClick={() => void handleDelete()}
                   disabled={deleting}
+                  aria-label={deleting ? 'Deleting this trip' : 'Delete this trip'}
                   className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-sm font-medium text-red-800 hover:bg-red-50 disabled:opacity-50"
                 >
                   {deleting ? 'Deleting…' : 'Delete'}
@@ -524,6 +533,7 @@ export function TripDetailPage() {
                           type="button"
                           onClick={() => void handleRemoveTransport(entry.id)}
                           disabled={removingTransportId === entry.id}
+                          aria-label={`Remove transport ${entry.type}`}
                           className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-800 hover:bg-red-50 disabled:opacity-50"
                         >
                           {removingTransportId === entry.id ? 'Removing…' : 'Remove'}
@@ -549,6 +559,11 @@ export function TripDetailPage() {
                         prev === 'existing' ? 'new' : 'existing',
                       )
                     }
+                    aria-label={
+                      transportMode === 'existing'
+                        ? 'Switch to create new transport'
+                        : 'Switch to add existing transport'
+                    }
                     className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
                   >
                     {transportMode === 'existing'
@@ -566,6 +581,7 @@ export function TripDetailPage() {
                       <div className="relative">
                         <input
                           placeholder="Search transport"
+                          aria-label="Search existing transport types"
                           value={transportSearch}
                           onFocus={() => setShowTransportSuggestions(true)}
                           onBlur={() => {
@@ -588,6 +604,7 @@ export function TripDetailPage() {
                               <li key={item.id}>
                                 <button
                                   type="button"
+                                  aria-label={`Select transport ${item.type}`}
                                   className="w-full px-3 py-2 text-left text-sm hover:bg-slate-100"
                                   onMouseDown={() => {
                                     setSelectedExistingTransport(item)
@@ -606,6 +623,7 @@ export function TripDetailPage() {
                         type="button"
                         onClick={() => void handleAddExistingTransport()}
                         disabled={savingTransport || !selectedExistingTransport}
+                        aria-label={savingTransport ? 'Adding selected transport' : 'Add selected transport'}
                         className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
                       >
                         {savingTransport ? 'Adding…' : 'Add'}
@@ -620,6 +638,7 @@ export function TripDetailPage() {
                     <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
                       <input
                         placeholder="Transport type"
+                        aria-label="New transport type"
                         value={newTransportType}
                         onChange={(e) => setNewTransportType(e.target.value)}
                         className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -628,6 +647,7 @@ export function TripDetailPage() {
                         type="button"
                         onClick={() => void handleCreateAndAddTransport()}
                         disabled={savingTransport || !newTransportType.trim()}
+                        aria-label={savingTransport ? 'Saving new transport' : 'Create and add transport'}
                         className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
                       >
                         {savingTransport ? 'Saving…' : 'Create and add'}
@@ -666,6 +686,7 @@ export function TripDetailPage() {
                           type="button"
                           onClick={() => void handleRemoveAccommodation(entry.id)}
                           disabled={removingAccommodationId === entry.id}
+                          aria-label={`Remove accommodation ${entry.name}`}
                           className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-800 hover:bg-red-50 disabled:opacity-50"
                         >
                           {removingAccommodationId === entry.id ? 'Removing…' : 'Remove'}
@@ -691,6 +712,11 @@ export function TripDetailPage() {
                         prev === 'existing' ? 'new' : 'existing',
                       )
                     }
+                    aria-label={
+                      accommodationMode === 'existing'
+                        ? 'Switch to create new accommodation'
+                        : 'Switch to add existing accommodation'
+                    }
                     className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
                   >
                     {accommodationMode === 'existing'
@@ -708,6 +734,7 @@ export function TripDetailPage() {
                       <div className="relative">
                         <input
                           placeholder="Search accommodation"
+                          aria-label="Search existing accommodations"
                           value={accommodationSearch}
                           onFocus={() => setShowAccommodationSuggestions(true)}
                           onBlur={() => {
@@ -733,6 +760,7 @@ export function TripDetailPage() {
                                 <li key={item.id}>
                                   <button
                                     type="button"
+                                    aria-label={`Select accommodation ${item.name}`}
                                     className="w-full px-3 py-2 text-left text-sm hover:bg-slate-100"
                                     onMouseDown={() => {
                                       setSelectedExistingAccommodation(item)
@@ -753,6 +781,11 @@ export function TripDetailPage() {
                         type="button"
                         onClick={() => void handleAddExistingAccommodation()}
                         disabled={savingAccommodation || !selectedExistingAccommodation}
+                        aria-label={
+                          savingAccommodation
+                            ? 'Adding selected accommodation'
+                            : 'Add selected accommodation'
+                        }
                         className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
                       >
                         {savingAccommodation ? 'Adding…' : 'Add'}
@@ -767,18 +800,21 @@ export function TripDetailPage() {
                     <div className="mt-2 grid gap-2 sm:grid-cols-3">
                       <input
                         placeholder="Accommodation name"
+                        aria-label="New accommodation name"
                         value={newAccommodationName}
                         onChange={(e) => setNewAccommodationName(e.target.value)}
                         className="rounded-md border border-slate-300 px-3 py-2 text-sm"
                       />
                       <input
                         placeholder="Type (hotel, hostel, ...)"
+                        aria-label="New accommodation type"
                         value={newAccommodationType}
                         onChange={(e) => setNewAccommodationType(e.target.value)}
                         className="rounded-md border border-slate-300 px-3 py-2 text-sm"
                       />
                       <input
                         placeholder="Address"
+                        aria-label="New accommodation address"
                         value={newAccommodationAddress}
                         onChange={(e) => setNewAccommodationAddress(e.target.value)}
                         className="rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -792,6 +828,11 @@ export function TripDetailPage() {
                         !newAccommodationName.trim() ||
                         !newAccommodationType.trim() ||
                         !newAccommodationAddress.trim()
+                      }
+                      aria-label={
+                        savingAccommodation
+                          ? 'Saving new accommodation'
+                          : 'Create and add accommodation'
                       }
                       className="mt-2 rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
                     >
@@ -823,13 +864,14 @@ export function TripDetailPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2 text-sm font-medium text-slate-900">
-                          <span className="text-lg">🖼️</span>
+                          <FontAwesomeIcon icon={faImage} aria-label="Location image placeholder" />
                           {entry.locationName}
                         </div>
                         <p className="mt-1 text-sm text-slate-700">{entry.description}</p>
                         <button
                           type="button"
                           disabled
+                          aria-label="Upload location image coming soon"
                           className="mt-2 rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-500"
                         >
                           Upload location image (coming soon)
@@ -840,6 +882,7 @@ export function TripDetailPage() {
                           type="button"
                           onClick={() => void handleRemoveLocation(entry.id)}
                           disabled={removingLocationId === entry.id}
+                          aria-label={`Remove location ${entry.locationName}`}
                           className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-800 hover:bg-red-50 disabled:opacity-50"
                         >
                           {removingLocationId === entry.id ? 'Removing…' : 'Remove'}
@@ -865,6 +908,11 @@ export function TripDetailPage() {
                         prev === 'existing' ? 'new' : 'existing',
                       )
                     }
+                    aria-label={
+                      locationMode === 'existing'
+                        ? 'Switch to create new location'
+                        : 'Switch to add existing location'
+                    }
                     className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
                   >
                     {locationMode === 'existing'
@@ -882,6 +930,7 @@ export function TripDetailPage() {
                       <div className="relative">
                         <input
                           placeholder="Search locations"
+                          aria-label="Search existing locations"
                           value={locationSearch}
                           onFocus={() => setShowLocationSuggestions(true)}
                           onBlur={() => {
@@ -904,6 +953,7 @@ export function TripDetailPage() {
                               <li key={l.id}>
                                 <button
                                   type="button"
+                                  aria-label={`Select location ${l.name}`}
                                   className="w-full px-3 py-2 text-left text-sm hover:bg-slate-100"
                                   onMouseDown={() => {
                                     setSelectedExistingLocation(l)
@@ -926,6 +976,7 @@ export function TripDetailPage() {
                           !selectedExistingLocation ||
                           !existingLocationDescription.trim()
                         }
+                        aria-label={savingLocation ? 'Adding selected location' : 'Add selected location'}
                         className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
                       >
                         {savingLocation ? 'Adding…' : 'Add'}
@@ -934,6 +985,7 @@ export function TripDetailPage() {
                     <textarea
                       rows={2}
                       placeholder="How was it there? Share a quick impression."
+                      aria-label="Description for selected location"
                       value={existingLocationDescription}
                       onChange={(e) => setExistingLocationDescription(e.target.value)}
                       className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -942,6 +994,7 @@ export function TripDetailPage() {
                       <button
                         type="button"
                         disabled
+                        aria-label="Add location image coming soon"
                         className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-500"
                       >
                         Add image (coming soon)
@@ -956,6 +1009,7 @@ export function TripDetailPage() {
                     <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
                       <input
                         placeholder="New location name"
+                        aria-label="New location name"
                         value={newLocationName}
                         onChange={(e) => setNewLocationName(e.target.value)}
                         className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -968,6 +1022,7 @@ export function TripDetailPage() {
                           !newLocationName.trim() ||
                           !newLocationDescription.trim()
                         }
+                        aria-label={savingLocation ? 'Saving new location' : 'Create and add location'}
                         className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
                       >
                         {savingLocation ? 'Saving…' : 'Create and add'}
@@ -976,6 +1031,7 @@ export function TripDetailPage() {
                     <textarea
                       rows={2}
                       placeholder="How was it there? Share a quick impression."
+                      aria-label="Description for new location"
                       value={newLocationDescription}
                       onChange={(e) => setNewLocationDescription(e.target.value)}
                       className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
@@ -984,6 +1040,7 @@ export function TripDetailPage() {
                       <button
                         type="button"
                         disabled
+                        aria-label="Add location image coming soon"
                         className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-500"
                       >
                         Add image (coming soon)
@@ -1004,22 +1061,38 @@ export function TripDetailPage() {
           <section className="mt-8 rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-lg font-medium text-slate-900">Community</h2>
-              <p className="text-sm text-slate-600">{likeCount} likes</p>
-            </div>
-            <div className="mt-2">
               {user ? (
                 <button
                   type="button"
                   onClick={() => void handleToggleLike()}
                   disabled={liking}
-                  className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-800 disabled:opacity-50"
+                  aria-label={
+                    liking
+                      ? 'Saving like status'
+                      : likedByMe
+                        ? 'Unlike this trip'
+                        : 'Like this trip'
+                  }
+                  aria-pressed={likedByMe}
+                  className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition-colors hover:text-red-600 disabled:opacity-50"
                 >
-                  {liking ? 'Saving…' : likedByMe ? 'Unlike trip' : 'Like trip'}
+                  <FontAwesomeIcon
+                    icon={faHeart}
+                    className={likedByMe ? 'text-red-600' : undefined}
+                    aria-hidden="true"
+                  />
+                  {likeCount} likes
                 </button>
               ) : (
-                <p className="text-sm text-slate-600">Log in to like this trip.</p>
+                <p className="inline-flex items-center gap-2 text-sm text-slate-600">
+                  <FontAwesomeIcon icon={faHeart} aria-hidden="true" />
+                  {likeCount} likes
+                </p>
               )}
             </div>
+            {!user && (
+              <p className="mt-2 text-sm text-slate-600">Log in to like this trip.</p>
+            )}
 
             <div className="mt-4">
               <h3 className="text-sm font-medium text-slate-800">Comments</h3>
@@ -1030,12 +1103,14 @@ export function TripDetailPage() {
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
                     placeholder="Write a comment"
+                    aria-label="Write a comment"
                     className="rounded-md border border-slate-300 px-3 py-2 text-sm"
                   />
                   <button
                     type="button"
                     onClick={() => void handleCommentSubmit()}
                     disabled={commenting || !commentText.trim()}
+                    aria-label={commenting ? 'Posting comment' : 'Post comment'}
                     className="w-fit rounded-md bg-slate-900 px-3 py-1.5 text-sm text-white disabled:opacity-50"
                   >
                     {commenting ? 'Posting…' : 'Post comment'}
@@ -1056,6 +1131,7 @@ export function TripDetailPage() {
                         {Number.isFinite(comment.userId) ? (
                           <Link
                             to={`/users/${comment.userId}`}
+                            aria-label={`Open profile of ${comment.userName || 'traveller'}`}
                             className="font-medium text-slate-600 hover:underline"
                           >
                             @{comment.userName || 'traveller'}
@@ -1074,7 +1150,7 @@ export function TripDetailPage() {
           </section>
 
           <p className="mt-8">
-            <Link to="/" className="text-sm font-medium text-slate-700 hover:underline">
+            <Link to="/" aria-label="Back to all trips" className="text-sm font-medium text-slate-700 hover:underline">
               ← Back to all trips
             </Link>
           </p>

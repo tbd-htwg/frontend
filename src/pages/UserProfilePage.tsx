@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faPenToSquare, faUser } from '@fortawesome/free-solid-svg-icons'
 import { ApiError } from '../api/client'
 import { getUserById } from '../api/users'
 import { useAuth } from '../context/AuthContext'
@@ -68,7 +70,7 @@ export function UserProfilePage() {
           <h1 className="text-2xl font-semibold text-slate-900">{profile.name}</h1>
           <div className="mt-3 flex items-center gap-3 rounded-md border border-slate-300 bg-slate-100 p-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 text-xl">
-              👤
+              <FontAwesomeIcon icon={faUser} aria-label="Profile image placeholder" />
             </div>
             <div className="text-sm text-slate-700">
               <p>{profile.email}</p>
@@ -78,8 +80,11 @@ export function UserProfilePage() {
           {user?.id === profile.id && (
             <p className="mt-3 text-sm text-slate-600">
               This is your profile.{' '}
-              <Link to="/profile" className="font-medium underline">
-                Edit profile
+              <Link to="/profile" aria-label="Edit your profile" className="font-medium underline">
+                <span className="inline-flex items-center gap-1">
+                  <FontAwesomeIcon icon={faPenToSquare} aria-hidden="true" />
+                  Edit profile
+                </span>
               </Link>
             </p>
           )}
@@ -95,11 +100,25 @@ export function UserProfilePage() {
                     className="flex items-center justify-between gap-3 px-4 py-3"
                   >
                     <div>
-                      <Link to={`/trips/${trip.id}`} className="font-medium hover:underline">
+                      <Link
+                        to={`/trips/${trip.id}`}
+                        aria-label={`Open trip ${trip.title}`}
+                        className="font-medium hover:underline"
+                      >
                         {trip.title}
                       </Link>
                       <p className="text-sm text-slate-600">{formatDate(trip.startDate)}</p>
                     </div>
+                    {user?.id === profile.id && (
+                      <Link
+                        to={`/trips/${trip.id}/edit`}
+                        aria-label={`Edit trip ${trip.title}`}
+                        className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:underline"
+                      >
+                        <FontAwesomeIcon icon={faPenToSquare} aria-hidden="true" />
+                        Edit
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>

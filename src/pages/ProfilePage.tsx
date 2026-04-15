@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faPenToSquare, faPlus, faUser } from '@fortawesome/free-solid-svg-icons'
 import { getUserById, patchUser } from '../api/users'
 import { ApiError } from '../api/client'
 import { useAuth } from '../context/AuthContext'
@@ -27,6 +29,7 @@ export function ProfilePage() {
   const [error, setError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [showEditForm, setShowEditForm] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -75,6 +78,7 @@ export function ProfilePage() {
       setEmail(fresh.email)
       setName(fresh.name)
       setDescription(fresh.description)
+      setShowEditForm(false)
     } catch (err) {
       setSaveError(
         err instanceof Error ? err.message : 'Could not update profile.',
@@ -88,8 +92,7 @@ export function ProfilePage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-900">Your profile</h1>
-      <p className="mt-1 text-slate-600">Signed in as {user.name} (id {user.id}).</p>
+      <h1 className="text-2xl font-semibold text-slate-900">{details?.name ?? user.name}</h1>
 
       {loading && <p className="mt-6 text-slate-500">Loading…</p>}
       {error && (
@@ -100,90 +103,101 @@ export function ProfilePage() {
 
       {!loading && !error && details && (
         <>
-          <section className="mt-8 rounded-lg border border-slate-300 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-medium text-slate-900">Edit details</h2>
-            <div className="mt-4 flex items-center gap-3 rounded-md border border-slate-300 bg-slate-100 p-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 text-xl">
-                👤
-              </div>
-              <div className="text-sm text-slate-700">
-                <p className="font-medium">Profile image placeholder</p>
-                <p>Image upload will be enabled once backend upload APIs are available.</p>
-              </div>
-              <button
-                type="button"
-                disabled
-                className="ml-auto rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-500"
-              >
-                Upload image (coming soon)
-              </button>
+          <div className="mt-3 flex items-center gap-3 rounded-md border border-slate-300 bg-slate-100 p-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 text-xl">
+              <FontAwesomeIcon icon={faUser} aria-label="Profile image placeholder" />
             </div>
-            <form onSubmit={handleSave} className="mt-4 max-w-md space-y-4">
-              {saveError && (
-                <div
-                  className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
-                  role="alert"
-                >
-                  {saveError}
+            <div className="text-sm text-slate-700">
+              <p>{details.email}</p>
+              <p>{details.description || 'No profile description yet.'}</p>
+            </div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-600">
+            <p>This is your profile.</p>
+            <button
+              type="button"
+              onClick={() => setShowEditForm((prev) => !prev)}
+              aria-label={showEditForm ? 'Hide profile edit form' : 'Show profile edit form'}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <FontAwesomeIcon icon={faPenToSquare} aria-hidden="true" />
+              {showEditForm ? 'Hide edit details' : 'Edit details'}
+            </button>
+          </div>
+
+          {showEditForm && (
+            <section className="mt-6 rounded-lg border border-slate-300 bg-white p-6 shadow-sm">
+              <form onSubmit={handleSave} className="max-w-md space-y-4">
+                {saveError && (
+                  <div
+                    className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+                    role="alert"
+                  >
+                    {saveError}
+                  </div>
+                )}
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-slate-700">
+                    Email
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    required
+                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
                 </div>
-              )}
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-slate-700">
-                  Email
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-slate-700">
-                  Name
-                </label>
-                <input
-                  id="name"
-                  required
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="description"
-                  className="block text-sm font-medium text-slate-700"
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-slate-700">
+                    Name
+                  </label>
+                  <input
+                    id="name"
+                    required
+                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="description"
+                    className="block text-sm font-medium text-slate-700"
+                  >
+                    Description
+                  </label>
+                  <textarea
+                    id="description"
+                    rows={3}
+                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  aria-label={saving ? 'Saving profile changes' : 'Save profile changes'}
+                  className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
                 >
-                  Description
-                </label>
-                <textarea
-                  id="description"
-                  rows={3}
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={saving}
-                className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-              >
-                {saving ? 'Saving…' : 'Save changes'}
-              </button>
-            </form>
-          </section>
+                  {saving ? 'Saving…' : 'Save changes'}
+                </button>
+              </form>
+            </section>
+          )}
 
           <section className="mt-10">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-lg font-medium text-slate-900">Your trips</h2>
               <Link
                 to="/trips/new"
-                className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+                aria-label="Create new trip"
+                className="inline-flex items-center gap-2 rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
               >
+                <FontAwesomeIcon icon={faPlus} aria-hidden="true" />
                 New trip
               </Link>
             </div>
@@ -199,6 +213,7 @@ export function ProfilePage() {
                     <div>
                       <Link
                         to={`/trips/${t.id}`}
+                        aria-label={`Open trip ${t.title}`}
                         className="font-medium text-slate-900 hover:underline"
                       >
                         {t.title}
@@ -209,8 +224,10 @@ export function ProfilePage() {
                     </div>
                     <Link
                       to={`/trips/${t.id}/edit`}
-                      className="text-sm font-medium text-slate-700 hover:underline"
+                      aria-label={`Edit trip ${t.title}`}
+                      className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:underline"
                     >
+                      <FontAwesomeIcon icon={faPenToSquare} aria-hidden="true" />
                       Edit
                     </Link>
                   </li>

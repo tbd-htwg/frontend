@@ -13,7 +13,7 @@ export function ImpressumPage() {
   return (
     <div className="max-w-2xl">
       <p className="text-sm text-slate-500">
-        <Link to="/" className="font-medium text-slate-700 hover:underline">
+        <Link to="/" aria-label="Back to home" className="font-medium text-slate-700 hover:underline">
           ← Back to home
         </Link>
       </p>
@@ -55,6 +55,7 @@ export function ImpressumPage() {
                   <td className="px-4 py-3">
                     <a
                       href={`mailto:${m.email}`}
+                      aria-label={`Send email to ${m.fullName}`}
                       className="text-slate-700 underline decoration-slate-300 underline-offset-2 hover:text-slate-900"
                     >
                       {m.email}

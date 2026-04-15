@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faPenToSquare } from '@fortawesome/free-solid-svg-icons'
 import { listTrips, searchTripsByLikedUser } from '../api/trips'
 import { ApiError } from '../api/client'
 import { useAuth } from '../context/AuthContext'
@@ -76,6 +78,7 @@ export function HomePage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by title and description"
+          aria-label="Search trips by title and description"
           className="w-full max-w-md rounded-md border border-slate-300 px-3 py-2 text-sm"
         />
         {user && (
@@ -111,6 +114,7 @@ export function HomePage() {
               <div>
                 <Link
                   to={`/trips/${t.id}`}
+                  aria-label={`Open trip ${t.title}`}
                   className="font-medium text-slate-900 hover:underline"
                 >
                   {t.title}
@@ -122,8 +126,10 @@ export function HomePage() {
               {ownedTripIds.has(t.id) && (
                 <Link
                   to={`/trips/${t.id}/edit`}
-                  className="text-sm font-medium text-slate-700 hover:underline"
+                  aria-label={`Edit trip ${t.title}`}
+                  className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:underline"
                 >
+                  <FontAwesomeIcon icon={faPenToSquare} aria-hidden="true" />
                   Edit
                 </Link>
               )}
