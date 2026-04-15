@@ -22,6 +22,14 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+      '/transports': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/accommodations': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
       '/trip-locations': {
         target: 'http://localhost:8080',
         changeOrigin: true,

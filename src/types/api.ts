@@ -72,6 +72,18 @@ export type TripLocationResponse = {
   locationName: string
 }
 
+export type TransportResponse = {
+  id: number
+  type: string
+}
+
+export type AccommodationResponse = {
+  id: number
+  type: string
+  name: string
+  address: string
+}
+
 export type CommentResponse = {
   id: number
   tripId: number
