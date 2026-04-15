@@ -100,9 +100,9 @@ export function ProfilePage() {
 
       {!loading && !error && details && (
         <>
-          <section className="mt-8 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="mt-8 rounded-lg border border-slate-300 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-medium text-slate-900">Edit details</h2>
-            <div className="mt-4 flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+            <div className="mt-4 flex items-center gap-3 rounded-md border border-slate-300 bg-slate-100 p-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 text-xl">
                 👤
               </div>
@@ -190,7 +190,7 @@ export function ProfilePage() {
             {details.trips.length === 0 ? (
               <p className="mt-4 text-slate-600">You have no trips yet.</p>
             ) : (
-              <ul className="mt-4 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white shadow-sm">
+              <ul className="mt-4 divide-y divide-slate-300 rounded-lg border border-slate-300 bg-white shadow-sm">
                 {details.trips.map((t) => (
                   <li
                     key={t.id}

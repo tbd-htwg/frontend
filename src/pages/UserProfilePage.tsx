@@ -66,7 +66,7 @@ export function UserProfilePage() {
       {!loading && !error && profile && (
         <>
           <h1 className="text-2xl font-semibold text-slate-900">{profile.name}</h1>
-          <div className="mt-3 flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+          <div className="mt-3 flex items-center gap-3 rounded-md border border-slate-300 bg-slate-100 p-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 text-xl">
               👤
             </div>
@@ -88,7 +88,7 @@ export function UserProfilePage() {
             {profile.trips.length === 0 ? (
               <p className="mt-3 text-slate-600">No trips yet.</p>
             ) : (
-              <ul className="mt-4 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white shadow-sm">
+              <ul className="mt-4 divide-y divide-slate-300 rounded-lg border border-slate-300 bg-white shadow-sm">
                 {profile.trips.map((trip) => (
                   <li
                     key={trip.id}

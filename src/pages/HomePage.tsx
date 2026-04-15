@@ -75,7 +75,7 @@ export function HomePage() {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by title, destination, description"
+          placeholder="Search by title and description"
           className="w-full max-w-md rounded-md border border-slate-300 px-3 py-2 text-sm"
         />
         {user && (
@@ -102,7 +102,7 @@ export function HomePage() {
       )}
 
       {!loading && !error && filteredTrips.length > 0 && (
-        <ul className="mt-6 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white shadow-sm">
+        <ul className="mt-6 divide-y divide-slate-300 rounded-lg border border-slate-300 bg-white shadow-sm">
           {filteredTrips.map((t) => (
             <li
               key={t.id}

@@ -33,10 +33,10 @@ export function ImpressumPage() {
           Die folgenden Personen sind als Projektgruppe für diese Anwendung verantwortlich.
         </p>
 
-        <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div className="mt-4 overflow-x-auto rounded-lg border border-slate-300 bg-white shadow-sm">
           <table className="w-full min-w-[28rem] text-left text-sm">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
+              <tr className="border-b border-slate-300 bg-slate-100">
                 <th scope="col" className="px-4 py-3 font-semibold text-slate-800">
                   Name
                 </th>
@@ -48,7 +48,7 @@ export function ImpressumPage() {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-slate-300">
               {TEAM_MEMBERS.map((m) => (
                 <tr key={`${m.email}-${m.matrikelnummer}`}>
                   <td className="px-4 py-3 text-slate-900">{m.fullName}</td>
@@ -68,7 +68,7 @@ export function ImpressumPage() {
         </div>
       </section>
 
-      <section className="mt-10 border-t border-slate-200 pt-8">
+      <section className="mt-10 border-t border-slate-300 pt-8">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
           Haftungsausschluss
         </h2>

@@ -4,7 +4,7 @@ import type {
   LocationResponse,
   TripLocationResponse,
 } from '../types/api'
-import { requestJson } from './client'
+import { requestJson, requestVoid } from './client'
 import {
   embeddedItems,
   hrefForResource,
@@ -81,4 +81,8 @@ export async function addTripLocation(input: {
     ...toTripLocation(entity),
     locationName: input.location.name,
   }
+}
+
+export function deleteTripLocation(id: number): Promise<void> {
+  return requestVoid(`/trip-locations/${id}`, { method: 'DELETE' })
 }
