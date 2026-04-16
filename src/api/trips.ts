@@ -1,6 +1,7 @@
 import type {
   HalCollection,
   HalEntity,
+  PaginatedResponse,
   TripCreateRequest,
   TripDetailsResponse,
   TripListItemResponse,
@@ -9,7 +10,7 @@ import type {
   UserResponse,
 } from '../types/api'
 import { requestJson, requestVoid } from './client'
-import { embeddedItems, hrefForResource, idFromEntity } from './hal'
+import { hrefForResource, idFromEntity, paginatedItems } from './hal'
 
 type TripEntityBody = {
   title?: string
@@ -49,25 +50,67 @@ function toTripRequest(body: TripCreateRequest | TripPutRequest | TripPatchReque
 
 type TripCollection = HalCollection<HalEntity<TripEntityBody>>
 
-export async function listTrips(): Promise<TripListItemResponse[]> {
-  const model = await requestJson<TripCollection>('/trips', { method: 'GET' })
-  return embeddedItems(model, 'trips').map(toTripSummary)
+function toTripPage(model: TripCollection): PaginatedResponse<TripListItemResponse> {
+  const page = paginatedItems(model, 'trips')
+  return {
+    ...page,
+    items: page.items.map(toTripSummary),
+  }
 }
 
-export async function findTripsByUserId(userId: number): Promise<TripListItemResponse[]> {
-  const model = await requestJson<TripCollection>(
-    `/trips/search/findByUserId?userId=${userId}`,
-    { method: 'GET' },
-  )
-  return embeddedItems(model, 'trips').map(toTripSummary)
+function pageQuery(page: number, size: number): string {
+  const params = new URLSearchParams({
+    page: String(Math.max(0, page - 1)),
+    size: String(size),
+  })
+  return params.toString()
 }
 
-export async function searchTripsByLikedUser(userId: number): Promise<TripListItemResponse[]> {
+export async function listTrips(
+  page = 1,
+  size = 10,
+): Promise<PaginatedResponse<TripListItemResponse>> {
+  const model = await requestJson<TripCollection>(`/trips?${pageQuery(page, size)}`, {
+    method: 'GET',
+  })
+  return toTripPage(model)
+}
+
+export async function findTripsByUserId(
+  userId: number,
+  page = 1,
+  size = 10,
+): Promise<PaginatedResponse<TripListItemResponse>> {
   const model = await requestJson<TripCollection>(
-    `/trips/search/findByLikedByUsersId?userId=${userId}`,
+    `/trips/search/findByUserId?userId=${userId}&${pageQuery(page, size)}`,
     { method: 'GET' },
   )
-  return embeddedItems(model, 'trips').map(toTripSummary)
+  return toTripPage(model)
+}
+
+export async function searchTripsByLikedUser(
+  userId: number,
+  page = 1,
+  size = 10,
+): Promise<PaginatedResponse<TripListItemResponse>> {
+  const model = await requestJson<TripCollection>(
+    `/trips/search/findByLikedByUsersId?userId=${userId}&${pageQuery(page, size)}`,
+    { method: 'GET' },
+  )
+  return toTripPage(model)
+}
+
+export async function listAllTripsByUserId(userId: number): Promise<TripListItemResponse[]> {
+  const firstPage = await findTripsByUserId(userId, 1, 100)
+  if (firstPage.totalPages <= 1) return firstPage.items
+
+  const remainingPages = await Promise.all(
+    Array.from({ length: firstPage.totalPages - 1 }, (_, index) =>
+      findTripsByUserId(userId, index + 2, firstPage.pageSize || 100),
+    ),
+  )
+
+  return firstPage.items.concat(remainingPages.flatMap((page) => page.items))
 }
 
 export function countTripLikes(tripId: number): Promise<number> {

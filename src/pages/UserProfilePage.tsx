@@ -3,9 +3,13 @@ import { Link, useParams } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faPenToSquare, faUser } from '@fortawesome/free-solid-svg-icons'
 import { ApiError } from '../api/client'
+import { PaginationControls } from '../components/PaginationControls'
+import { findTripsByUserId } from '../api/trips'
 import { getUserById } from '../api/users'
 import { useAuth } from '../context/AuthContext'
-import type { UserDetailsResponse } from '../types/api'
+import type { PaginatedResponse, TripListItemResponse, UserDetailsResponse } from '../types/api'
+
+const PAGE_SIZE = 10
 
 function formatDate(iso: string) {
   try {
@@ -24,8 +28,10 @@ export function UserProfilePage() {
   const { user } = useAuth()
   const userId = id ? Number(id) : NaN
   const [profile, setProfile] = useState<UserDetailsResponse | null>(null)
+  const [tripPage, setTripPage] = useState<PaginatedResponse<TripListItemResponse> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     if (!Number.isFinite(userId)) {
@@ -36,9 +42,15 @@ export function UserProfilePage() {
     let cancelled = false
     setLoading(true)
     setError(null)
-    getUserById(userId)
-      .then((data) => {
-        if (!cancelled) setProfile(data)
+    Promise.all([
+      getUserById(userId),
+      findTripsByUserId(userId, currentPage, PAGE_SIZE),
+    ])
+      .then(([data, page]) => {
+        if (!cancelled) {
+          setProfile(data)
+          setTripPage(page)
+        }
       })
       .catch((err) => {
         if (!cancelled) {
@@ -53,9 +65,17 @@ export function UserProfilePage() {
     return () => {
       cancelled = true
     }
-  }, [userId])
+  }, [currentPage, userId])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [profile?.id])
 
   if (!Number.isFinite(userId)) return <p className="text-red-800">Invalid user.</p>
+
+  const totalTrips = tripPage?.totalItems ?? 0
+  const totalPages = tripPage?.totalPages ?? 1
+  const visibleTrips = tripPage?.items ?? []
 
   return (
     <div>
@@ -99,38 +119,48 @@ export function UserProfilePage() {
           )}
           <section className="mt-8">
             <h2 className="text-lg font-medium text-slate-900">Trips by {profile.name}</h2>
-            {profile.trips.length === 0 ? (
+            {totalTrips === 0 ? (
               <p className="mt-3 text-slate-600">No trips yet.</p>
             ) : (
-              <ul className="mt-4 divide-y divide-slate-300 rounded-lg border border-slate-300 bg-white shadow-sm">
-                {profile.trips.map((trip) => (
-                  <li
-                    key={trip.id}
-                    className="flex items-center justify-between gap-3 px-4 py-3"
-                  >
-                    <div>
-                      <Link
-                        to={`/trips/${trip.id}`}
-                        aria-label={`Open trip ${trip.title}`}
-                        className="font-medium hover:underline"
-                      >
-                        {trip.title}
-                      </Link>
-                      <p className="text-sm text-slate-600">{formatDate(trip.startDate)}</p>
-                    </div>
-                    {user?.id === profile.id && (
-                      <Link
-                        to={`/trips/${trip.id}/edit`}
-                        aria-label={`Edit trip ${trip.title}`}
-                        className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:underline"
-                      >
-                        <FontAwesomeIcon icon={faPenToSquare} aria-hidden="true" />
-                        Edit
-                      </Link>
-                    )}
-                  </li>
-                ))}
-              </ul>
+              <>
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  pageSize={PAGE_SIZE}
+                  totalItems={totalTrips}
+                  itemLabel="trips"
+                  onPageChange={setCurrentPage}
+                />
+                <ul className="mt-4 divide-y divide-slate-300 rounded-lg border border-slate-300 bg-white shadow-sm">
+                  {visibleTrips.map((trip) => (
+                    <li
+                      key={trip.id}
+                      className="flex items-center justify-between gap-3 px-4 py-3"
+                    >
+                      <div>
+                        <Link
+                          to={`/trips/${trip.id}`}
+                          aria-label={`Open trip ${trip.title}`}
+                          className="font-medium hover:underline"
+                        >
+                          {trip.title}
+                        </Link>
+                        <p className="text-sm text-slate-600">{formatDate(trip.startDate)}</p>
+                      </div>
+                      {user?.id === profile.id && (
+                        <Link
+                          to={`/trips/${trip.id}/edit`}
+                          aria-label={`Edit trip ${trip.title}`}
+                          className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:underline"
+                        >
+                          <FontAwesomeIcon icon={faPenToSquare} aria-hidden="true" />
+                          Edit
+                        </Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
           </section>
         </>

@@ -2,10 +2,14 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faPenToSquare, faPlus, faUser } from '@fortawesome/free-solid-svg-icons'
+import { findTripsByUserId } from '../api/trips'
 import { getUserById, patchUser } from '../api/users'
 import { ApiError } from '../api/client'
+import { PaginationControls } from '../components/PaginationControls'
 import { useAuth } from '../context/AuthContext'
-import type { UserDetailsResponse } from '../types/api'
+import type { PaginatedResponse, TripListItemResponse, UserDetailsResponse } from '../types/api'
+
+const PAGE_SIZE = 10
 
 function formatDate(iso: string) {
   try {
@@ -22,6 +26,7 @@ function formatDate(iso: string) {
 export function ProfilePage() {
   const { user, updateSessionUser } = useAuth()
   const [details, setDetails] = useState<UserDetailsResponse | null>(null)
+  const [tripPage, setTripPage] = useState<PaginatedResponse<TripListItemResponse> | null>(null)
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -30,15 +35,20 @@ export function ProfilePage() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [showEditForm, setShowEditForm] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     if (!user) return
     let cancelled = false
     setLoading(true)
-    getUserById(user.id)
-      .then((d) => {
+    Promise.all([
+      getUserById(user.id),
+      findTripsByUserId(user.id, currentPage, PAGE_SIZE),
+    ])
+      .then(([d, page]) => {
         if (!cancelled) {
           setDetails(d)
+          setTripPage(page)
           setEmail(d.email)
           setName(d.name)
           setDescription(d.description)
@@ -59,7 +69,11 @@ export function ProfilePage() {
     return () => {
       cancelled = true
     }
-  }, [user])
+  }, [currentPage, user])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [details?.id])
 
   async function handleSave(e: FormEvent) {
     e.preventDefault()
@@ -73,8 +87,12 @@ export function ProfilePage() {
         description: description.trim(),
       })
       updateSessionUser(updated)
-      const fresh = await getUserById(user.id)
+      const [fresh, freshTripPage] = await Promise.all([
+        getUserById(user.id),
+        findTripsByUserId(user.id, currentPage, PAGE_SIZE),
+      ])
       setDetails(fresh)
+      setTripPage(freshTripPage)
       setEmail(fresh.email)
       setName(fresh.name)
       setDescription(fresh.description)
@@ -89,6 +107,10 @@ export function ProfilePage() {
   }
 
   if (!user) return null
+
+  const totalTrips = tripPage?.totalItems ?? 0
+  const totalPages = tripPage?.totalPages ?? 1
+  const visibleTrips = tripPage?.items ?? []
 
   return (
     <div>
@@ -208,38 +230,48 @@ export function ProfilePage() {
                 New trip
               </Link>
             </div>
-            {details.trips.length === 0 ? (
+            {totalTrips === 0 ? (
               <p className="mt-4 text-slate-600">You have no trips yet.</p>
             ) : (
-              <ul className="mt-4 divide-y divide-slate-300 rounded-lg border border-slate-300 bg-white shadow-sm">
-                {details.trips.map((t) => (
-                  <li
-                    key={t.id}
-                    className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-                  >
-                    <div>
-                      <Link
-                        to={`/trips/${t.id}`}
-                        aria-label={`Open trip ${t.title}`}
-                        className="font-medium text-slate-900 hover:underline"
-                      >
-                        {t.title}
-                      </Link>
-                      <p className="text-sm text-slate-600">
-                        {formatDate(t.startDate)}
-                      </p>
-                    </div>
-                    <Link
-                      to={`/trips/${t.id}/edit`}
-                      aria-label={`Edit trip ${t.title}`}
-                      className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:underline"
+              <>
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  pageSize={PAGE_SIZE}
+                  totalItems={totalTrips}
+                  itemLabel="trips"
+                  onPageChange={setCurrentPage}
+                />
+                <ul className="mt-4 divide-y divide-slate-300 rounded-lg border border-slate-300 bg-white shadow-sm">
+                  {visibleTrips.map((t) => (
+                    <li
+                      key={t.id}
+                      className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
                     >
-                      <FontAwesomeIcon icon={faPenToSquare} aria-hidden="true" />
-                      Edit
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+                      <div>
+                        <Link
+                          to={`/trips/${t.id}`}
+                          aria-label={`Open trip ${t.title}`}
+                          className="font-medium text-slate-900 hover:underline"
+                        >
+                          {t.title}
+                        </Link>
+                        <p className="text-sm text-slate-600">
+                          {formatDate(t.startDate)}
+                        </p>
+                      </div>
+                      <Link
+                        to={`/trips/${t.id}/edit`}
+                        aria-label={`Edit trip ${t.title}`}
+                        className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:underline"
+                      >
+                        <FontAwesomeIcon icon={faPenToSquare} aria-hidden="true" />
+                        Edit
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
           </section>
         </>
