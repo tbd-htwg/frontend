@@ -1,7 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faHeart, faImage, faPenToSquare } from '@fortawesome/free-solid-svg-icons'
+import {
+  faComment,
+  faGear,
+  faHeart,
+  faHotel,
+  faImage,
+  faMinus,
+  faPenToSquare,
+  faPersonWalkingLuggage,
+  faPlus,
+  faUser,
+} from '@fortawesome/free-solid-svg-icons'
 import {
   addTripAccommodation,
   createAccommodation,
@@ -61,6 +72,10 @@ export function TripDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isOwner, setIsOwner] = useState(false)
+  const [showTripManagement, setShowTripManagement] = useState(false)
+  const [showTransportAddPanel, setShowTransportAddPanel] = useState(false)
+  const [showAccommodationAddPanel, setShowAccommodationAddPanel] = useState(false)
+  const [showLocationAddPanel, setShowLocationAddPanel] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [likeCount, setLikeCount] = useState(0)
   const [likedByMe, setLikedByMe] = useState(false)
@@ -196,6 +211,21 @@ export function TripDetailPage() {
       cancelled = true
     }
   }, [tripId, user])
+
+  useEffect(() => {
+    setShowTripManagement(false)
+    setShowTransportAddPanel(false)
+    setShowAccommodationAddPanel(false)
+    setShowLocationAddPanel(false)
+  }, [tripId])
+
+  useEffect(() => {
+    if (!showTripManagement) {
+      setShowTransportAddPanel(false)
+      setShowAccommodationAddPanel(false)
+      setShowLocationAddPanel(false)
+    }
+  }, [showTripManagement])
 
   async function handleDelete() {
     if (!trip || !isOwner) return
@@ -483,7 +513,7 @@ export function TripDetailPage() {
                 </p>
               )}
             </div>
-            {isOwner && (
+            {isOwner && showTripManagement && (
               <div className="flex flex-wrap gap-2">
                 <Link
                   to={`/trips/${trip.id}/edit`}
@@ -506,352 +536,37 @@ export function TripDetailPage() {
             )}
           </div>
 
+          {isOwner && (
+            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-600">
+              <FontAwesomeIcon
+                icon={faUser}
+                className="shrink-0 text-slate-600"
+                aria-hidden="true"
+              />
+              <p>This is your trip.</p>
+              <button
+                type="button"
+                onClick={() => setShowTripManagement((prev) => !prev)}
+                aria-label={
+                  showTripManagement ? 'Hide trip management controls' : 'Show trip management controls'
+                }
+                className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50"
+              >
+                <FontAwesomeIcon icon={faGear} aria-hidden="true" />
+                {showTripManagement ? 'Hide management' : 'Manage trip'}
+              </button>
+            </div>
+          )}
+
           <p className="mt-6 text-sm font-medium text-slate-700">Short description</p>
           <p className="mt-1 text-slate-800">{trip.shortDescription}</p>
 
           <p className="mt-6 text-sm font-medium text-slate-700">Details</p>
           <p className="mt-1 whitespace-pre-wrap text-slate-800">{trip.longDescription}</p>
 
-          <div className="flex flex-col">
-            <section className="order-3 mt-8 rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-lg font-medium text-slate-900">Transport in this trip</h2>
-              <span className="text-sm text-slate-600">{tripTransports.length} entries</span>
-            </div>
-            {tripTransports.length === 0 ? (
-              <p className="mt-3 text-sm text-slate-600">No transport added yet.</p>
-            ) : (
-              <ul className="mt-3 space-y-3">
-                {tripTransports.map((entry) => (
-                  <li key={entry.id} className="rounded-md border border-slate-300 p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-medium text-slate-900">{entry.type}</p>
-                      </div>
-                      {isOwner && (
-                        <button
-                          type="button"
-                          onClick={() => void handleRemoveTransport(entry.id)}
-                          disabled={removingTransportId === entry.id}
-                          aria-label={`Remove transport ${entry.type}`}
-                          className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-800 hover:bg-red-50 disabled:opacity-50"
-                        >
-                          {removingTransportId === entry.id ? 'Removing…' : 'Remove'}
-                        </button>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+          <section className="mt-8">
 
-            {isOwner && (
-              <div className="mt-4 rounded-md border border-slate-300 bg-slate-100 p-3">
-                <h3 className="text-sm font-medium text-slate-800">Add transport</h3>
-                <p className="mt-1 text-xs text-slate-600">
-                  Choose an existing transport type or create a new one.
-                </p>
-                <div className="my-4 flex items-center justify-center">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setTransportMode((prev) =>
-                        prev === 'existing' ? 'new' : 'existing',
-                      )
-                    }
-                    aria-label={
-                      transportMode === 'existing'
-                        ? 'Switch to create new transport'
-                        : 'Switch to add existing transport'
-                    }
-                    className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
-                  >
-                    {transportMode === 'existing'
-                      ? 'Switch to create new transport'
-                      : 'Switch to add existing transport'}
-                  </button>
-                </div>
-
-                {transportMode === 'existing' ? (
-                  <div className="rounded-md border border-slate-300 bg-white p-3 shadow-sm">
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                      Add existing transport
-                    </p>
-                    <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
-                      <div className="relative">
-                        <input
-                          placeholder="Search transport"
-                          aria-label="Search existing transport types"
-                          value={transportSearch}
-                          onFocus={() => setShowTransportSuggestions(true)}
-                          onBlur={() => {
-                            setTimeout(() => setShowTransportSuggestions(false), 100)
-                          }}
-                          onChange={(e) => {
-                            const nextSearch = e.target.value
-                            setTransportSearch(nextSearch)
-                            setShowTransportSuggestions(true)
-                            const exact = allTransports.find(
-                              (t) => t.type.toLowerCase() === nextSearch.trim().toLowerCase(),
-                            )
-                            setSelectedExistingTransport(exact ?? null)
-                          }}
-                          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                        />
-                        {showTransportSuggestions && filteredTransports.length > 0 && (
-                          <ul className="absolute z-10 mt-1 max-h-44 w-full overflow-y-auto rounded-md border border-slate-300 bg-white shadow">
-                            {filteredTransports.map((item) => (
-                              <li key={item.id}>
-                                <button
-                                  type="button"
-                                  aria-label={`Select transport ${item.type}`}
-                                  className="w-full px-3 py-2 text-left text-sm hover:bg-slate-100"
-                                  onMouseDown={() => {
-                                    setSelectedExistingTransport(item)
-                                    setTransportSearch(item.type)
-                                    setShowTransportSuggestions(false)
-                                  }}
-                                >
-                                  {item.type}
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => void handleAddExistingTransport()}
-                        disabled={savingTransport || !selectedExistingTransport}
-                        aria-label={savingTransport ? 'Adding selected transport' : 'Add selected transport'}
-                        className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
-                      >
-                        {savingTransport ? 'Adding…' : 'Add'}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded-md border border-slate-300 bg-white p-3 shadow-sm">
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                      Create and add new transport
-                    </p>
-                    <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
-                      <input
-                        placeholder="Transport type"
-                        aria-label="New transport type"
-                        value={newTransportType}
-                        onChange={(e) => setNewTransportType(e.target.value)}
-                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => void handleCreateAndAddTransport()}
-                        disabled={savingTransport || !newTransportType.trim()}
-                        aria-label={savingTransport ? 'Saving new transport' : 'Create and add transport'}
-                        className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
-                      >
-                        {savingTransport ? 'Saving…' : 'Create and add'}
-                      </button>
-                    </div>
-                  </div>
-                )}
-                {transportMode === 'existing' && filteredTransports.length === 0 && (
-                  <p className="mt-2 text-xs text-slate-600">
-                    No matching existing transport. Use “Create new transport”.
-                  </p>
-                )}
-              </div>
-            )}
-            </section>
-
-            <section className="order-2 mt-8 rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-lg font-medium text-slate-900">Accommodation in this trip</h2>
-              <span className="text-sm text-slate-600">{tripAccommodations.length} entries</span>
-            </div>
-            {tripAccommodations.length === 0 ? (
-              <p className="mt-3 text-sm text-slate-600">No accommodation added yet.</p>
-            ) : (
-              <ul className="mt-3 space-y-3">
-                {tripAccommodations.map((entry) => (
-                  <li key={entry.id} className="rounded-md border border-slate-300 p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-medium text-slate-900">{entry.name}</p>
-                        <p className="text-sm text-slate-700">{entry.type}</p>
-                        <p className="text-sm text-slate-600">{entry.address}</p>
-                      </div>
-                      {isOwner && (
-                        <button
-                          type="button"
-                          onClick={() => void handleRemoveAccommodation(entry.id)}
-                          disabled={removingAccommodationId === entry.id}
-                          aria-label={`Remove accommodation ${entry.name}`}
-                          className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-800 hover:bg-red-50 disabled:opacity-50"
-                        >
-                          {removingAccommodationId === entry.id ? 'Removing…' : 'Remove'}
-                        </button>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            {isOwner && (
-              <div className="mt-4 rounded-md border border-slate-300 bg-slate-100 p-3">
-                <h3 className="text-sm font-medium text-slate-800">Add accommodation</h3>
-                <p className="mt-1 text-xs text-slate-600">
-                  Choose an existing accommodation or create a new one.
-                </p>
-                <div className="my-4 flex items-center justify-center">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setAccommodationMode((prev) =>
-                        prev === 'existing' ? 'new' : 'existing',
-                      )
-                    }
-                    aria-label={
-                      accommodationMode === 'existing'
-                        ? 'Switch to create new accommodation'
-                        : 'Switch to add existing accommodation'
-                    }
-                    className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
-                  >
-                    {accommodationMode === 'existing'
-                      ? 'Switch to create new accommodation'
-                      : 'Switch to add existing accommodation'}
-                  </button>
-                </div>
-
-                {accommodationMode === 'existing' ? (
-                  <div className="rounded-md border border-slate-300 bg-white p-3 shadow-sm">
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                      Add existing accommodation
-                    </p>
-                    <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
-                      <div className="relative">
-                        <input
-                          placeholder="Search accommodation"
-                          aria-label="Search existing accommodations"
-                          value={accommodationSearch}
-                          onFocus={() => setShowAccommodationSuggestions(true)}
-                          onBlur={() => {
-                            setTimeout(() => setShowAccommodationSuggestions(false), 100)
-                          }}
-                          onChange={(e) => {
-                            const nextSearch = e.target.value
-                            setAccommodationSearch(nextSearch)
-                            setShowAccommodationSuggestions(true)
-                            const exact = allAccommodations.find(
-                              (a) =>
-                                `${a.name} (${a.type})`.toLowerCase() ===
-                                nextSearch.trim().toLowerCase(),
-                            )
-                            setSelectedExistingAccommodation(exact ?? null)
-                          }}
-                          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                        />
-                        {showAccommodationSuggestions &&
-                          filteredAccommodations.length > 0 && (
-                            <ul className="absolute z-10 mt-1 max-h-44 w-full overflow-y-auto rounded-md border border-slate-300 bg-white shadow">
-                              {filteredAccommodations.map((item) => (
-                                <li key={item.id}>
-                                  <button
-                                    type="button"
-                                    aria-label={`Select accommodation ${item.name}`}
-                                    className="w-full px-3 py-2 text-left text-sm hover:bg-slate-100"
-                                    onMouseDown={() => {
-                                      setSelectedExistingAccommodation(item)
-                                      setAccommodationSearch(
-                                        `${item.name} (${item.type})`,
-                                      )
-                                      setShowAccommodationSuggestions(false)
-                                    }}
-                                  >
-                                    {item.name} ({item.type}) - {item.address}
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => void handleAddExistingAccommodation()}
-                        disabled={savingAccommodation || !selectedExistingAccommodation}
-                        aria-label={
-                          savingAccommodation
-                            ? 'Adding selected accommodation'
-                            : 'Add selected accommodation'
-                        }
-                        className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
-                      >
-                        {savingAccommodation ? 'Adding…' : 'Add'}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded-md border border-slate-300 bg-white p-3 shadow-sm">
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                      Create and add new accommodation
-                    </p>
-                    <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                      <input
-                        placeholder="Accommodation name"
-                        aria-label="New accommodation name"
-                        value={newAccommodationName}
-                        onChange={(e) => setNewAccommodationName(e.target.value)}
-                        className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                      />
-                      <input
-                        placeholder="Type (hotel, hostel, ...)"
-                        aria-label="New accommodation type"
-                        value={newAccommodationType}
-                        onChange={(e) => setNewAccommodationType(e.target.value)}
-                        className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                      />
-                      <input
-                        placeholder="Address"
-                        aria-label="New accommodation address"
-                        value={newAccommodationAddress}
-                        onChange={(e) => setNewAccommodationAddress(e.target.value)}
-                        className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => void handleCreateAndAddAccommodation()}
-                      disabled={
-                        savingAccommodation ||
-                        !newAccommodationName.trim() ||
-                        !newAccommodationType.trim() ||
-                        !newAccommodationAddress.trim()
-                      }
-                      aria-label={
-                        savingAccommodation
-                          ? 'Saving new accommodation'
-                          : 'Create and add accommodation'
-                      }
-                      className="mt-2 rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
-                    >
-                      {savingAccommodation ? 'Saving…' : 'Create and add'}
-                    </button>
-                  </div>
-                )}
-                {accommodationMode === 'existing' &&
-                  filteredAccommodations.length === 0 && (
-                    <p className="mt-2 text-xs text-slate-600">
-                      No matching existing accommodation. Use “Create new accommodation”.
-                    </p>
-                  )}
-              </div>
-            )}
-            </section>
-
-            <section className="order-1 mt-8 rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
               <h2 className="text-lg font-medium text-slate-900">Locations in this trip</h2>
               <span className="text-sm text-slate-600">{tripLocations.length} entries</span>
             </div>
@@ -860,7 +575,7 @@ export function TripDetailPage() {
             ) : (
               <ul className="mt-3 space-y-3">
                 {tripLocations.map((entry) => (
-                  <li key={entry.id} className="rounded-md border border-slate-300 p-3">
+                  <li key={entry.id} className="rounded-md border border-slate-300 bg-white p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2 text-sm font-medium text-slate-900">
@@ -877,7 +592,7 @@ export function TripDetailPage() {
                           Upload location image (coming soon)
                         </button>
                       </div>
-                      {isOwner && (
+                      {isOwner && showTripManagement && (
                         <button
                           type="button"
                           onClick={() => void handleRemoveLocation(entry.id)}
@@ -894,12 +609,36 @@ export function TripDetailPage() {
               </ul>
             )}
 
-            {isOwner && (
+            {isOwner && showTripManagement && (
               <div className="mt-4 rounded-md border border-slate-300 bg-slate-100 p-3">
-                <h3 className="text-sm font-medium text-slate-800">Add location</h3>
-                <p className="mt-1 text-xs text-slate-600">
-                  Choose an existing location or create a new one.
-                </p>
+                <div className="flex items-start gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-medium text-slate-800">Add location</h3>
+                    <p className="mt-1 text-xs text-slate-600">
+                      Choose an existing location or create a new one.
+                    </p>
+                  </div>
+                  {tripLocations.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowLocationAddPanel((prev) => !prev)}
+                      aria-expanded={showLocationAddPanel}
+                      aria-label={
+                        showLocationAddPanel
+                          ? 'Collapse add or create location'
+                          : 'Expand add or create location'
+                      }
+                      className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white p-2 text-slate-700 hover:bg-slate-50"
+                    >
+                      <FontAwesomeIcon
+                        icon={showLocationAddPanel ? faMinus : faPlus}
+                        aria-hidden="true"
+                      />
+                    </button>
+                  )}
+                </div>
+                {(tripLocations.length === 0 || showLocationAddPanel) && (
+                  <>
                 <div className="my-4 flex items-center justify-center">
                   <button
                     type="button"
@@ -1053,10 +792,412 @@ export function TripDetailPage() {
                     No matching existing locations. Use “Create new location”.
                   </p>
                 )}
+                  </>
+                )}
               </div>
             )}
-            </section>
-          </div>
+          </section>
+          <hr className="my-8 w-full border-0 border-t border-slate-300" aria-hidden="true" />
+          <section>
+
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <h2 className="text-lg font-medium text-slate-900">Accommodation in this trip</h2>
+              <span className="text-sm text-slate-600">{tripAccommodations.length} entries</span>
+            </div>
+            {tripAccommodations.length === 0 ? (
+              <p className="mt-3 text-sm text-slate-600">No accommodation added yet.</p>
+            ) : (
+              <ul className="mt-3 space-y-3">
+                {tripAccommodations.map((entry) => (
+                  <li key={entry.id} className="rounded-md border border-slate-300 bg-white p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="flex items-center gap-2 text-sm font-medium text-slate-900">
+                          <FontAwesomeIcon icon={faHotel} aria-hidden="true" />
+                          {entry.name}
+                        </p>
+                        <p className="text-sm text-slate-700">{entry.type}</p>
+                        <p className="text-sm text-slate-600">{entry.address}</p>
+                      </div>
+                      {isOwner && showTripManagement && (
+                        <button
+                          type="button"
+                          onClick={() => void handleRemoveAccommodation(entry.id)}
+                          disabled={removingAccommodationId === entry.id}
+                          aria-label={`Remove accommodation ${entry.name}`}
+                          className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-800 hover:bg-red-50 disabled:opacity-50"
+                        >
+                          {removingAccommodationId === entry.id ? 'Removing…' : 'Remove'}
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {isOwner && showTripManagement && (
+              <div className="mt-4 rounded-md border border-slate-300 bg-slate-100 p-3">
+                <div className="flex items-start gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-medium text-slate-800">Add accommodation</h3>
+                    <p className="mt-1 text-xs text-slate-600">
+                      Choose an existing accommodation or create a new one.
+                    </p>
+                  </div>
+                  {tripAccommodations.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAccommodationAddPanel((prev) => !prev)}
+                      aria-expanded={showAccommodationAddPanel}
+                      aria-label={
+                        showAccommodationAddPanel
+                          ? 'Collapse add or create accommodation'
+                          : 'Expand add or create accommodation'
+                      }
+                      className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white p-2 text-slate-700 hover:bg-slate-50"
+                    >
+                      <FontAwesomeIcon
+                        icon={showAccommodationAddPanel ? faMinus : faPlus}
+                        aria-hidden="true"
+                      />
+                    </button>
+                  )}
+                </div>
+                {(tripAccommodations.length === 0 || showAccommodationAddPanel) && (
+                  <>
+                <div className="my-4 flex items-center justify-center">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setAccommodationMode((prev) =>
+                        prev === 'existing' ? 'new' : 'existing',
+                      )
+                    }
+                    aria-label={
+                      accommodationMode === 'existing'
+                        ? 'Switch to create new accommodation'
+                        : 'Switch to add existing accommodation'
+                    }
+                    className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                  >
+                    {accommodationMode === 'existing'
+                      ? 'Switch to create new accommodation'
+                      : 'Switch to add existing accommodation'}
+                  </button>
+                </div>
+
+                {accommodationMode === 'existing' ? (
+                  <div className="rounded-md border border-slate-300 bg-white p-3 shadow-sm">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      Add existing accommodation
+                    </p>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+                      <div className="relative">
+                        <input
+                          placeholder="Search accommodation"
+                          aria-label="Search existing accommodations"
+                          value={accommodationSearch}
+                          onFocus={() => setShowAccommodationSuggestions(true)}
+                          onBlur={() => {
+                            setTimeout(() => setShowAccommodationSuggestions(false), 100)
+                          }}
+                          onChange={(e) => {
+                            const nextSearch = e.target.value
+                            setAccommodationSearch(nextSearch)
+                            setShowAccommodationSuggestions(true)
+                            const exact = allAccommodations.find(
+                              (a) =>
+                                `${a.name} (${a.type})`.toLowerCase() ===
+                                nextSearch.trim().toLowerCase(),
+                            )
+                            setSelectedExistingAccommodation(exact ?? null)
+                          }}
+                          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                        />
+                        {showAccommodationSuggestions &&
+                          filteredAccommodations.length > 0 && (
+                            <ul className="absolute z-10 mt-1 max-h-44 w-full overflow-y-auto rounded-md border border-slate-300 bg-white shadow">
+                              {filteredAccommodations.map((item) => (
+                                <li key={item.id}>
+                                  <button
+                                    type="button"
+                                    aria-label={`Select accommodation ${item.name}`}
+                                    className="w-full px-3 py-2 text-left text-sm hover:bg-slate-100"
+                                    onMouseDown={() => {
+                                      setSelectedExistingAccommodation(item)
+                                      setAccommodationSearch(
+                                        `${item.name} (${item.type})`,
+                                      )
+                                      setShowAccommodationSuggestions(false)
+                                    }}
+                                  >
+                                    {item.name} ({item.type}) - {item.address}
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void handleAddExistingAccommodation()}
+                        disabled={savingAccommodation || !selectedExistingAccommodation}
+                        aria-label={
+                          savingAccommodation
+                            ? 'Adding selected accommodation'
+                            : 'Add selected accommodation'
+                        }
+                        className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
+                      >
+                        {savingAccommodation ? 'Adding…' : 'Add'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-slate-300 bg-white p-3 shadow-sm">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      Create and add new accommodation
+                    </p>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                      <input
+                        placeholder="Accommodation name"
+                        aria-label="New accommodation name"
+                        value={newAccommodationName}
+                        onChange={(e) => setNewAccommodationName(e.target.value)}
+                        className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                      />
+                      <input
+                        placeholder="Type (hotel, hostel, ...)"
+                        aria-label="New accommodation type"
+                        value={newAccommodationType}
+                        onChange={(e) => setNewAccommodationType(e.target.value)}
+                        className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                      />
+                      <input
+                        placeholder="Address"
+                        aria-label="New accommodation address"
+                        value={newAccommodationAddress}
+                        onChange={(e) => setNewAccommodationAddress(e.target.value)}
+                        className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void handleCreateAndAddAccommodation()}
+                      disabled={
+                        savingAccommodation ||
+                        !newAccommodationName.trim() ||
+                        !newAccommodationType.trim() ||
+                        !newAccommodationAddress.trim()
+                      }
+                      aria-label={
+                        savingAccommodation
+                          ? 'Saving new accommodation'
+                          : 'Create and add accommodation'
+                      }
+                      className="mt-2 rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
+                    >
+                      {savingAccommodation ? 'Saving…' : 'Create and add'}
+                    </button>
+                  </div>
+                )}
+                {accommodationMode === 'existing' &&
+                  filteredAccommodations.length === 0 && (
+                    <p className="mt-2 text-xs text-slate-600">
+                      No matching existing accommodation. Use “Create new accommodation”.
+                    </p>
+                  )}
+                  </>
+                )}
+              </div>
+            )}
+          </section>
+          <hr className="my-8 w-full border-0 border-t border-slate-300" aria-hidden="true" />
+          <section>
+
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <h2 className="text-lg font-medium text-slate-900">Transport in this trip</h2>
+              <span className="text-sm text-slate-600">{tripTransports.length} entries</span>
+            </div>
+            {tripTransports.length === 0 ? (
+              <p className="mt-3 text-sm text-slate-600">No transport added yet.</p>
+            ) : (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {tripTransports.map((entry) => {
+                  const removing = removingTransportId === entry.id
+                  return (
+                    <span
+                      key={entry.id}
+                      className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-800"
+                    >
+                      <FontAwesomeIcon
+                        icon={faPersonWalkingLuggage}
+                        aria-hidden="true"
+                        className="text-slate-600"
+                      />
+                      <span className="truncate">{entry.type}</span>
+                      {isOwner && showTripManagement && (
+                        <button
+                          type="button"
+                          onClick={() => void handleRemoveTransport(entry.id)}
+                          disabled={removing}
+                          aria-label={removing ? `Removing transport ${entry.type}` : `Remove transport ${entry.type}`}
+                          className="inline-flex h-5 w-5 items-center justify-center rounded-full text-slate-600 hover:bg-slate-200 hover:text-slate-900 disabled:opacity-50"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </span>
+                  )
+                })}
+              </div>
+            )}
+
+            {isOwner && showTripManagement && (
+              <div className="mt-4 rounded-md border border-slate-300 bg-slate-100 p-3">
+                <div className="flex items-start gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-medium text-slate-800">Add transport</h3>
+                    <p className="mt-1 text-xs text-slate-600">
+                      Choose an existing transport type or create a new one.
+                    </p>
+                  </div>
+                  {tripTransports.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowTransportAddPanel((prev) => !prev)}
+                      aria-expanded={showTransportAddPanel}
+                      aria-label={
+                        showTransportAddPanel
+                          ? 'Collapse add or create transport'
+                          : 'Expand add or create transport'
+                      }
+                      className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white p-2 text-slate-700 hover:bg-slate-50"
+                    >
+                      <FontAwesomeIcon
+                        icon={showTransportAddPanel ? faMinus : faPlus}
+                        aria-hidden="true"
+                      />
+                    </button>
+                  )}
+                </div>
+                {(tripTransports.length === 0 || showTransportAddPanel) && (
+                  <>
+                <div className="my-4 flex items-center justify-center">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setTransportMode((prev) =>
+                        prev === 'existing' ? 'new' : 'existing',
+                      )
+                    }
+                    aria-label={
+                      transportMode === 'existing'
+                        ? 'Switch to create new transport'
+                        : 'Switch to add existing transport'
+                    }
+                    className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                  >
+                    {transportMode === 'existing'
+                      ? 'Switch to create new transport'
+                      : 'Switch to add existing transport'}
+                  </button>
+                </div>
+
+                {transportMode === 'existing' ? (
+                  <div className="rounded-md border border-slate-300 bg-white p-3 shadow-sm">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      Add existing transport
+                    </p>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+                      <div className="relative">
+                        <input
+                          placeholder="Search transport"
+                          aria-label="Search existing transport types"
+                          value={transportSearch}
+                          onFocus={() => setShowTransportSuggestions(true)}
+                          onBlur={() => {
+                            setTimeout(() => setShowTransportSuggestions(false), 100)
+                          }}
+                          onChange={(e) => {
+                            const nextSearch = e.target.value
+                            setTransportSearch(nextSearch)
+                            setShowTransportSuggestions(true)
+                            const exact = allTransports.find(
+                              (t) => t.type.toLowerCase() === nextSearch.trim().toLowerCase(),
+                            )
+                            setSelectedExistingTransport(exact ?? null)
+                          }}
+                          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                        />
+                        {showTransportSuggestions && filteredTransports.length > 0 && (
+                          <ul className="absolute z-10 mt-1 max-h-44 w-full overflow-y-auto rounded-md border border-slate-300 bg-white shadow">
+                            {filteredTransports.map((item) => (
+                              <li key={item.id}>
+                                <button
+                                  type="button"
+                                  aria-label={`Select transport ${item.type}`}
+                                  className="w-full px-3 py-2 text-left text-sm hover:bg-slate-100"
+                                  onMouseDown={() => {
+                                    setSelectedExistingTransport(item)
+                                    setTransportSearch(item.type)
+                                    setShowTransportSuggestions(false)
+                                  }}
+                                >
+                                  {item.type}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void handleAddExistingTransport()}
+                        disabled={savingTransport || !selectedExistingTransport}
+                        aria-label={savingTransport ? 'Adding selected transport' : 'Add selected transport'}
+                        className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
+                      >
+                        {savingTransport ? 'Adding…' : 'Add'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-slate-300 bg-white p-3 shadow-sm">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      Create and add new transport
+                    </p>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+                      <input
+                        placeholder="Transport type"
+                        aria-label="New transport type"
+                        value={newTransportType}
+                        onChange={(e) => setNewTransportType(e.target.value)}
+                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void handleCreateAndAddTransport()}
+                        disabled={savingTransport || !newTransportType.trim()}
+                        aria-label={savingTransport ? 'Saving new transport' : 'Create and add transport'}
+                        className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
+                      >
+                        {savingTransport ? 'Saving…' : 'Create and add'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {transportMode === 'existing' && filteredTransports.length === 0 && (
+                  <p className="mt-2 text-xs text-slate-600">
+                    No matching existing transport. Use “Create new transport”.
+                  </p>
+                )}
+                  </>
+                )}
+              </div>
+            )}
+          </section>
 
           <section className="mt-8 rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1126,7 +1267,14 @@ export function TripDetailPage() {
                 <ul className="mt-3 space-y-2">
                   {comments.map((comment) => (
                     <li key={comment.id} className="rounded-md border border-slate-300 p-2">
-                      <p className="text-sm text-slate-800">{comment.content}</p>
+                      <p className="flex items-start gap-2 text-sm text-slate-800">
+                        <FontAwesomeIcon
+                          icon={faComment}
+                          aria-hidden="true"
+                          className="mt-0.5 shrink-0 text-slate-500"
+                        />
+                        <span>{comment.content}</span>
+                      </p>
                       <p className="mt-1 text-xs text-slate-500">
                         {Number.isFinite(comment.userId) ? (
                           <Link
