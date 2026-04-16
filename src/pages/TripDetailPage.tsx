@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
+  faComment,
   faGear,
   faHeart,
+  faHotel,
   faImage,
   faMinus,
   faPenToSquare,
+  faPersonWalkingLuggage,
   faPlus,
   faUser,
 } from '@fortawesome/free-solid-svg-icons'
@@ -809,7 +812,10 @@ export function TripDetailPage() {
                   <li key={entry.id} className="rounded-md border border-slate-300 bg-white p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm font-medium text-slate-900">{entry.name}</p>
+                        <p className="flex items-center gap-2 text-sm font-medium text-slate-900">
+                          <FontAwesomeIcon icon={faHotel} aria-hidden="true" />
+                          {entry.name}
+                        </p>
                         <p className="text-sm text-slate-700">{entry.type}</p>
                         <p className="text-sm text-slate-600">{entry.address}</p>
                       </div>
@@ -1025,6 +1031,11 @@ export function TripDetailPage() {
                       key={entry.id}
                       className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-800"
                     >
+                      <FontAwesomeIcon
+                        icon={faPersonWalkingLuggage}
+                        aria-hidden="true"
+                        className="text-slate-600"
+                      />
                       <span className="truncate">{entry.type}</span>
                       {isOwner && showTripManagement && (
                         <button
@@ -1256,7 +1267,14 @@ export function TripDetailPage() {
                 <ul className="mt-3 space-y-2">
                   {comments.map((comment) => (
                     <li key={comment.id} className="rounded-md border border-slate-300 p-2">
-                      <p className="text-sm text-slate-800">{comment.content}</p>
+                      <p className="flex items-start gap-2 text-sm text-slate-800">
+                        <FontAwesomeIcon
+                          icon={faComment}
+                          aria-hidden="true"
+                          className="mt-0.5 shrink-0 text-slate-500"
+                        />
+                        <span>{comment.content}</span>
+                      </p>
                       <p className="mt-1 text-xs text-slate-500">
                         {Number.isFinite(comment.userId) ? (
                           <Link
