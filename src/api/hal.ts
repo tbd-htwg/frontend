@@ -1,4 +1,4 @@
-import type { HalCollection, HalEntity } from '../types/api'
+import type { HalCollection, HalEntity, PaginatedResponse } from '../types/api'
 
 export function idFromHref(href: string | undefined): number {
   if (!href) return NaN
@@ -30,4 +30,20 @@ export function embeddedItems<T>(
   if (!model?._embedded) return []
   const value = model._embedded[key]
   return Array.isArray(value) ? value : []
+}
+
+export function paginatedItems<T>(
+  model: HalCollection<T> | undefined,
+  key: string,
+): PaginatedResponse<T> {
+  const items = embeddedItems(model, key)
+  const page = model?.page
+
+  return {
+    items,
+    currentPage: (page?.number ?? 0) + 1,
+    pageSize: page?.size ?? items.length,
+    totalItems: page?.totalElements ?? items.length,
+    totalPages: page?.totalPages ?? 1,
+  }
 }

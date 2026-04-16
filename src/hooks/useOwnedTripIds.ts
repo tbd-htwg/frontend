@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { findTripsByUserId } from '../api/trips'
+import { listAllTripsByUserId } from '../api/trips'
 import { useAuth } from '../context/AuthContext'
 
 /** Trip IDs owned by the logged-in user (from GET /api/v2/users/{id}). */
@@ -17,7 +17,7 @@ export function useOwnedTripIds() {
     }
     let cancelled = false
     setLoading(true)
-    findTripsByUserId(user.id)
+    listAllTripsByUserId(user.id)
       .then((trips) => {
         if (!cancelled) {
           setOwnedTripIds(new Set(trips.map((t) => t.id)))

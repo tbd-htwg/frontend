@@ -4,9 +4,12 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faPenToSquare } from '@fortawesome/free-solid-svg-icons'
 import { listTrips, searchTripsByLikedUser } from '../api/trips'
 import { ApiError } from '../api/client'
+import { PaginationControls } from '../components/PaginationControls'
 import { useAuth } from '../context/AuthContext'
 import { useOwnedTripIds } from '../hooks/useOwnedTripIds'
-import type { TripListItemResponse } from '../types/api'
+import type { PaginatedResponse, TripListItemResponse } from '../types/api'
+
+const PAGE_SIZE = 10
 
 function formatDate(iso: string) {
   try {
@@ -21,9 +24,10 @@ function formatDate(iso: string) {
 }
 
 export function HomePage() {
-  const [trips, setTrips] = useState<TripListItemResponse[]>([])
+  const [tripPage, setTripPage] = useState<PaginatedResponse<TripListItemResponse> | null>(null)
   const [query, setQuery] = useState('')
   const [likedOnly, setLikedOnly] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { ownedTripIds } = useOwnedTripIds()
@@ -32,13 +36,15 @@ export function HomePage() {
   useEffect(() => {
     let cancelled = false
     setLoading(true)
+    setError(null)
+    setTripPage(null)
     const loader =
       likedOnly && user
-        ? searchTripsByLikedUser(user.id)
-        : listTrips()
+        ? searchTripsByLikedUser(user.id, currentPage, PAGE_SIZE)
+        : listTrips(currentPage, PAGE_SIZE)
     loader
       .then((data) => {
-        if (!cancelled) setTrips(data)
+        if (!cancelled) setTripPage(data)
       })
       .catch((err) => {
         if (!cancelled) {
@@ -55,9 +61,13 @@ export function HomePage() {
     return () => {
       cancelled = true
     }
-  }, [likedOnly, user])
+  }, [currentPage, likedOnly, user])
 
-  const filteredTrips = trips.filter((trip) => {
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [query, likedOnly])
+
+  const visibleTrips = (tripPage?.items ?? []).filter((trip) => {
     const q = query.trim().toLowerCase()
     if (!q) return true
     return (
@@ -66,6 +76,8 @@ export function HomePage() {
       trip.shortDescription.toLowerCase().includes(q)
     )
   })
+  const totalPages = tripPage?.totalPages ?? 1
+  const totalTrips = tripPage?.totalItems ?? 0
 
   return (
     <div>
@@ -100,42 +112,52 @@ export function HomePage() {
         </p>
       )}
 
-      {!loading && !error && filteredTrips.length === 0 && (
+      {!loading && !error && visibleTrips.length === 0 && (
         <p className="mt-6 text-slate-600">No trips yet.</p>
       )}
 
-      {!loading && !error && filteredTrips.length > 0 && (
-        <ul className="mt-6 divide-y divide-slate-300 rounded-lg border border-slate-300 bg-white shadow-sm">
-          {filteredTrips.map((t) => (
-            <li
-              key={t.id}
-              className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-            >
-              <div>
-                <Link
-                  to={`/trips/${t.id}`}
-                  aria-label={`Open trip ${t.title}`}
-                  className="font-medium text-slate-900 hover:underline"
-                >
-                  {t.title}
-                </Link>
-                <p className="text-sm text-slate-600">
-                  {t.destination} · {formatDate(t.startDate)}
-                </p>
-              </div>
-              {ownedTripIds.has(t.id) && (
-                <Link
-                  to={`/trips/${t.id}/edit`}
-                  aria-label={`Edit trip ${t.title}`}
-                  className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:underline"
-                >
-                  <FontAwesomeIcon icon={faPenToSquare} aria-hidden="true" />
-                  Edit
-                </Link>
-              )}
-            </li>
-          ))}
-        </ul>
+      {!loading && !error && visibleTrips.length > 0 && (
+        <>
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={PAGE_SIZE}
+            totalItems={totalTrips}
+            itemLabel="trips"
+            onPageChange={setCurrentPage}
+          />
+          <ul className="mt-6 divide-y divide-slate-300 rounded-lg border border-slate-300 bg-white shadow-sm">
+            {visibleTrips.map((t) => (
+              <li
+                key={t.id}
+                className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+              >
+                <div>
+                  <Link
+                    to={`/trips/${t.id}`}
+                    aria-label={`Open trip ${t.title}`}
+                    className="font-medium text-slate-900 hover:underline"
+                  >
+                    {t.title}
+                  </Link>
+                  <p className="text-sm text-slate-600">
+                    {t.destination} · {formatDate(t.startDate)}
+                  </p>
+                </div>
+                {ownedTripIds.has(t.id) && (
+                  <Link
+                    to={`/trips/${t.id}/edit`}
+                    aria-label={`Edit trip ${t.title}`}
+                    className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:underline"
+                  >
+                    <FontAwesomeIcon icon={faPenToSquare} aria-hidden="true" />
+                    Edit
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </div>
   )

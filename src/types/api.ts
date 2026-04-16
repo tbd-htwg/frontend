@@ -2,12 +2,29 @@ export type HalLink = {
   href: string
 }
 
+export type HalPage = {
+  size: number
+  totalElements: number
+  totalPages: number
+  number: number
+}
+
 export type HalEntity<T> = T & {
   _links?: Record<string, HalLink>
 }
 
 export type HalCollection<T> = {
   _embedded?: Record<string, T[]>
+  _links?: Record<string, HalLink>
+  page?: HalPage
+}
+
+export type PaginatedResponse<T> = {
+  items: T[]
+  currentPage: number
+  pageSize: number
+  totalItems: number
+  totalPages: number
 }
 
 export type UserResponse = {
