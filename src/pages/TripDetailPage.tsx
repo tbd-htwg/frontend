@@ -1017,28 +1017,30 @@ export function TripDetailPage() {
             {tripTransports.length === 0 ? (
               <p className="mt-3 text-sm text-slate-600">No transport added yet.</p>
             ) : (
-              <ul className="mt-3 space-y-3">
-                {tripTransports.map((entry) => (
-                  <li key={entry.id}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-medium text-slate-900">{entry.type}</p>
-                      </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {tripTransports.map((entry) => {
+                  const removing = removingTransportId === entry.id
+                  return (
+                    <span
+                      key={entry.id}
+                      className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-800"
+                    >
+                      <span className="truncate">{entry.type}</span>
                       {isOwner && showTripManagement && (
                         <button
                           type="button"
                           onClick={() => void handleRemoveTransport(entry.id)}
-                          disabled={removingTransportId === entry.id}
-                          aria-label={`Remove transport ${entry.type}`}
-                          className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-800 hover:bg-red-50 disabled:opacity-50"
+                          disabled={removing}
+                          aria-label={removing ? `Removing transport ${entry.type}` : `Remove transport ${entry.type}`}
+                          className="inline-flex h-5 w-5 items-center justify-center rounded-full text-slate-600 hover:bg-slate-200 hover:text-slate-900 disabled:opacity-50"
                         >
-                          {removingTransportId === entry.id ? 'Removing…' : 'Remove'}
+                          ×
                         </button>
                       )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
+                    </span>
+                  )
+                })}
+              </div>
             )}
 
             {isOwner && showTripManagement && (
