@@ -41,6 +41,13 @@ async function request(path: string, init?: RequestInit): Promise<Response> {
     }
   } else if (normalizedPath === base || normalizedPath.startsWith(`${base}/`)) {
     url = normalizedPath
+  } else if (normalizedPath.startsWith('/api/search')) {
+    if (/^https?:\/\//.test(base)) {
+      const baseUrl = new URL(base)
+      url = `${baseUrl.origin}${normalizedPath}`
+    } else {
+      url = normalizedPath
+    }
   } else {
     url = `${base}${normalizedPath}`
   }

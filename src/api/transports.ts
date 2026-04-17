@@ -1,5 +1,5 @@
 import type { HalCollection, HalEntity, TransportResponse } from '../types/api'
-import { requestJson, requestVoid } from './client'
+import { ApiError, requestJson, requestVoid } from './client'
 import { embeddedItems, idFromEntity } from './hal'
 
 type TransportEntityBody = {
@@ -23,6 +23,21 @@ function toUriList(ids: number[]): string {
 export async function listTransports(): Promise<TransportResponse[]> {
   const model = await requestJson<TransportCollection>('/transports', { method: 'GET' })
   return embeddedItems(model, 'transports').map(toTransport)
+}
+
+export async function searchTransportsByTypeContaining(type: string): Promise<TransportResponse[]> {
+  const q = type.trim()
+  if (!q) return []
+  try {
+    const model = await requestJson<TransportCollection>(
+      `/transports/search/findByTypeContainingIgnoreCase?type=${encodeURIComponent(q)}`,
+      { method: 'GET' },
+    )
+    return embeddedItems(model, 'transports').map(toTransport)
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return []
+    throw e
+  }
 }
 
 export async function createTransport(type: string): Promise<TransportResponse> {

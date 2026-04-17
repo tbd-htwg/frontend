@@ -1,5 +1,5 @@
 import type { HalCollection, HalEntity, LocationResponse } from '../types/api'
-import { requestJson } from './client'
+import { ApiError, requestJson } from './client'
 import { embeddedItems, idFromEntity } from './hal'
 
 type LocationEntityBody = {
@@ -18,6 +18,21 @@ type LocationCollection = HalCollection<HalEntity<LocationEntityBody>>
 export async function listLocations(): Promise<LocationResponse[]> {
   const model = await requestJson<LocationCollection>('/locations', { method: 'GET' })
   return embeddedItems(model, 'locations').map(toLocation)
+}
+
+export async function searchLocationsByNameContaining(name: string): Promise<LocationResponse[]> {
+  const q = name.trim()
+  if (!q) return []
+  try {
+    const model = await requestJson<LocationCollection>(
+      `/locations/search/findByNameContainingIgnoreCase?name=${encodeURIComponent(q)}`,
+      { method: 'GET' },
+    )
+    return embeddedItems(model, 'locations').map(toLocation)
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return []
+    throw e
+  }
 }
 
 export async function getLocationById(id: number): Promise<LocationResponse> {
