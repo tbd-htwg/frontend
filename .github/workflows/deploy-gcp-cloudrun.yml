@@ -48,6 +48,11 @@ jobs:
         env:
           IMAGE_URI: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_ARTIFACT_REPO }}/tripplanning-frontend:${{ github.sha }}
         run: |
+            API_BASE_URL="${PAAS_BACKEND_URL%/}"
+            if [[ "${API_BASE_URL}" != */api/v2 ]]; then
+              API_BASE_URL="${API_BASE_URL}/api/v2"
+            fi
+
           docker build \
             --build-arg "VITE_API_BASE_URL=${API_BASE_URL}" \
             -t "${IMAGE_URI}" \

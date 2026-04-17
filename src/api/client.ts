@@ -1,8 +1,18 @@
-/** Unset/empty uses same-origin `/api/v2` (Vite dev proxy; Caddy in production). Otherwise full base URL without trailing slash. */
+/**
+ * Unset/empty uses same-origin `/api/v2` (Vite dev proxy; Caddy in production).
+ * For absolute URLs, if no path is provided, `/api/v2` is appended automatically.
+ */
 export function getApiBaseUrl(): string {
   const v = import.meta.env.VITE_API_BASE_URL
   if (v === '' || v == null) return '/api/v2'
-  return v.replace(/\/$/, '')
+
+  const normalized = v.replace(/\/$/, '')
+  if (!/^https?:\/\//.test(normalized)) return normalized
+
+  const parsed = new URL(normalized)
+  const parsedPath = parsed.pathname.replace(/\/$/, '')
+  const basePath = !parsedPath || parsedPath === '/' ? '/api/v2' : parsedPath
+  return `${parsed.origin}${basePath}`
 }
 
 export class ApiError extends Error {
