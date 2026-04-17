@@ -7,6 +7,7 @@ import type {
   TripListItemResponse,
   TripPatchRequest,
   TripPutRequest,
+  TripSearchResult,
   UserResponse,
 } from '../types/api'
 import { requestJson, requestVoid } from './client'
@@ -98,6 +99,39 @@ export async function searchTripsByLikedUser(
     { method: 'GET' },
   )
   return toTripPage(model)
+}
+
+type SpringPageTripSearchDto = {
+  content?: TripSearchResult[]
+  totalElements?: number
+  totalPages?: number
+  number?: number
+  size?: number
+}
+
+/** Full-text search (Hibernate Search). `page` is 1-based (same as listTrips). */
+export async function searchTrips(
+  q: string,
+  page = 1,
+  size = 10,
+): Promise<PaginatedResponse<TripSearchResult>> {
+  const params = new URLSearchParams({
+    q: q.trim(),
+    page: String(Math.max(0, page - 1)),
+    size: String(size),
+  })
+  const raw = await requestJson<SpringPageTripSearchDto>(`/api/search/trips?${params}`, {
+    method: 'GET',
+  })
+  const items = raw.content ?? []
+  const totalPages = Math.max(1, raw.totalPages ?? 1)
+  return {
+    items,
+    currentPage: (raw.number ?? 0) + 1,
+    pageSize: raw.size ?? size,
+    totalItems: raw.totalElements ?? items.length,
+    totalPages,
+  }
 }
 
 export async function listAllTripsByUserId(userId: number): Promise<TripListItemResponse[]> {

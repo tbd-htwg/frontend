@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
@@ -17,18 +17,18 @@ import {
   addTripAccommodation,
   createAccommodation,
   deleteTripAccommodation,
-  listAccommodations,
   listTripAccommodationsByTripId,
+  searchAccommodationsByNameContaining,
 } from '../api/accommodations'
 import { createComment, listCommentsByTripId } from '../api/comments'
-import { createLocation, listLocations } from '../api/locations'
+import { createLocation, searchLocationsByNameContaining } from '../api/locations'
 import { likeTrip, listLikedTripIds, unlikeTrip } from '../api/likes'
 import {
   addTripTransport,
   createTransport,
   deleteTripTransport,
-  listTransports,
   listTripTransportsByTripId,
+  searchTransportsByTypeContaining,
 } from '../api/transports'
 import {
   addTripLocation,
@@ -39,6 +39,7 @@ import { countTripLikes, deleteTrip, getTrip, getTripOwner } from '../api/trips'
 import { getUserById } from '../api/users'
 import { ApiError } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import type {
   AccommodationResponse,
   CommentResponse,
@@ -59,6 +60,14 @@ function formatDate(iso: string) {
   } catch {
     return iso
   }
+}
+
+function mergeById<T extends { id: number }>(...lists: T[][]): T[] {
+  const m = new Map<number, T>()
+  for (const list of lists) {
+    for (const x of list) m.set(x.id, x)
+  }
+  return [...m.values()]
 }
 
 export function TripDetailPage() {
@@ -84,9 +93,11 @@ export function TripDetailPage() {
   const [commentText, setCommentText] = useState('')
   const [commenting, setCommenting] = useState(false)
   const [tripLocations, setTripLocations] = useState<TripLocationResponse[]>([])
+  /** Locations created in this session (add-new flow); search fills suggestions via API. */
   const [locations, setLocations] = useState<LocationResponse[]>([])
   const [tripTransports, setTripTransports] = useState<TransportResponse[]>([])
-  const [allTransports, setAllTransports] = useState<TransportResponse[]>([])
+  /** Transports created in this session; search fills suggestions via API. */
+  const [sessionTransports, setSessionTransports] = useState<TransportResponse[]>([])
   const [transportSearch, setTransportSearch] = useState('')
   const [selectedExistingTransport, setSelectedExistingTransport] =
     useState<TransportResponse | null>(null)
@@ -96,7 +107,11 @@ export function TripDetailPage() {
   const [savingTransport, setSavingTransport] = useState(false)
   const [removingTransportId, setRemovingTransportId] = useState<number | null>(null)
   const [tripAccommodations, setTripAccommodations] = useState<AccommodationResponse[]>([])
-  const [allAccommodations, setAllAccommodations] = useState<AccommodationResponse[]>([])
+  /** Accommodations created in this session; search fills suggestions via API. */
+  const [sessionAccommodations, setSessionAccommodations] = useState<AccommodationResponse[]>([])
+  const [accommodationApiHits, setAccommodationApiHits] = useState<AccommodationResponse[]>([])
+  const [locationApiHits, setLocationApiHits] = useState<LocationResponse[]>([])
+  const [transportApiHits, setTransportApiHits] = useState<TransportResponse[]>([])
   const [accommodationSearch, setAccommodationSearch] = useState('')
   const [selectedExistingAccommodation, setSelectedExistingAccommodation] =
     useState<AccommodationResponse | null>(null)
@@ -121,6 +136,134 @@ export function TripDetailPage() {
   const [newLocationDescription, setNewLocationDescription] = useState('')
   const [savingLocation, setSavingLocation] = useState(false)
   const [removingLocationId, setRemovingLocationId] = useState<number | null>(null)
+
+  const debouncedAccommodationSearch = useDebouncedValue(accommodationSearch, 300)
+  const debouncedLocationSearch = useDebouncedValue(locationSearch, 300)
+  const debouncedTransportSearch = useDebouncedValue(transportSearch, 300)
+
+  useEffect(() => {
+    const q = debouncedAccommodationSearch.trim()
+    if (!q) {
+      setAccommodationApiHits([])
+      return
+    }
+    let cancelled = false
+    searchAccommodationsByNameContaining(q)
+      .then((hits) => {
+        if (!cancelled) setAccommodationApiHits(hits)
+      })
+      .catch(() => {
+        if (!cancelled) setAccommodationApiHits([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [debouncedAccommodationSearch])
+
+  useEffect(() => {
+    const q = debouncedLocationSearch.trim()
+    if (!q) {
+      setLocationApiHits([])
+      return
+    }
+    let cancelled = false
+    searchLocationsByNameContaining(q)
+      .then((hits) => {
+        if (!cancelled) setLocationApiHits(hits)
+      })
+      .catch(() => {
+        if (!cancelled) setLocationApiHits([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [debouncedLocationSearch])
+
+  useEffect(() => {
+    const q = debouncedTransportSearch.trim()
+    if (!q) {
+      setTransportApiHits([])
+      return
+    }
+    let cancelled = false
+    searchTransportsByTypeContaining(q)
+      .then((hits) => {
+        if (!cancelled) setTransportApiHits(hits)
+      })
+      .catch(() => {
+        if (!cancelled) setTransportApiHits([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [debouncedTransportSearch])
+
+  const locationSuggestions = useMemo(() => {
+    const q = locationSearch.trim().toLowerCase()
+    const local = q
+      ? locations.filter((l) => l.name.toLowerCase().includes(q))
+      : []
+    return mergeById(locationApiHits, local)
+  }, [locationApiHits, locations, locationSearch])
+
+  const transportSuggestions = useMemo(() => {
+    const q = transportSearch.trim().toLowerCase()
+    const local = q
+      ? sessionTransports.filter((t) => t.type.toLowerCase().includes(q))
+      : []
+    return mergeById(transportApiHits, local)
+  }, [transportApiHits, sessionTransports, transportSearch])
+
+  const accommodationSuggestions = useMemo(() => {
+    const q = accommodationSearch.trim().toLowerCase()
+    const local = q
+      ? sessionAccommodations.filter((a) =>
+          `${a.name} ${a.type} ${a.address}`.toLowerCase().includes(q),
+        )
+      : []
+    return mergeById(accommodationApiHits, local)
+  }, [accommodationApiHits, sessionAccommodations, accommodationSearch])
+
+  useEffect(() => {
+    const q = accommodationSearch.trim().toLowerCase()
+    if (!q) {
+      setSelectedExistingAccommodation(null)
+      return
+    }
+    const canonicalLabel = (a: AccommodationResponse) =>
+      `${a.name} (${a.type})`.toLowerCase()
+    const match = accommodationSuggestions.find((a) => canonicalLabel(a) === q)
+    if (match) {
+      setSelectedExistingAccommodation(match)
+      return
+    }
+    setSelectedExistingAccommodation((prev) => {
+      if (prev && canonicalLabel(prev) === q) {
+        return prev
+      }
+      return null
+    })
+  }, [accommodationSearch, accommodationSuggestions])
+
+  useEffect(() => {
+    const q = locationSearch.trim().toLowerCase()
+    if (!q) {
+      setSelectedExistingLocation(null)
+      return
+    }
+    const match = locationSuggestions.find((l) => l.name.toLowerCase() === q)
+    setSelectedExistingLocation(match ?? null)
+  }, [locationSearch, locationSuggestions])
+
+  useEffect(() => {
+    const q = transportSearch.trim().toLowerCase()
+    if (!q) {
+      setSelectedExistingTransport(null)
+      return
+    }
+    const match = transportSuggestions.find((t) => t.type.toLowerCase() === q)
+    setSelectedExistingTransport(match ?? null)
+  }, [transportSearch, transportSuggestions])
 
   useEffect(() => {
     if (!Number.isFinite(tripId)) {
@@ -148,33 +291,13 @@ export function TripDetailPage() {
         setComments(loadedComments)
         setTripLocations(loadedTripLocations)
         setLikeCount(loadedLikeCount)
-        const [
-          loadedLocations,
-          loadedTransports,
-          loadedAccommodations,
-          loadedTripTransports,
-          loadedTripAccommodations,
-        ] = await Promise.allSettled([
-          listLocations(),
-          listTransports(),
-          listAccommodations(),
+        const [loadedTripTransports, loadedTripAccommodations] = await Promise.allSettled([
           listTripTransportsByTripId(tripId),
           listTripAccommodationsByTripId(tripId),
         ])
         if (!cancelled) {
-          setLocations(loadedLocations.status === 'fulfilled' ? loadedLocations.value : [])
-          setAllTransports(
-            loadedTransports.status === 'fulfilled' ? loadedTransports.value : [],
-          )
-          setAllAccommodations(
-            loadedAccommodations.status === 'fulfilled'
-              ? loadedAccommodations.value
-              : [],
-          )
           setTripTransports(
-            loadedTripTransports.status === 'fulfilled'
-              ? loadedTripTransports.value
-              : [],
+            loadedTripTransports.status === 'fulfilled' ? loadedTripTransports.value : [],
           )
           setTripAccommodations(
             loadedTripAccommodations.status === 'fulfilled'
@@ -284,18 +407,6 @@ export function TripDetailPage() {
     }
   }
 
-  const filteredLocations = locations.filter((l) =>
-    l.name.toLowerCase().includes(locationSearch.trim().toLowerCase()),
-  )
-  const filteredTransports = allTransports.filter((t) =>
-    t.type.toLowerCase().includes(transportSearch.trim().toLowerCase()),
-  )
-  const filteredAccommodations = allAccommodations.filter((a) =>
-    `${a.name} ${a.type} ${a.address}`
-      .toLowerCase()
-      .includes(accommodationSearch.trim().toLowerCase()),
-  )
-
   async function handleAddExistingLocation() {
     if (!trip || !existingLocationDescription.trim()) return
     setSavingLocation(true)
@@ -382,7 +493,7 @@ export function TripDetailPage() {
     setSavingTransport(true)
     try {
       const createdTransport = await createTransport(newTransportType.trim())
-      setAllTransports((prev) => [...prev, createdTransport])
+      setSessionTransports((prev) => [...prev, createdTransport])
       await addTripTransport({
         tripId: trip.id,
         transport: createdTransport,
@@ -448,7 +559,7 @@ export function TripDetailPage() {
         type: newAccommodationType.trim(),
         address: newAccommodationAddress.trim(),
       })
-      setAllAccommodations((prev) => [...prev, createdAccommodation])
+      setSessionAccommodations((prev) => [...prev, createdAccommodation])
       await addTripAccommodation({
         tripId: trip.id,
         accommodation: createdAccommodation,
@@ -679,16 +790,12 @@ export function TripDetailPage() {
                             const nextSearch = e.target.value
                             setLocationSearch(nextSearch)
                             setShowLocationSuggestions(true)
-                            const exact = locations.find(
-                              (l) => l.name.toLowerCase() === nextSearch.trim().toLowerCase(),
-                            )
-                            setSelectedExistingLocation(exact ?? null)
                           }}
                           className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                         />
-                        {showLocationSuggestions && filteredLocations.length > 0 && (
+                        {showLocationSuggestions && locationSuggestions.length > 0 && (
                           <ul className="absolute z-10 mt-1 max-h-44 w-full overflow-y-auto rounded-md border border-slate-300 bg-white shadow">
-                            {filteredLocations.map((l) => (
+                            {locationSuggestions.map((l) => (
                               <li key={l.id}>
                                 <button
                                   type="button"
@@ -787,7 +894,10 @@ export function TripDetailPage() {
                     </div>
                   </div>
                 )}
-                {locationMode === 'existing' && filteredLocations.length === 0 && (
+                {locationMode === 'existing' &&
+                  locationSearch.trim() &&
+                  !selectedExistingLocation &&
+                  locationSuggestions.length === 0 && (
                   <p className="mt-2 text-xs text-slate-600">
                     No matching existing locations. Use “Create new location”.
                   </p>
@@ -906,19 +1016,13 @@ export function TripDetailPage() {
                             const nextSearch = e.target.value
                             setAccommodationSearch(nextSearch)
                             setShowAccommodationSuggestions(true)
-                            const exact = allAccommodations.find(
-                              (a) =>
-                                `${a.name} (${a.type})`.toLowerCase() ===
-                                nextSearch.trim().toLowerCase(),
-                            )
-                            setSelectedExistingAccommodation(exact ?? null)
                           }}
                           className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                         />
                         {showAccommodationSuggestions &&
-                          filteredAccommodations.length > 0 && (
+                          accommodationSuggestions.length > 0 && (
                             <ul className="absolute z-10 mt-1 max-h-44 w-full overflow-y-auto rounded-md border border-slate-300 bg-white shadow">
-                              {filteredAccommodations.map((item) => (
+                              {accommodationSuggestions.map((item) => (
                                 <li key={item.id}>
                                   <button
                                     type="button"
@@ -1003,7 +1107,9 @@ export function TripDetailPage() {
                   </div>
                 )}
                 {accommodationMode === 'existing' &&
-                  filteredAccommodations.length === 0 && (
+                  accommodationSearch.trim() &&
+                  !selectedExistingAccommodation &&
+                  accommodationSuggestions.length === 0 && (
                     <p className="mt-2 text-xs text-slate-600">
                       No matching existing accommodation. Use “Create new accommodation”.
                     </p>
@@ -1124,16 +1230,12 @@ export function TripDetailPage() {
                             const nextSearch = e.target.value
                             setTransportSearch(nextSearch)
                             setShowTransportSuggestions(true)
-                            const exact = allTransports.find(
-                              (t) => t.type.toLowerCase() === nextSearch.trim().toLowerCase(),
-                            )
-                            setSelectedExistingTransport(exact ?? null)
                           }}
                           className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                         />
-                        {showTransportSuggestions && filteredTransports.length > 0 && (
+                        {showTransportSuggestions && transportSuggestions.length > 0 && (
                           <ul className="absolute z-10 mt-1 max-h-44 w-full overflow-y-auto rounded-md border border-slate-300 bg-white shadow">
-                            {filteredTransports.map((item) => (
+                            {transportSuggestions.map((item) => (
                               <li key={item.id}>
                                 <button
                                   type="button"
@@ -1188,7 +1290,10 @@ export function TripDetailPage() {
                     </div>
                   </div>
                 )}
-                {transportMode === 'existing' && filteredTransports.length === 0 && (
+                {transportMode === 'existing' &&
+                  transportSearch.trim() &&
+                  !selectedExistingTransport &&
+                  transportSuggestions.length === 0 && (
                   <p className="mt-2 text-xs text-slate-600">
                     No matching existing transport. Use “Create new transport”.
                   </p>

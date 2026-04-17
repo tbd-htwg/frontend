@@ -54,6 +54,15 @@ export type TripListItemResponse = {
   shortDescription: string
 }
 
+/** Full-text trip search hit (GET /api/search/trips). */
+export type TripSearchResult = {
+  id: number
+  title: string
+  author: string
+  shortDescription: string
+  locations: string[]
+}
+
 export type TripDetailsResponse = TripListItemResponse & {
   longDescription: string
 }

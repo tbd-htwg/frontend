@@ -1,5 +1,5 @@
 import type { AccommodationResponse, HalCollection, HalEntity } from '../types/api'
-import { requestJson, requestVoid } from './client'
+import { ApiError, requestJson, requestVoid } from './client'
 import { embeddedItems, idFromEntity } from './hal'
 
 type AccommodationEntityBody = {
@@ -35,6 +35,27 @@ export async function listAccommodations(): Promise<AccommodationResponse[]> {
     ...embeddedItems(model, 'accommodations'),
   ]
   return rawItems.map(toAccommodation)
+}
+
+export async function searchAccommodationsByNameContaining(
+  name: string,
+): Promise<AccommodationResponse[]> {
+  const q = name.trim()
+  if (!q) return []
+  try {
+    const model = await requestJson<AccommodationCollection>(
+      `/accommodations/search/findByNameContainingIgnoreCase?name=${encodeURIComponent(q)}`,
+      { method: 'GET' },
+    )
+    const rawItems = [
+      ...embeddedItems(model, 'accomEntities'),
+      ...embeddedItems(model, 'accommodations'),
+    ]
+    return rawItems.map(toAccommodation)
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return []
+    throw e
+  }
 }
 
 export async function createAccommodation(input: {
