@@ -47,7 +47,10 @@ jobs:
       - name: Build frontend app
         env:
           VITE_API_BASE_URL: ${{ vars.GCP_FRONTEND_API_BASE_URL }}
-        run: npm run build
+        run: |
+          echo "Using VITE_API_BASE_URL='${{ vars.GCP_FRONTEND_API_BASE_URL }}'"
+          echo "VITE_API_BASE_URL=${{ vars.GCP_FRONTEND_API_BASE_URL }}" > .env.production
+          npm run build
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
