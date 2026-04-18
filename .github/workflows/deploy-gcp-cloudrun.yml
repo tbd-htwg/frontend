@@ -25,6 +25,7 @@ jobs:
     environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production' || (github.ref == 'refs/heads/staging' && 'staging' || 'develop')) }}
     env:
       PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      BACKEND_SERVICE: ${{ vars.GCP_BACKEND_SERVICE }}
 
     # ------------------------------------------------------------
     # Build frontend React/Vite app with API base URL baked at build-time,
@@ -60,10 +61,12 @@ jobs:
 
       - name: Upload files to Cloud Storage Bucket
         run: |
-          BUCKET_NAME="${PROJECT_ID}-frontend-bucket"
+          APP_PREFIX="${BACKEND_SERVICE%-backend}"
+          BUCKET_NAME="${PROJECT_ID}-${APP_PREFIX}-frontend"
           gcloud storage rsync dist "gs://${BUCKET_NAME}" --recursive
 
       - name: Invalidate Cloud CDN Cache
         run: |
-          URL_MAP_NAME="tripplanning-lb"
+          APP_PREFIX="${BACKEND_SERVICE%-backend}"
+          URL_MAP_NAME="${APP_PREFIX}-lb"
           gcloud compute url-maps invalidate-cdn-cache "${URL_MAP_NAME}" --path="/*"
