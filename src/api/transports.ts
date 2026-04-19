@@ -1,5 +1,5 @@
 import type { HalCollection, HalEntity, TransportResponse } from '../types/api'
-import { ApiError, requestJson, requestVoid } from './client'
+import { ApiError, getExists, requestJson, requestVoid } from './client'
 import { embeddedItems, idFromEntity } from './hal'
 
 type TransportEntityBody = {
@@ -13,11 +13,6 @@ function toTransport(entity: HalEntity<TransportEntityBody>): TransportResponse 
     id: idFromEntity(entity),
     type: entity.type ?? '',
   }
-}
-
-function toUriList(ids: number[]): string {
-  if (ids.length === 0) return ''
-  return ids.map((id) => `/transports/${id}`).join('\n')
 }
 
 export async function listTransports(): Promise<TransportResponse[]> {
@@ -57,30 +52,39 @@ export async function listTripTransportsByTripId(
   return embeddedItems(model, 'transports').map(toTransport)
 }
 
+/**
+ * Audit category B fix: append one transport with POST instead of replacing
+ * the whole association with a PUT + text/uri-list (which required GET-ing the
+ * full current list first and scaled poorly).
+ */
 export async function addTripTransport(input: {
   tripId: number
   transport: TransportResponse
 }): Promise<void> {
-  const current = await listTripTransportsByTripId(input.tripId)
-  if (current.some((item) => item.id === input.transport.id)) return
-  const nextIds = [...current.map((item) => item.id), input.transport.id]
+  const alreadyLinked = await getExists(
+    `/trips/${input.tripId}/transports/${input.transport.id}`,
+  )
+  if (alreadyLinked) return
   await requestVoid(`/trips/${input.tripId}/transports`, {
-    method: 'PUT',
+    method: 'POST',
     headers: {
       'Content-Type': 'text/uri-list',
     },
-    body: toUriList(nextIds),
+    body: `/transports/${input.transport.id}`,
   })
 }
 
+/**
+ * Audit category B fix: remove a single member with DELETE on the item URI
+ * instead of PUT-replacing the full association.
+ */
 export async function deleteTripTransport(tripId: number, transportId: number): Promise<void> {
-  const current = await listTripTransportsByTripId(tripId)
-  const nextIds = current.map((item) => item.id).filter((id) => id !== transportId)
-  await requestVoid(`/trips/${tripId}/transports`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'text/uri-list',
-    },
-    body: toUriList(nextIds),
-  })
+  try {
+    await requestVoid(`/trips/${tripId}/transports/${transportId}`, {
+      method: 'DELETE',
+    })
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return
+    throw err
+  }
 }

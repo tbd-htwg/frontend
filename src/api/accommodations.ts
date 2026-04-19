@@ -1,5 +1,5 @@
 import type { AccommodationResponse, HalCollection, HalEntity } from '../types/api'
-import { ApiError, requestJson, requestVoid } from './client'
+import { ApiError, getExists, requestJson, requestVoid } from './client'
 import { embeddedItems, idFromEntity } from './hal'
 
 type AccommodationEntityBody = {
@@ -19,11 +19,6 @@ function toAccommodation(
     name: entity.name ?? '',
     address: entity.address ?? '',
   }
-}
-
-function toUriList(ids: number[]): string {
-  if (ids.length === 0) return ''
-  return ids.map((id) => `/accommodations/${id}`).join('\n')
 }
 
 export async function listAccommodations(): Promise<AccommodationResponse[]> {
@@ -90,33 +85,41 @@ export async function listTripAccommodationsByTripId(
   return rawItems.map(toAccommodation)
 }
 
+/**
+ * Audit category B fix: append one accommodation with POST instead of
+ * replacing the whole association with PUT + text/uri-list.
+ */
 export async function addTripAccommodation(input: {
   tripId: number
   accommodation: AccommodationResponse
 }): Promise<void> {
-  const current = await listTripAccommodationsByTripId(input.tripId)
-  if (current.some((item) => item.id === input.accommodation.id)) return
-  const nextIds = [...current.map((item) => item.id), input.accommodation.id]
+  const alreadyLinked = await getExists(
+    `/trips/${input.tripId}/accommodations/${input.accommodation.id}`,
+  )
+  if (alreadyLinked) return
   await requestVoid(`/trips/${input.tripId}/accommodations`, {
-    method: 'PUT',
+    method: 'POST',
     headers: {
       'Content-Type': 'text/uri-list',
     },
-    body: toUriList(nextIds),
+    body: `/accommodations/${input.accommodation.id}`,
   })
 }
 
+/**
+ * Audit category B fix: remove a single accommodation with DELETE on the item
+ * URI.
+ */
 export async function deleteTripAccommodation(
   tripId: number,
   accommodationId: number,
 ): Promise<void> {
-  const current = await listTripAccommodationsByTripId(tripId)
-  const nextIds = current.map((item) => item.id).filter((id) => id !== accommodationId)
-  await requestVoid(`/trips/${tripId}/accommodations`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'text/uri-list',
-    },
-    body: toUriList(nextIds),
-  })
+  try {
+    await requestVoid(`/trips/${tripId}/accommodations/${accommodationId}`, {
+      method: 'DELETE',
+    })
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return
+    throw err
+  }
 }
