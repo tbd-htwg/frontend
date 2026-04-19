@@ -140,12 +140,14 @@ export function TripDetailPage() {
   const debouncedLocationSearch = useDebouncedValue(locationSearch, 300)
   const debouncedTransportSearch = useDebouncedValue(transportSearch, 300)
 
+  // Fetch suggestions when the user focuses the search field (even with an
+  // empty query, which the paginated backend endpoint interprets as "give me
+  // the newest page") and when the debounced query changes while the popover
+  // is open. Gating on `showXxxSuggestions` keeps non-owners and collapsed
+  // panels from triggering any network traffic at all.
   useEffect(() => {
+    if (!showAccommodationSuggestions) return
     const q = debouncedAccommodationSearch.trim()
-    if (!q) {
-      setAccommodationApiHits([])
-      return
-    }
     let cancelled = false
     searchAccommodationsByNameContaining(q)
       .then((hits) => {
@@ -157,14 +159,11 @@ export function TripDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [debouncedAccommodationSearch])
+  }, [debouncedAccommodationSearch, showAccommodationSuggestions])
 
   useEffect(() => {
+    if (!showLocationSuggestions) return
     const q = debouncedLocationSearch.trim()
-    if (!q) {
-      setLocationApiHits([])
-      return
-    }
     let cancelled = false
     searchLocationsByNameContaining(q)
       .then((hits) => {
@@ -176,14 +175,11 @@ export function TripDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [debouncedLocationSearch])
+  }, [debouncedLocationSearch, showLocationSuggestions])
 
   useEffect(() => {
+    if (!showTransportSuggestions) return
     const q = debouncedTransportSearch.trim()
-    if (!q) {
-      setTransportApiHits([])
-      return
-    }
     let cancelled = false
     searchTransportsByTypeContaining(q)
       .then((hits) => {
@@ -195,7 +191,7 @@ export function TripDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [debouncedTransportSearch])
+  }, [debouncedTransportSearch, showTransportSuggestions])
 
   const locationSuggestions = useMemo(() => {
     const q = locationSearch.trim().toLowerCase()

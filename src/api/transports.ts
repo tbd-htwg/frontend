@@ -20,12 +20,27 @@ export async function listTransports(): Promise<TransportResponse[]> {
   return embeddedItems(model, 'transports').map(toTransport)
 }
 
-export async function searchTransportsByTypeContaining(type: string): Promise<TransportResponse[]> {
+/**
+ * Audit category A fix: paginated. Empty `type` matches every row (LIKE '%%')
+ * so this can be called on focus to prefill a suggestion dropdown;
+ * `sort=id,desc` puts the newest transports first (IDENTITY ids preserve
+ * insertion order).
+ */
+const TRANSPORT_SUGGESTION_PAGE_SIZE = 10
+
+export async function searchTransportsByTypeContaining(
+  type: string,
+  size: number = TRANSPORT_SUGGESTION_PAGE_SIZE,
+): Promise<TransportResponse[]> {
   const q = type.trim()
-  if (!q) return []
+  const params = new URLSearchParams({
+    type: q,
+    size: String(size),
+    sort: 'id,desc',
+  })
   try {
     const model = await requestJson<TransportCollection>(
-      `/transports/search/findByTypeContainingIgnoreCase?type=${encodeURIComponent(q)}`,
+      `/transports/search/findByTypeContainingIgnoreCase?${params.toString()}`,
       { method: 'GET' },
     )
     return embeddedItems(model, 'transports').map(toTransport)

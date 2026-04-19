@@ -32,14 +32,30 @@ export async function listAccommodations(): Promise<AccommodationResponse[]> {
   return rawItems.map(toAccommodation)
 }
 
+/**
+ * Audit category A fix: the backing repository method is now paginated
+ * (`Page<AccomEntity>`), so we request a bounded page instead of the full
+ * unbounded list. An empty `name` matches every row, which lets us prefill
+ * suggestion dropdowns the moment the user focuses the search field — the
+ * `sort=id,desc` ordering surfaces the most recently created accommodations
+ * first (IDENTITY ids are monotonically increasing, so id order == insertion
+ * order).
+ */
+const ACCOMMODATION_SUGGESTION_PAGE_SIZE = 10
+
 export async function searchAccommodationsByNameContaining(
   name: string,
+  size: number = ACCOMMODATION_SUGGESTION_PAGE_SIZE,
 ): Promise<AccommodationResponse[]> {
   const q = name.trim()
-  if (!q) return []
+  const params = new URLSearchParams({
+    name: q,
+    size: String(size),
+    sort: 'id,desc',
+  })
   try {
     const model = await requestJson<AccommodationCollection>(
-      `/accommodations/search/findByNameContainingIgnoreCase?name=${encodeURIComponent(q)}`,
+      `/accommodations/search/findByNameContainingIgnoreCase?${params.toString()}`,
       { method: 'GET' },
     )
     const rawItems = [
