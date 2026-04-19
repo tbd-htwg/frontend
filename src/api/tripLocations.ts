@@ -32,11 +32,18 @@ function toTripLocation(entity: HalEntity<TripLocationEntityBody>): TripLocation
 
 type TripLocationCollection = HalCollection<HalEntity<TripLocationEntityBody>>
 
+/**
+ * Audit category D: the repository query is paginated server-side; ask for a
+ * generous upper bound instead of relying on the default page of 20. Real
+ * pagination UI would replace this.
+ */
+const TRIP_LOCATIONS_PAGE_SIZE = 200
+
 export async function listTripLocationsByTripId(
   tripId: number,
 ): Promise<TripLocationResponse[]> {
   const model = await requestJson<TripLocationCollection>(
-    `/trip-locations/search/findByTripId?tripId=${tripId}`,
+    `/trip-locations/search/findByTripId?tripId=${tripId}&size=${TRIP_LOCATIONS_PAGE_SIZE}`,
     { method: 'GET' },
   )
   // Spring Data REST uses "trip-locations" as the HAL collection key.

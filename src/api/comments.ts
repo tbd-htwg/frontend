@@ -26,9 +26,17 @@ function toComment(entity: HalEntity<CommentEntityBody>): CommentResponse {
 
 type CommentCollection = HalCollection<HalEntity<CommentEntityBody>>
 
+/**
+ * Audit category D (unbounded child list): the repository query is now paginated
+ * on the backend. We request a reasonable upper bound here; a proper "load more"
+ * UI is a follow-up. Spring Data REST ignores oversized `size` values capped by
+ * the server config, so this stays safe against very chatty trips.
+ */
+const COMMENTS_PAGE_SIZE = 100
+
 export async function listCommentsByTripId(tripId: number): Promise<CommentResponse[]> {
   const model = await requestJson<CommentCollection>(
-    `/comments/search/findByTripIdOrderByCreatedAtDesc?tripId=${tripId}`,
+    `/comments/search/findByTripIdOrderByCreatedAtDesc?tripId=${tripId}&size=${COMMENTS_PAGE_SIZE}`,
     { method: 'GET' },
   )
   const rawComments = embeddedItems(model, 'comments')

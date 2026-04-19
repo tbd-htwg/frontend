@@ -20,12 +20,27 @@ export async function listLocations(): Promise<LocationResponse[]> {
   return embeddedItems(model, 'locations').map(toLocation)
 }
 
-export async function searchLocationsByNameContaining(name: string): Promise<LocationResponse[]> {
+/**
+ * Audit category A fix: paginated. Empty `name` matches every row (LIKE '%%')
+ * so this can be called on focus to prefill a suggestion dropdown;
+ * `sort=id,desc` puts the newest locations first (IDENTITY ids preserve
+ * insertion order).
+ */
+const LOCATION_SUGGESTION_PAGE_SIZE = 10
+
+export async function searchLocationsByNameContaining(
+  name: string,
+  size: number = LOCATION_SUGGESTION_PAGE_SIZE,
+): Promise<LocationResponse[]> {
   const q = name.trim()
-  if (!q) return []
+  const params = new URLSearchParams({
+    name: q,
+    size: String(size),
+    sort: 'id,desc',
+  })
   try {
     const model = await requestJson<LocationCollection>(
-      `/locations/search/findByNameContainingIgnoreCase?name=${encodeURIComponent(q)}`,
+      `/locations/search/findByNameContainingIgnoreCase?${params.toString()}`,
       { method: 'GET' },
     )
     return embeddedItems(model, 'locations').map(toLocation)

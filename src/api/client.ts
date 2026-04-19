@@ -32,37 +32,40 @@ async function parseJson<T>(res: Response): Promise<T> {
   return JSON.parse(text) as T
 }
 
-async function request(path: string, init?: RequestInit): Promise<Response> {
+/** Same URL resolution as {@link request}. */
+export function resolveApiUrl(path: string): string {
   const base = getApiBaseUrl()
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
-  let url: string
 
   if (/^https?:\/\//.test(path)) {
-    url = path
-  } else if (!base) {
-    url = normalizedPath
-  } else if (normalizedPath.startsWith('/api/search')) {
+    return path
+  }
+  if (!base) {
+    return normalizedPath
+  }
+  if (normalizedPath.startsWith('/api/search')) {
     if (/^https?:\/\//.test(base)) {
       const baseUrl = new URL(base)
-      url = `${baseUrl.origin}${normalizedPath}`
-    } else {
-      url = normalizedPath
+      return `${baseUrl.origin}${normalizedPath}`
     }
-  } else if (/^https?:\/\//.test(base)) {
+    return normalizedPath
+  }
+  if (/^https?:\/\//.test(base)) {
     const baseUrl = new URL(base)
     const basePath = baseUrl.pathname.replace(/\/$/, '')
     if (normalizedPath === basePath || normalizedPath.startsWith(`${basePath}/`)) {
-      url = `${baseUrl.origin}${normalizedPath}`
-    } else {
-      url = `${base}${normalizedPath}`
+      return `${baseUrl.origin}${normalizedPath}`
     }
-  } else if (normalizedPath === base || normalizedPath.startsWith(`${base}/`)) {
-    url = normalizedPath
-  } else {
-    url = `${base}${normalizedPath}`
+    return `${base}${normalizedPath}`
   }
+  if (normalizedPath === base || normalizedPath.startsWith(`${base}/`)) {
+    return normalizedPath
+  }
+  return `${base}${normalizedPath}`
+}
 
-  const res = await fetch(url, init)
+async function request(path: string, init?: RequestInit): Promise<Response> {
+  const res = await fetch(resolveApiUrl(path), init)
   if (!res.ok) {
     const errText = await res.text()
     throw new ApiError(
@@ -72,6 +75,23 @@ async function request(path: string, init?: RequestInit): Promise<Response> {
     )
   }
   return res
+}
+
+/**
+ * GET returning whether the resource exists (200 vs 404). Other status codes throw {@link ApiError}.
+ */
+export async function getExists(path: string): Promise<boolean> {
+  const res = await fetch(resolveApiUrl(path), { method: 'GET' })
+  if (res.status === 404) return false
+  if (!res.ok) {
+    const errText = await res.text()
+    throw new ApiError(
+      errText || res.statusText || 'Request failed',
+      res.status,
+      errText,
+    )
+  }
+  return true
 }
 
 export async function requestJson<T>(

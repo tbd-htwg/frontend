@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { listUsers, registerUser } from '../api/users'
+import { findUserByName, registerUser } from '../api/users'
 import type { UserResponse } from '../types/api'
 
 const STORAGE_KEY = 'tripPlannerUser'
@@ -59,8 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (name: string) => {
     const trimmed = name.trim()
-    const users = await listUsers()
-    const found = users.find((u) => u.name === trimmed)
+    const found = await findUserByName(trimmed)
     if (!found) {
       throw new Error('No user found with that name.')
     }
