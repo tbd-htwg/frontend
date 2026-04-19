@@ -6164,11 +6164,15 @@
                     }
                 }
             },
-            "EntityModelLocationEntity": {
+            "EntityModelCommentEntity": {
                 "type": "object",
                 "properties": {
-                    "name": {
+                    "content": {
                         "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
                     },
                     "_links": {
                         "$ref": "#/components/schemas/Links"
@@ -6196,16 +6200,16 @@
                     }
                 }
             },
-            "PagedModelEntityModelLocationEntity": {
+            "PagedModelEntityModelCommentEntity": {
                 "type": "object",
                 "properties": {
                     "_embedded": {
                         "type": "object",
                         "properties": {
-                            "locations": {
+                            "comments": {
                                 "type": "array",
                                 "items": {
-                                    "$ref": "#/components/schemas/EntityModelLocationEntity"
+                                    "$ref": "#/components/schemas/EntityModelCommentEntity"
                                 }
                             }
                         }
@@ -6215,6 +6219,283 @@
                     },
                     "page": {
                         "$ref": "#/components/schemas/PageMetadata"
+                    }
+                }
+            },
+            "EntityModelUserEntity": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "imageUrl": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "_links": {
+                        "$ref": "#/components/schemas/Links"
+                    }
+                }
+            },
+            "CollectionModelObject": {
+                "type": "object",
+                "properties": {
+                    "_embedded": {
+                        "type": "object",
+                        "properties": {
+                            "objects": {
+                                "type": "array",
+                                "items": {}
+                            }
+                        }
+                    },
+                    "_links": {
+                        "$ref": "#/components/schemas/Links"
+                    }
+                }
+            },
+            "EntityModelTripEntity": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string"
+                    },
+                    "destination": {
+                        "type": "string"
+                    },
+                    "startDate": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "shortDescription": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "longDescription": {
+                        "type": "string"
+                    },
+                    "_links": {
+                        "$ref": "#/components/schemas/Links"
+                    }
+                },
+                "required": [
+                    "shortDescription",
+                    "startDate"
+                ]
+            },
+            "CollectionModelEntityModelCommentEntity": {
+                "type": "object",
+                "properties": {
+                    "_embedded": {
+                        "type": "object",
+                        "properties": {
+                            "comments": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/EntityModelCommentEntity"
+                                }
+                            }
+                        }
+                    },
+                    "_links": {
+                        "$ref": "#/components/schemas/Links"
+                    }
+                }
+            },
+            "PagedModelEntityModelUserEntity": {
+                "type": "object",
+                "properties": {
+                    "_embedded": {
+                        "type": "object",
+                        "properties": {
+                            "users": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/EntityModelUserEntity"
+                                }
+                            }
+                        }
+                    },
+                    "_links": {
+                        "$ref": "#/components/schemas/Links"
+                    },
+                    "page": {
+                        "$ref": "#/components/schemas/PageMetadata"
+                    }
+                }
+            },
+            "CollectionModelTripEntity": {
+                "type": "object",
+                "properties": {
+                    "_embedded": {
+                        "type": "object",
+                        "properties": {
+                            "trips": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/TripEntityResponse"
+                                }
+                            }
+                        }
+                    },
+                    "_links": {
+                        "$ref": "#/components/schemas/Links"
+                    }
+                }
+            },
+            "EntityModelAccomEntity": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "address": {
+                        "type": "string"
+                    },
+                    "_links": {
+                        "$ref": "#/components/schemas/Links"
+                    }
+                }
+            },
+            "PagedModelEntityModelAccomEntity": {
+                "type": "object",
+                "properties": {
+                    "_embedded": {
+                        "type": "object",
+                        "properties": {
+                            "accommodations": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/EntityModelAccomEntity"
+                                }
+                            }
+                        }
+                    },
+                    "_links": {
+                        "$ref": "#/components/schemas/Links"
+                    },
+                    "page": {
+                        "$ref": "#/components/schemas/PageMetadata"
+                    }
+                }
+            },
+            "CollectionModelEntityModelAccomEntity": {
+                "type": "object",
+                "properties": {
+                    "_embedded": {
+                        "type": "object",
+                        "properties": {
+                            "accommodations": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/EntityModelAccomEntity"
+                                }
+                            }
+                        }
+                    },
+                    "_links": {
+                        "$ref": "#/components/schemas/Links"
+                    }
+                }
+            },
+            "EntityModelTransportEntity": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "_links": {
+                        "$ref": "#/components/schemas/Links"
+                    }
+                }
+            },
+            "PagedModelEntityModelTransportEntity": {
+                "type": "object",
+                "properties": {
+                    "_embedded": {
+                        "type": "object",
+                        "properties": {
+                            "transports": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/EntityModelTransportEntity"
+                                }
+                            }
+                        }
+                    },
+                    "_links": {
+                        "$ref": "#/components/schemas/Links"
+                    },
+                    "page": {
+                        "$ref": "#/components/schemas/PageMetadata"
+                    }
+                }
+            },
+            "CollectionModelEntityModelTransportEntity": {
+                "type": "object",
+                "properties": {
+                    "_embedded": {
+                        "type": "object",
+                        "properties": {
+                            "transports": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/EntityModelTransportEntity"
+                                }
+                            }
+                        }
+                    },
+                    "_links": {
+                        "$ref": "#/components/schemas/Links"
+                    }
+                }
+            },
+            "PagedModelEntityModelTripEntity": {
+                "type": "object",
+                "properties": {
+                    "_embedded": {
+                        "type": "object",
+                        "properties": {
+                            "trips": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/EntityModelTripEntity"
+                                }
+                            }
+                        }
+                    },
+                    "_links": {
+                        "$ref": "#/components/schemas/Links"
+                    },
+                    "page": {
+                        "$ref": "#/components/schemas/PageMetadata"
+                    }
+                }
+            },
+            "CollectionModelTransportEntity": {
+                "type": "object",
+                "properties": {
+                    "_embedded": {
+                        "type": "object",
+                        "properties": {
+                            "transports": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/TransportEntityResponse"
+                                }
+                            }
+                        }
+                    },
+                    "_links": {
+                        "$ref": "#/components/schemas/Links"
                     }
                 }
             },
@@ -6237,20 +6518,74 @@
                     }
                 }
             },
-            "CollectionModelObject": {
+            "CollectionModelAccomEntity": {
                 "type": "object",
                 "properties": {
                     "_embedded": {
                         "type": "object",
                         "properties": {
-                            "objects": {
+                            "accommodations": {
                                 "type": "array",
-                                "items": {}
+                                "items": {
+                                    "$ref": "#/components/schemas/AccomEntityResponse"
+                                }
                             }
                         }
                     },
                     "_links": {
                         "$ref": "#/components/schemas/Links"
+                    }
+                }
+            },
+            "CollectionModelUserEntity": {
+                "type": "object",
+                "properties": {
+                    "_embedded": {
+                        "type": "object",
+                        "properties": {
+                            "users": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/UserEntityResponse"
+                                }
+                            }
+                        }
+                    },
+                    "_links": {
+                        "$ref": "#/components/schemas/Links"
+                    }
+                }
+            },
+            "EntityModelLocationEntity": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "_links": {
+                        "$ref": "#/components/schemas/Links"
+                    }
+                }
+            },
+            "PagedModelEntityModelLocationEntity": {
+                "type": "object",
+                "properties": {
+                    "_embedded": {
+                        "type": "object",
+                        "properties": {
+                            "locations": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/EntityModelLocationEntity"
+                                }
+                            }
+                        }
+                    },
+                    "_links": {
+                        "$ref": "#/components/schemas/Links"
+                    },
+                    "page": {
+                        "$ref": "#/components/schemas/PageMetadata"
                     }
                 }
             },
@@ -6309,35 +6644,6 @@
                     }
                 }
             },
-            "EntityModelTripEntity": {
-                "type": "object",
-                "properties": {
-                    "title": {
-                        "type": "string"
-                    },
-                    "destination": {
-                        "type": "string"
-                    },
-                    "startDate": {
-                        "type": "string",
-                        "format": "date"
-                    },
-                    "shortDescription": {
-                        "type": "string",
-                        "minLength": 1
-                    },
-                    "longDescription": {
-                        "type": "string"
-                    },
-                    "_links": {
-                        "$ref": "#/components/schemas/Links"
-                    }
-                },
-                "required": [
-                    "shortDescription",
-                    "startDate"
-                ]
-            },
             "CollectionModelEntityModelTripLocationEntity": {
                 "type": "object",
                 "properties": {
@@ -6348,312 +6654,6 @@
                                 "type": "array",
                                 "items": {
                                     "$ref": "#/components/schemas/EntityModelTripLocationEntity"
-                                }
-                            }
-                        }
-                    },
-                    "_links": {
-                        "$ref": "#/components/schemas/Links"
-                    }
-                }
-            },
-            "EntityModelAccomEntity": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "address": {
-                        "type": "string"
-                    },
-                    "_links": {
-                        "$ref": "#/components/schemas/Links"
-                    }
-                }
-            },
-            "PagedModelEntityModelAccomEntity": {
-                "type": "object",
-                "properties": {
-                    "_embedded": {
-                        "type": "object",
-                        "properties": {
-                            "accommodations": {
-                                "type": "array",
-                                "items": {
-                                    "$ref": "#/components/schemas/EntityModelAccomEntity"
-                                }
-                            }
-                        }
-                    },
-                    "_links": {
-                        "$ref": "#/components/schemas/Links"
-                    },
-                    "page": {
-                        "$ref": "#/components/schemas/PageMetadata"
-                    }
-                }
-            },
-            "CollectionModelTripEntity": {
-                "type": "object",
-                "properties": {
-                    "_embedded": {
-                        "type": "object",
-                        "properties": {
-                            "trips": {
-                                "type": "array",
-                                "items": {
-                                    "$ref": "#/components/schemas/TripEntityResponse"
-                                }
-                            }
-                        }
-                    },
-                    "_links": {
-                        "$ref": "#/components/schemas/Links"
-                    }
-                }
-            },
-            "CollectionModelEntityModelAccomEntity": {
-                "type": "object",
-                "properties": {
-                    "_embedded": {
-                        "type": "object",
-                        "properties": {
-                            "accommodations": {
-                                "type": "array",
-                                "items": {
-                                    "$ref": "#/components/schemas/EntityModelAccomEntity"
-                                }
-                            }
-                        }
-                    },
-                    "_links": {
-                        "$ref": "#/components/schemas/Links"
-                    }
-                }
-            },
-            "PagedModelEntityModelTripEntity": {
-                "type": "object",
-                "properties": {
-                    "_embedded": {
-                        "type": "object",
-                        "properties": {
-                            "trips": {
-                                "type": "array",
-                                "items": {
-                                    "$ref": "#/components/schemas/EntityModelTripEntity"
-                                }
-                            }
-                        }
-                    },
-                    "_links": {
-                        "$ref": "#/components/schemas/Links"
-                    },
-                    "page": {
-                        "$ref": "#/components/schemas/PageMetadata"
-                    }
-                }
-            },
-            "CollectionModelTransportEntity": {
-                "type": "object",
-                "properties": {
-                    "_embedded": {
-                        "type": "object",
-                        "properties": {
-                            "transports": {
-                                "type": "array",
-                                "items": {
-                                    "$ref": "#/components/schemas/TransportEntityResponse"
-                                }
-                            }
-                        }
-                    },
-                    "_links": {
-                        "$ref": "#/components/schemas/Links"
-                    }
-                }
-            },
-            "CollectionModelAccomEntity": {
-                "type": "object",
-                "properties": {
-                    "_embedded": {
-                        "type": "object",
-                        "properties": {
-                            "accommodations": {
-                                "type": "array",
-                                "items": {
-                                    "$ref": "#/components/schemas/AccomEntityResponse"
-                                }
-                            }
-                        }
-                    },
-                    "_links": {
-                        "$ref": "#/components/schemas/Links"
-                    }
-                }
-            },
-            "CollectionModelUserEntity": {
-                "type": "object",
-                "properties": {
-                    "_embedded": {
-                        "type": "object",
-                        "properties": {
-                            "users": {
-                                "type": "array",
-                                "items": {
-                                    "$ref": "#/components/schemas/UserEntityResponse"
-                                }
-                            }
-                        }
-                    },
-                    "_links": {
-                        "$ref": "#/components/schemas/Links"
-                    }
-                }
-            },
-            "EntityModelUserEntity": {
-                "type": "object",
-                "properties": {
-                    "email": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "imageUrl": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "_links": {
-                        "$ref": "#/components/schemas/Links"
-                    }
-                }
-            },
-            "PagedModelEntityModelUserEntity": {
-                "type": "object",
-                "properties": {
-                    "_embedded": {
-                        "type": "object",
-                        "properties": {
-                            "users": {
-                                "type": "array",
-                                "items": {
-                                    "$ref": "#/components/schemas/EntityModelUserEntity"
-                                }
-                            }
-                        }
-                    },
-                    "_links": {
-                        "$ref": "#/components/schemas/Links"
-                    },
-                    "page": {
-                        "$ref": "#/components/schemas/PageMetadata"
-                    }
-                }
-            },
-            "EntityModelTransportEntity": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string"
-                    },
-                    "_links": {
-                        "$ref": "#/components/schemas/Links"
-                    }
-                }
-            },
-            "PagedModelEntityModelTransportEntity": {
-                "type": "object",
-                "properties": {
-                    "_embedded": {
-                        "type": "object",
-                        "properties": {
-                            "transports": {
-                                "type": "array",
-                                "items": {
-                                    "$ref": "#/components/schemas/EntityModelTransportEntity"
-                                }
-                            }
-                        }
-                    },
-                    "_links": {
-                        "$ref": "#/components/schemas/Links"
-                    },
-                    "page": {
-                        "$ref": "#/components/schemas/PageMetadata"
-                    }
-                }
-            },
-            "CollectionModelEntityModelTransportEntity": {
-                "type": "object",
-                "properties": {
-                    "_embedded": {
-                        "type": "object",
-                        "properties": {
-                            "transports": {
-                                "type": "array",
-                                "items": {
-                                    "$ref": "#/components/schemas/EntityModelTransportEntity"
-                                }
-                            }
-                        }
-                    },
-                    "_links": {
-                        "$ref": "#/components/schemas/Links"
-                    }
-                }
-            },
-            "EntityModelCommentEntity": {
-                "type": "object",
-                "properties": {
-                    "content": {
-                        "type": "string"
-                    },
-                    "createdAt": {
-                        "type": "string",
-                        "format": "date-time"
-                    },
-                    "_links": {
-                        "$ref": "#/components/schemas/Links"
-                    }
-                }
-            },
-            "PagedModelEntityModelCommentEntity": {
-                "type": "object",
-                "properties": {
-                    "_embedded": {
-                        "type": "object",
-                        "properties": {
-                            "comments": {
-                                "type": "array",
-                                "items": {
-                                    "$ref": "#/components/schemas/EntityModelCommentEntity"
-                                }
-                            }
-                        }
-                    },
-                    "_links": {
-                        "$ref": "#/components/schemas/Links"
-                    },
-                    "page": {
-                        "$ref": "#/components/schemas/PageMetadata"
-                    }
-                }
-            },
-            "CollectionModelEntityModelCommentEntity": {
-                "type": "object",
-                "properties": {
-                    "_embedded": {
-                        "type": "object",
-                        "properties": {
-                            "comments": {
-                                "type": "array",
-                                "items": {
-                                    "$ref": "#/components/schemas/EntityModelCommentEntity"
                                 }
                             }
                         }
@@ -6946,10 +6946,6 @@
                     "pageable": {
                         "$ref": "#/components/schemas/PageableObject"
                     },
-                    "numberOfElements": {
-                        "type": "integer",
-                        "format": "int32"
-                    },
                     "size": {
                         "type": "integer",
                         "format": "int32"
@@ -6973,6 +6969,10 @@
                     "last": {
                         "type": "boolean"
                     },
+                    "numberOfElements": {
+                        "type": "integer",
+                        "format": "int32"
+                    },
                     "empty": {
                         "type": "boolean"
                     }
@@ -6984,16 +6984,13 @@
                     "paged": {
                         "type": "boolean"
                     },
-                    "pageSize": {
-                        "type": "integer",
-                        "format": "int32"
-                    },
                     "pageNumber": {
                         "type": "integer",
                         "format": "int32"
                     },
-                    "unpaged": {
-                        "type": "boolean"
+                    "pageSize": {
+                        "type": "integer",
+                        "format": "int32"
                     },
                     "offset": {
                         "type": "integer",
@@ -7001,6 +6998,9 @@
                     },
                     "sort": {
                         "$ref": "#/components/schemas/SortObject"
+                    },
+                    "unpaged": {
+                        "type": "boolean"
                     }
                 }
             },
@@ -7010,10 +7010,10 @@
                     "sorted": {
                         "type": "boolean"
                     },
-                    "unsorted": {
+                    "empty": {
                         "type": "boolean"
                     },
-                    "empty": {
+                    "unsorted": {
                         "type": "boolean"
                     }
                 }

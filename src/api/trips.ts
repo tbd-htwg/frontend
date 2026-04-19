@@ -11,7 +11,7 @@ import type {
   UserResponse,
 } from '../types/api'
 import { requestJson, requestVoid } from './client'
-import { hrefForResource, idFromEntity, paginatedItems } from './hal'
+import { hrefForResource, idFromEntity, idFromHref, paginatedItems } from './hal'
 
 type TripEntityBody = {
   title?: string
@@ -22,12 +22,14 @@ type TripEntityBody = {
 }
 
 function toTripSummary(entity: HalEntity<TripEntityBody>): TripListItemResponse {
+  const userIdRaw = idFromHref(entity._links?.user?.href)
   return {
     id: idFromEntity(entity),
     title: entity.title ?? '',
     destination: entity.destination ?? '',
     startDate: entity.startDate ?? '',
     shortDescription: entity.shortDescription ?? '',
+    ...(Number.isFinite(userIdRaw) ? { userId: userIdRaw } : {}),
   }
 }
 
@@ -132,19 +134,6 @@ export async function searchTrips(
     totalItems: raw.totalElements ?? items.length,
     totalPages,
   }
-}
-
-export async function listAllTripsByUserId(userId: number): Promise<TripListItemResponse[]> {
-  const firstPage = await findTripsByUserId(userId, 1, 100)
-  if (firstPage.totalPages <= 1) return firstPage.items
-
-  const remainingPages = await Promise.all(
-    Array.from({ length: firstPage.totalPages - 1 }, (_, index) =>
-      findTripsByUserId(userId, index + 2, firstPage.pageSize || 100),
-    ),
-  )
-
-  return firstPage.items.concat(remainingPages.flatMap((page) => page.items))
 }
 
 export function countTripLikes(tripId: number): Promise<number> {

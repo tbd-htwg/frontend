@@ -36,7 +36,6 @@ import {
   listTripLocationsByTripId,
 } from '../api/tripLocations'
 import { countTripLikes, deleteTrip, getTrip, getTripOwner } from '../api/trips'
-import { getUserById } from '../api/users'
 import { ApiError } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
@@ -306,12 +305,9 @@ export function TripDetailPage() {
           )
         }
         if (user) {
-          const [u, likedTrips] = await Promise.all([
-            getUserById(user.id),
-            listLikedTripIds(user.id),
-          ])
+          const likedTrips = await listLikedTripIds(user.id)
           if (cancelled) return
-          setIsOwner(u.trips.some((x) => x.id === tripId))
+          setIsOwner(owner.id === user.id)
           setLikedByMe(likedTrips.includes(tripId))
         } else {
           setIsOwner(false)
