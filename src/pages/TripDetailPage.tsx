@@ -22,7 +22,7 @@ import {
 } from '../api/accommodations'
 import { createComment, listCommentsByTripId } from '../api/comments'
 import { createLocation, searchLocationsByNameContaining } from '../api/locations'
-import { likeTrip, listLikedTripIds, unlikeTrip } from '../api/likes'
+import { isTripLikedByUser, likeTrip, unlikeTrip } from '../api/likes'
 import {
   addTripTransport,
   createTransport,
@@ -305,10 +305,10 @@ export function TripDetailPage() {
           )
         }
         if (user) {
-          const likedTrips = await listLikedTripIds(user.id)
+          const likedByUser = await isTripLikedByUser(user.id, tripId)
           if (cancelled) return
           setIsOwner(owner.id === user.id)
-          setLikedByMe(likedTrips.includes(tripId))
+          setLikedByMe(likedByUser)
         } else {
           setIsOwner(false)
           setLikedByMe(false)
@@ -369,11 +369,11 @@ export function TripDetailPage() {
       } else {
         await likeTrip(user.id, trip.id)
       }
-      const [likedTrips, likes] = await Promise.all([
-        listLikedTripIds(user.id),
+      const [likedByUser, likes] = await Promise.all([
+        isTripLikedByUser(user.id, trip.id),
         countTripLikes(trip.id),
       ])
-      setLikedByMe(likedTrips.includes(trip.id))
+      setLikedByMe(likedByUser)
       setLikeCount(likes)
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Could not update like.')
