@@ -5,10 +5,17 @@ import { faPenToSquare } from '@fortawesome/free-solid-svg-icons'
 import { listTrips, searchTrips } from '../api/trips'
 import { ApiError } from '../api/client'
 import { PaginationControls } from '../components/PaginationControls'
-import { useOwnedTripIds } from '../hooks/useOwnedTripIds'
+import { useAuth } from '../context/AuthContext'
 import type { PaginatedResponse, TripListItemResponse, TripSearchResult } from '../types/api'
 
 const PAGE_SIZE = 10
+
+function isCurrentUserTrip(
+  user: { id: number } | null,
+  trip: { userId?: number },
+): boolean {
+  return user != null && trip.userId != null && trip.userId === user.id
+}
 
 function formatDate(iso: string) {
   try {
@@ -32,7 +39,7 @@ export function HomePage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { ownedTripIds } = useOwnedTripIds()
+  const { user } = useAuth()
 
   useEffect(() => {
     const q = query.trim()
@@ -180,7 +187,7 @@ export function HomePage() {
                         </p>
                       ) : null}
                     </div>
-                    {ownedTripIds.has(t.id) && (
+                    {isCurrentUserTrip(user, t) && (
                       <Link
                         to={`/trips/${t.id}/edit`}
                         aria-label={`Edit trip ${t.title}`}
@@ -209,7 +216,7 @@ export function HomePage() {
                         {t.destination} · {formatDate(t.startDate)}
                       </p>
                     </div>
-                    {ownedTripIds.has(t.id) && (
+                    {isCurrentUserTrip(user, t) && (
                       <Link
                         to={`/trips/${t.id}/edit`}
                         aria-label={`Edit trip ${t.title}`}

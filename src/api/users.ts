@@ -9,7 +9,6 @@ import type {
 } from '../types/api'
 import { requestJson, requestVoid } from './client'
 import { embeddedItems, idFromEntity } from './hal'
-import { listAllTripsByUserId } from './trips'
 
 type UserEntityBody = {
   email?: string
@@ -56,14 +55,10 @@ export async function findUserByEmail(email: string): Promise<UserResponse | nul
 }
 
 export async function getUserById(id: number): Promise<UserDetailsResponse> {
-  const [entity, trips] = await Promise.all([
-    requestJson<HalEntity<UserEntityBody>>(`/users/${id}`, { method: 'GET' }),
-    listAllTripsByUserId(id),
-  ])
-  return {
-    ...toUser(entity),
-    trips,
-  }
+  const entity = await requestJson<HalEntity<UserEntityBody>>(`/users/${id}`, {
+    method: 'GET',
+  })
+  return toUser(entity)
 }
 
 export async function replaceUser(
