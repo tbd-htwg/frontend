@@ -7,7 +7,7 @@ import type {
   UserPutRequest,
   UserResponse,
 } from '../types/api'
-import { requestJson, requestVoid } from './client'
+import { ApiError, requestJson, requestVoid } from './client'
 import { embeddedItems, idFromEntity } from './hal'
 
 type UserEntityBody = {
@@ -49,8 +49,26 @@ export async function findUserByEmail(email: string): Promise<UserResponse | nul
       { method: 'GET' },
     )
     return toUser(entity)
-  } catch {
-    return null
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return null
+    throw e
+  }
+}
+
+/**
+ * Indexed lookup by unique `name`. Avoids loading the entire users collection
+ * just to find one user (see audit: category A, login flow).
+ */
+export async function findUserByName(name: string): Promise<UserResponse | null> {
+  try {
+    const entity = await requestJson<HalEntity<UserEntityBody>>(
+      `/users/search/findByName?name=${encodeURIComponent(name)}`,
+      { method: 'GET' },
+    )
+    return toUser(entity)
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return null
+    throw e
   }
 }
 
