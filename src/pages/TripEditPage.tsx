@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { getTrip, replaceTrip } from '../api/trips'
-import { getUserById } from '../api/users'
+import { getTrip, getTripOwner, replaceTrip } from '../api/trips'
 import { ApiError } from '../api/client'
 import { TripForm, type TripFormValues } from '../components/TripForm'
 import { useAuth } from '../context/AuthContext'
@@ -28,10 +27,10 @@ export function TripEditPage() {
     setInitial(null)
     setAllowed(false)
 
-    Promise.all([getTrip(tripId), getUserById(user.id)])
-      .then(([t, u]) => {
+    Promise.all([getTrip(tripId), getTripOwner(tripId)])
+      .then(([t, owner]) => {
         if (cancelled) return
-        const own = u.trips.some((x) => x.id === tripId)
+        const own = owner.id === user.id
         setAllowed(own)
         if (own) {
           setInitial({
