@@ -52,6 +52,8 @@ export type TripListItemResponse = {
   destination: string
   startDate: string
   shortDescription: string
+  /** Present when returned from Spring Data REST (HAL `user` link). */
+  userId?: number
 }
 
 /** Full-text trip search hit (GET /api/search/trips). */
@@ -61,6 +63,8 @@ export type TripSearchResult = {
   author: string
   shortDescription: string
   locations: string[]
+  /** Author user id when returned by the search API. */
+  userId?: number
 }
 
 export type TripDetailsResponse = TripListItemResponse & {
@@ -80,9 +84,8 @@ export type TripPutRequest = TripCreateRequest
 
 export type TripPatchRequest = Partial<TripCreateRequest>
 
-export type UserDetailsResponse = UserResponse & {
-  trips: TripListItemResponse[]
-}
+/** Same shape as {@link UserResponse}; kept as a named type for user-profile views. */
+export type UserDetailsResponse = UserResponse
 
 export type LocationResponse = {
   id: number
