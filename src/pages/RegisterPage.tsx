@@ -28,7 +28,8 @@ export function RegisterPage() {
     <div className="mx-auto max-w-md">
       <h1 className="text-2xl font-semibold text-slate-900">Register</h1>
       <p className="mt-1 text-sm text-slate-600">
-        Create a profile with your email and name. No password is required.
+        Create a profile with your email and display name. You will be signed in automatically (no password). Prefer Google?
+        Use <Link to="/login" className="font-medium text-slate-900 underline">Log in</Link> instead.
       </p>
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         {error && (

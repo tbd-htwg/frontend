@@ -7,14 +7,17 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { findUserByName, registerUser } from '../api/users'
+import { authDevLogin, authGoogle, authMe, authRegister, type LoginResponse } from '../api/auth'
+import { SESSION_STORAGE_KEY } from '../auth/sessionStorageKey'
 import type { UserResponse } from '../types/api'
-
-const STORAGE_KEY = 'tripPlannerUser'
 
 type AuthContextValue = {
   user: UserResponse | null
-  login: (name: string) => Promise<void>
+  accessToken: string | null
+  /** Sign in with Google (pass GIS credential JWT). */
+  loginWithGoogle: (credential: string) => Promise<void>
+  /** Local Spring profile only: sign in without Google. */
+  loginDev: (email: string, name?: string) => Promise<void>
   register: (email: string, name: string) => Promise<void>
   logout: () => void
   updateSessionUser: (u: UserResponse) => void
@@ -22,61 +25,92 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-function loadStoredUser(): UserResponse | null {
+function loadStoredSession(): LoginResponse | null {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY)
+    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY)
     if (!raw) return null
-    const parsed = JSON.parse(raw) as UserResponse
-    if (
-      typeof parsed?.id === 'number' &&
-      typeof parsed?.email === 'string' &&
-      typeof parsed?.name === 'string' &&
-      typeof parsed?.imageUrl === 'string' &&
-      typeof parsed?.description === 'string'
-    ) {
-      return parsed
+    const parsed = JSON.parse(raw) as { accessToken?: unknown; user?: unknown }
+    if (typeof parsed.accessToken !== 'string' || !parsed.user || typeof parsed.user !== 'object') {
+      return null
     }
-    return null
+    const u = parsed.user as UserResponse
+    if (
+      typeof u.id !== 'number' ||
+      typeof u.email !== 'string' ||
+      typeof u.name !== 'string' ||
+      typeof u.imageUrl !== 'string' ||
+      typeof u.description !== 'string'
+    ) {
+      return null
+    }
+    return { tokenType: 'Bearer', accessToken: parsed.accessToken, user: u }
   } catch {
     return null
   }
 }
 
-function persistUser(user: UserResponse | null) {
-  if (user) {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(user))
+function persistSession(accessToken: string | null, user: UserResponse | null) {
+  if (accessToken && user) {
+    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({ accessToken, user }))
   } else {
-    sessionStorage.removeItem(STORAGE_KEY)
+    sessionStorage.removeItem(SESSION_STORAGE_KEY)
   }
 }
 
+function applyLoginResponse(setAccessToken: (t: string) => void, setUser: (u: UserResponse) => void, r: LoginResponse) {
+  setAccessToken(r.accessToken)
+  setUser(r.user)
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UserResponse | null>(() => loadStoredUser())
+  const initial = loadStoredSession()
+  const [accessToken, setAccessToken] = useState<string | null>(initial?.accessToken ?? null)
+  const [user, setUser] = useState<UserResponse | null>(initial?.user ?? null)
 
   useEffect(() => {
-    persistUser(user)
-  }, [user])
+    persistSession(accessToken, user)
+  }, [accessToken, user])
 
-  const login = useCallback(async (name: string) => {
-    const trimmed = name.trim()
-    const found = await findUserByName(trimmed)
-    if (!found) {
-      throw new Error('No user found with that name.')
+  useEffect(() => {
+    if (!accessToken) return
+    let cancelled = false
+    authMe()
+      .then((u) => {
+        if (!cancelled) setUser(u)
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAccessToken(null)
+          setUser(null)
+        }
+      })
+    return () => {
+      cancelled = true
     }
-    setUser(found)
+  }, [accessToken])
+
+  const loginWithGoogle = useCallback(async (credential: string) => {
+    const r = await authGoogle(credential)
+    applyLoginResponse(setAccessToken, setUser, r)
+  }, [])
+
+  const loginDev = useCallback(async (email: string, name?: string) => {
+    const r = await authDevLogin(email, name)
+    applyLoginResponse(setAccessToken, setUser, r)
   }, [])
 
   const register = useCallback(async (email: string, name: string) => {
-    const created = await registerUser({
+    const r = await authRegister({
       email: email.trim(),
       name: name.trim(),
-      description: '',
       imageUrl: '',
+      description: '',
     })
-    setUser(created)
+    applyLoginResponse(setAccessToken, setUser, r)
   }, [])
 
   const logout = useCallback(() => {
+    setAccessToken(null)
     setUser(null)
   }, [])
 
@@ -87,12 +121,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       user,
-      login,
+      accessToken,
+      loginWithGoogle,
+      loginDev,
       register,
       logout,
       updateSessionUser,
     }),
-    [user, login, register, logout, updateSessionUser],
+    [user, accessToken, loginWithGoogle, loginDev, register, logout, updateSessionUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

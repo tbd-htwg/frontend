@@ -1,3 +1,17 @@
+import { SESSION_STORAGE_KEY } from '../auth/sessionStorageKey'
+
+function bearerFromSessionStorage(): string | undefined {
+  if (typeof sessionStorage === 'undefined') return undefined
+  try {
+    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY)
+    if (!raw) return undefined
+    const parsed = JSON.parse(raw) as { accessToken?: unknown }
+    return typeof parsed.accessToken === 'string' ? parsed.accessToken : undefined
+  } catch {
+    return undefined
+  }
+}
+
 /**
  * Unset/empty uses same-origin `/api/v2` (Vite dev proxy; Caddy in production).
  * For absolute URLs, if no path is provided, `/api/v2` is appended automatically.
@@ -65,7 +79,15 @@ export function resolveApiUrl(path: string): string {
 }
 
 async function request(path: string, init?: RequestInit): Promise<Response> {
-  const res = await fetch(resolveApiUrl(path), init)
+  const headers = new Headers(init?.headers)
+  if (init?.body != null && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+  const token = bearerFromSessionStorage()
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+  const res = await fetch(resolveApiUrl(path), { ...init, headers })
   if (!res.ok) {
     const errText = await res.text()
     throw new ApiError(
