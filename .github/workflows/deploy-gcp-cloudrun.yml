@@ -49,10 +49,14 @@ jobs:
           VITE_API_BASE_URL: ${{ vars.GCP_FRONTEND_API_BASE_URL }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.TRIPPLANNING_AUTH_GOOGLE_CLIENT_ID }}
         run: |
+          test -n "${VITE_GOOGLE_CLIENT_ID}" || {
+            echo "Missing required secret: TRIPPLANNING_AUTH_GOOGLE_CLIENT_ID"
+            exit 1
+          }
           echo "Using VITE_API_BASE_URL='${{ vars.GCP_FRONTEND_API_BASE_URL }}'"
           {
             echo "VITE_API_BASE_URL=${{ vars.GCP_FRONTEND_API_BASE_URL }}"
-            echo "VITE_GOOGLE_CLIENT_ID=${{ secrets.TRIPPLANNING_AUTH_GOOGLE_CLIENT_ID }}"
+            echo "VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}"
           } > .env.production
           npm run build
 
