@@ -26,6 +26,8 @@ jobs:
     env:
       PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
       BACKEND_SERVICE: ${{ vars.GCP_BACKEND_SERVICE }}
+      WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
+      DEPLOYER_SA_EMAIL: ${{ vars.GCP_FRONTEND_DEPLOYER_SA_EMAIL }}
 
     # ------------------------------------------------------------
     # Build frontend React/Vite app with API base URL baked at build-time,
@@ -63,7 +65,8 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOYER_SA_EMAIL }}
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v2
