@@ -99,6 +99,20 @@ export type TripLocationResponse = {
   description: string
   imageUrl: string
   locationName: string
+  startDate?: string
+  endDate?: string
+}
+
+export type SignedImageUploadRequest = {
+  fileName: string
+  contentType: string
+}
+
+export type SignedImageUploadResponse = {
+  uploadUrl: string
+  objectUrl: string
+  objectName: string
+  contentType: string
 }
 
 export type TransportResponse = {

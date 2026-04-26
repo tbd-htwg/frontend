@@ -1,13 +1,15 @@
 import type {
   HalCollection,
   HalEntity,
+  SignedImageUploadRequest,
+  SignedImageUploadResponse,
   UserCreateRequest,
   UserDetailsResponse,
   UserPatchRequest,
   UserPutRequest,
   UserResponse,
 } from '../types/api'
-import { ApiError, requestJson, requestVoid } from './client'
+import { ApiError, requestJson, requestVoid, uploadFileToSignedUrl } from './client'
 import { embeddedItems, idFromEntity } from './hal'
 
 type UserEntityBody = {
@@ -103,4 +105,20 @@ export async function patchUser(
 
 export function deleteUser(id: number): Promise<void> {
   return requestVoid(`/users/${id}`, { method: 'DELETE' })
+}
+
+export async function uploadUserProfileImage(id: number, file: File): Promise<string> {
+  const contentType = file.type?.trim()
+  if (!contentType.startsWith('image/')) {
+    throw new Error('Only image files are allowed.')
+  }
+  const signed = await requestJson<SignedImageUploadResponse>(`/users/${id}/images`, {
+    method: 'POST',
+    body: JSON.stringify({
+      fileName: file.name,
+      contentType,
+    } satisfies SignedImageUploadRequest),
+  })
+  await uploadFileToSignedUrl(signed.uploadUrl, file, signed.contentType)
+  return signed.objectUrl
 }

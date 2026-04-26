@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faPenToSquare, faPlus, faUser } from '@fortawesome/free-solid-svg-icons'
 import { findTripsByUserId } from '../api/trips'
-import { getUserById, patchUser } from '../api/users'
+import { getUserById, patchUser, uploadUserProfileImage } from '../api/users'
 import { ApiError } from '../api/client'
 import { PaginationControls } from '../components/PaginationControls'
 import { useAuth } from '../context/AuthContext'
@@ -36,6 +36,7 @@ export function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [showEditForm, setShowEditForm] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
+  const [uploadingImage, setUploadingImage] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -106,6 +107,28 @@ export function ProfilePage() {
     }
   }
 
+  async function handleProfileImageSelected(file?: File) {
+    if (!user || !file) return
+    setSaveError(null)
+    setUploadingImage(true)
+    try {
+      await uploadUserProfileImage(user.id, file)
+      const [updatedUser, freshTripPage] = await Promise.all([
+        getUserById(user.id),
+        findTripsByUserId(user.id, currentPage, PAGE_SIZE),
+      ])
+      updateSessionUser(updatedUser)
+      setDetails(updatedUser)
+      setTripPage(freshTripPage)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not upload profile image.'
+      setSaveError(message)
+      alert(message)
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
   if (!user) return null
 
   const totalTrips = tripPage?.totalItems ?? 0
@@ -135,6 +158,34 @@ export function ProfilePage() {
               <p>{details.email}</p>
               <p>{details.description || 'No profile description yet.'}</p>
             </div>
+          </div>
+          <div className="mt-4">
+            {details.imageUrl ? (
+              <img
+                src={details.imageUrl}
+                alt={`${details.name}'s profile`}
+                className="h-40 w-40 rounded-full border border-slate-300 object-cover"
+                loading="lazy"
+              />
+            ) : (
+              <div className="flex h-40 w-40 items-center justify-center rounded-full border border-dashed border-slate-400 text-sm text-slate-500">
+                No profile image
+              </div>
+            )}
+            <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              {uploadingImage ? 'Uploading image...' : 'Upload profile image'}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={uploadingImage}
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  void handleProfileImageSelected(file)
+                  e.currentTarget.value = ''
+                }}
+              />
+            </label>
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-600">
