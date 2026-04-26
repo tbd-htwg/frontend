@@ -149,3 +149,25 @@ export async function requestText(
   if (res.status === 204) return ''
   return res.text()
 }
+
+export async function uploadFileToSignedUrl(
+  uploadUrl: string,
+  file: File,
+  contentType: string,
+): Promise<void> {
+  const res = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': contentType,
+    },
+    body: file,
+  })
+  if (!res.ok) {
+    const errText = await res.text()
+    throw new ApiError(
+      errText || res.statusText || 'Signed upload failed',
+      res.status,
+      errText,
+    )
+  }
+}

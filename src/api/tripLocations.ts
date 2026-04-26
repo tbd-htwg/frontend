@@ -2,9 +2,11 @@ import type {
   HalCollection,
   HalEntity,
   LocationResponse,
+  SignedImageUploadRequest,
+  SignedImageUploadResponse,
   TripLocationResponse,
 } from '../types/api'
-import { requestJson, requestVoid } from './client'
+import { requestJson, requestVoid, uploadFileToSignedUrl } from './client'
 import {
   embeddedItems,
   hrefForResource,
@@ -17,6 +19,8 @@ import { getLocationById } from './locations'
 type TripLocationEntityBody = {
   description?: string
   imageUrl?: string
+  startDate?: string
+  endDate?: string
 }
 
 function toTripLocation(entity: HalEntity<TripLocationEntityBody>): TripLocationResponse {
@@ -26,6 +30,8 @@ function toTripLocation(entity: HalEntity<TripLocationEntityBody>): TripLocation
     locationId: idFromHref(entity._links?.location?.href),
     description: entity.description ?? '',
     imageUrl: entity.imageUrl ?? '',
+    startDate: entity.startDate,
+    endDate: entity.endDate,
     locationName: '',
   }
 }
@@ -74,6 +80,8 @@ export async function addTripLocation(input: {
   tripId: number
   location: LocationResponse
   description: string
+  startDate: string
+  endDate: string
 }): Promise<TripLocationResponse> {
   const entity = await requestJson<HalEntity<TripLocationEntityBody>>('/trip-locations', {
     method: 'POST',
@@ -82,6 +90,8 @@ export async function addTripLocation(input: {
       location: hrefForResource(`/locations/${input.location.id}`),
       description: input.description,
       imageUrl: '',
+      startDate: input.startDate,
+      endDate: input.endDate,
     }),
   })
   return {
@@ -92,4 +102,26 @@ export async function addTripLocation(input: {
 
 export function deleteTripLocation(id: number): Promise<void> {
   return requestVoid(`/trip-locations/${id}`, { method: 'DELETE' })
+}
+
+export async function uploadTripLocationImage(
+  tripLocationId: number,
+  file: File,
+): Promise<string> {
+  const contentType = file.type?.trim()
+  if (!contentType.startsWith('image/')) {
+    throw new Error('Only image files are allowed.')
+  }
+  const signed = await requestJson<SignedImageUploadResponse>(
+    `/trip-locations/${tripLocationId}/images`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        fileName: file.name,
+        contentType,
+      } satisfies SignedImageUploadRequest),
+    },
+  )
+  await uploadFileToSignedUrl(signed.uploadUrl, file, signed.contentType)
+  return signed.objectUrl
 }
