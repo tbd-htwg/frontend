@@ -107,6 +107,10 @@ export function deleteUser(id: number): Promise<void> {
   return requestVoid(`/users/${id}`, { method: 'DELETE' })
 }
 
+export function deleteUserProfileImage(userId: number): Promise<void> {
+  return requestVoid(`/users/${userId}/images`, { method: 'DELETE' })
+}
+
 export async function uploadUserProfileImage(id: number, file: File): Promise<string> {
   const contentType = file.type?.trim()
   if (!contentType.startsWith('image/')) {

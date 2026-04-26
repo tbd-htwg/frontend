@@ -4,6 +4,7 @@ import type {
   LocationResponse,
   SignedImageUploadRequest,
   SignedImageUploadResponse,
+  TripLocationPatchRequest,
   TripLocationResponse,
 } from '../types/api'
 import { requestJson, requestVoid, uploadFileToSignedUrl } from './client'
@@ -102,6 +103,22 @@ export async function addTripLocation(input: {
 
 export function deleteTripLocation(id: number): Promise<void> {
   return requestVoid(`/trip-locations/${id}`, { method: 'DELETE' })
+}
+
+export async function patchTripLocation(
+  id: number,
+  body: TripLocationPatchRequest,
+  locationName: string,
+): Promise<TripLocationResponse> {
+  const entity = await requestJson<HalEntity<TripLocationEntityBody>>(`/trip-locations/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  })
+  return { ...toTripLocation(entity), locationName }
+}
+
+export function deleteTripLocationImage(tripLocationId: number): Promise<void> {
+  return requestVoid(`/trip-locations/${tripLocationId}/images`, { method: 'DELETE' })
 }
 
 export async function uploadTripLocationImage(

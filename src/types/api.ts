@@ -103,6 +103,13 @@ export type TripLocationResponse = {
   endDate?: string
 }
 
+/** Partial update for a trip-location (per-trip visit), not the shared location record. */
+export type TripLocationPatchRequest = {
+  description?: string
+  startDate?: string
+  endDate?: string
+}
+
 export type SignedImageUploadRequest = {
   fileName: string
   contentType: string

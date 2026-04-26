@@ -2,6 +2,13 @@
 
 This directory contains the CORS policy for browser uploads to signed Google Cloud Storage URLs and the full setup steps for impersonated URL signing.
 
+## Service account setup
+
+- **Signer service account:** Create a dedicated service account whose credentials are used only to **sign** GCS V4 URLs. Grant that account **`roles/storage.objectCreator`** (and usually **`roles/storage.objectViewer`**) on the image bucket so signed `PUT`s succeed (step 5 below).
+- **Runtime impersonates signer:** The **Cloud Run runtime** service account should **not** hold broad storage admin for signing; instead grant it **`roles/iam.serviceAccountTokenCreator`** on the **signer** service account so the backend can impersonate the signer when minting URLs (step 4). Point **`SPRING_CLOUD_GCP_IMPERSONATE_SERVICE_ACCOUNT`** at the signer email in the backend environment (step 8).
+- **Local development:** For Application Default Credentials on a workstation, grant **TokenCreator** on the signer to your **user** principal as well (second command block in step 4).
+- **API:** Enable **`iamcredentials.googleapis.com`** on the project before impersonation-based signing works (step 3).
+
 ## Files
 
 - `cors.json`: CORS policy for direct browser uploads (`PUT`) and image reads (`GET`/`HEAD`).
