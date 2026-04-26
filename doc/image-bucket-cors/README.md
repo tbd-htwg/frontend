@@ -5,7 +5,8 @@ This directory contains the CORS policy for browser uploads to signed Google Clo
 ## Service account setup
 
 - **Signer service account:** Create a dedicated service account whose credentials are used only to **sign** GCS V4 URLs. Grant that account **`roles/storage.objectCreator`** (and usually **`roles/storage.objectViewer`**) on the image bucket so signed `PUT`s succeed (step 5 below).
-- **Runtime impersonates signer:** The **Cloud Run runtime** service account should **not** hold broad storage admin for signing; instead grant it **`roles/iam.serviceAccountTokenCreator`** on the **signer** service account so the backend can impersonate the signer when minting URLs (step 4). Point **`SPRING_CLOUD_GCP_IMPERSONATE_SERVICE_ACCOUNT`** at the signer email in the backend environment (step 8).
+- **Runtime deletes objects:** The **Cloud Run runtime** service account performs **server-side `storage.delete`** when users remove profile or trip-location images (`DELETE …/images`). It needs **`storage.objects.delete`** on the image bucket (step 5b). Without it, the API still clears the URL in the database but orphaned objects remain in GCS. A practical predefined role is **`roles/storage.objectAdmin`** on the bucket for that SA only; for least privilege, use a **custom role** that includes `storage.objects.delete` (and optionally `storage.objects.get`).
+- **Runtime impersonates signer:** Grant the **Cloud Run runtime** service account **`roles/iam.serviceAccountTokenCreator`** on the **signer** service account so the backend can impersonate the signer when minting signed URLs (step 4), rather than using the runtime identity to sign. Set **`SPRING_CLOUD_GCP_IMPERSONATE_SERVICE_ACCOUNT`** to the signer email in the backend environment (step 8).
 - **Local development:** For Application Default Credentials on a workstation, grant **TokenCreator** on the signer to your **user** principal as well (second command block in step 4).
 - **API:** Enable **`iamcredentials.googleapis.com`** on the project before impersonation-based signing works (step 3).
 
@@ -71,6 +72,28 @@ gcloud storage buckets add-iam-policy-binding "gs://${BUCKET_NAME}" \
   --member="serviceAccount:${SIGNER_SA}" \
   --role="roles/storage.objectViewer"
 ```
+
+## 5b) Grant runtime SA object delete (server-side image removal)
+
+The backend removes blobs with the **Cloud Run runtime** identity (Application Default Credentials), not the signer. Grant that identity permission to delete objects in the image bucket.
+
+Using the predefined role that includes delete (adjust `RUN_SA` / `RUN_SA_PROD` per environment):
+
+```bash
+gcloud storage buckets add-iam-policy-binding "gs://${BUCKET_NAME}" \
+  --member="serviceAccount:${RUN_SA}" \
+  --role="roles/storage.objectAdmin"
+```
+
+Production example:
+
+```bash
+gcloud storage buckets add-iam-policy-binding "gs://${BUCKET_NAME}" \
+  --member="serviceAccount:${RUN_SA_PROD}" \
+  --role="roles/storage.objectAdmin"
+```
+
+For **least privilege**, create a custom role with only `storage.objects.delete` (and `storage.objects.get` if you add existence checks), bind that role to `RUN_SA` on the bucket, and omit `objectAdmin` if you prefer not to grant full object lifecycle control to the runtime SA.
 
 ## 6) Apply CORS policy to image bucket
 
