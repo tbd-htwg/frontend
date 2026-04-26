@@ -99,6 +99,20 @@ export function UserProfilePage() {
               <p>{profile.description || 'No profile description yet.'}</p>
             </div>
           </div>
+          <div className="mt-4">
+            {profile.imageUrl ? (
+              <img
+                src={profile.imageUrl}
+                alt={`${profile.name}'s profile`}
+                className="h-40 w-40 rounded-full border border-slate-300 object-cover"
+                loading="lazy"
+              />
+            ) : (
+              <div className="flex h-40 w-40 items-center justify-center rounded-full border border-dashed border-slate-400 text-sm text-slate-500">
+                No profile image
+              </div>
+            )}
+          </div>
           {user?.id === profile.id && (
             <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-600">
               <FontAwesomeIcon

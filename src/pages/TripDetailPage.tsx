@@ -33,7 +33,10 @@ import {
 import {
   addTripLocation,
   deleteTripLocation,
+  deleteTripLocationImage,
   listTripLocationsByTripId,
+  patchTripLocation,
+  uploadTripLocationImage,
 } from '../api/tripLocations'
 import { countTripLikes, deleteTrip, getTrip, getTripOwner } from '../api/trips'
 import { ApiError } from '../api/client'
@@ -55,6 +58,27 @@ function formatDate(iso: string) {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
+    })
+  } catch {
+    return iso
+  }
+}
+
+function isoToDateInput(iso?: string): string {
+  if (!iso) return ''
+  const m = /^(\d{4}-\d{2}-\d{2})/.exec(iso)
+  return m?.[1] ?? iso.slice(0, 10)
+}
+
+function formatTripLocationDateTime(iso?: string): string {
+  if (!iso) return '—'
+  try {
+    return new Date(iso).toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     })
   } catch {
     return iso
@@ -133,8 +157,19 @@ export function TripDetailPage() {
   const [newLocationName, setNewLocationName] = useState('')
   const [existingLocationDescription, setExistingLocationDescription] = useState('')
   const [newLocationDescription, setNewLocationDescription] = useState('')
+  const [existingLocationStartDate, setExistingLocationStartDate] = useState('')
+  const [existingLocationEndDate, setExistingLocationEndDate] = useState('')
+  const [newLocationStartDate, setNewLocationStartDate] = useState('')
+  const [newLocationEndDate, setNewLocationEndDate] = useState('')
   const [savingLocation, setSavingLocation] = useState(false)
   const [removingLocationId, setRemovingLocationId] = useState<number | null>(null)
+  const [removingLocationImageId, setRemovingLocationImageId] = useState<number | null>(null)
+  const [uploadingLocationId, setUploadingLocationId] = useState<number | null>(null)
+  const [editingTripLocationId, setEditingTripLocationId] = useState<number | null>(null)
+  const [editTripLocationDescription, setEditTripLocationDescription] = useState('')
+  const [editTripLocationStartDate, setEditTripLocationStartDate] = useState('')
+  const [editTripLocationEndDate, setEditTripLocationEndDate] = useState('')
+  const [savingTripLocationEditId, setSavingTripLocationEditId] = useState<number | null>(null)
 
   const debouncedAccommodationSearch = useDebouncedValue(accommodationSearch, 300)
   const debouncedLocationSearch = useDebouncedValue(locationSearch, 300)
@@ -251,6 +286,10 @@ export function TripDetailPage() {
   }, [locationSearch, locationSuggestions])
 
   useEffect(() => {
+    if (!showTripManagement) setEditingTripLocationId(null)
+  }, [showTripManagement])
+
+  useEffect(() => {
     const q = transportSearch.trim().toLowerCase()
     if (!q) {
       setSelectedExistingTransport(null)
@@ -335,6 +374,14 @@ export function TripDetailPage() {
   }, [tripId])
 
   useEffect(() => {
+    if (!trip?.startDate) return
+    setExistingLocationStartDate((prev) => prev || trip.startDate)
+    setExistingLocationEndDate((prev) => prev || trip.startDate)
+    setNewLocationStartDate((prev) => prev || trip.startDate)
+    setNewLocationEndDate((prev) => prev || trip.startDate)
+  }, [trip?.startDate])
+
+  useEffect(() => {
     if (!showTripManagement) {
       setShowTransportAddPanel(false)
       setShowAccommodationAddPanel(false)
@@ -400,7 +447,18 @@ export function TripDetailPage() {
   }
 
   async function handleAddExistingLocation() {
-    if (!trip || !existingLocationDescription.trim()) return
+    if (
+      !trip ||
+      !existingLocationDescription.trim() ||
+      !existingLocationStartDate ||
+      !existingLocationEndDate
+    ) {
+      return
+    }
+    if (existingLocationEndDate < existingLocationStartDate) {
+      alert('End date must be on or after start date.')
+      return
+    }
     setSavingLocation(true)
     try {
       const selectedLocation = selectedExistingLocation
@@ -411,9 +469,18 @@ export function TripDetailPage() {
         tripId: trip.id,
         location: selectedLocation,
         description: existingLocationDescription.trim(),
+        startDate: `${existingLocationStartDate}T00:00:00`,
+        endDate: `${existingLocationEndDate}T23:59:59`,
       })
       setTripLocations((prev) => [...prev, created])
       setExistingLocationDescription('')
+      if (trip.startDate) {
+        setExistingLocationStartDate(trip.startDate)
+        setExistingLocationEndDate(trip.startDate)
+      } else {
+        setExistingLocationStartDate('')
+        setExistingLocationEndDate('')
+      }
       setLocationSearch('')
       setSelectedExistingLocation(null)
     } catch (err) {
@@ -424,7 +491,19 @@ export function TripDetailPage() {
   }
 
   async function handleCreateAndAddLocation() {
-    if (!trip || !newLocationName.trim() || !newLocationDescription.trim()) return
+    if (
+      !trip ||
+      !newLocationName.trim() ||
+      !newLocationDescription.trim() ||
+      !newLocationStartDate ||
+      !newLocationEndDate
+    ) {
+      return
+    }
+    if (newLocationEndDate < newLocationStartDate) {
+      alert('End date must be on or after start date.')
+      return
+    }
     setSavingLocation(true)
     try {
       const createdLocation = await createLocation(newLocationName.trim())
@@ -433,10 +512,19 @@ export function TripDetailPage() {
         tripId: trip.id,
         location: createdLocation,
         description: newLocationDescription.trim(),
+        startDate: `${newLocationStartDate}T00:00:00`,
+        endDate: `${newLocationEndDate}T23:59:59`,
       })
       setTripLocations((prev) => [...prev, created])
       setNewLocationName('')
       setNewLocationDescription('')
+      if (trip.startDate) {
+        setNewLocationStartDate(trip.startDate)
+        setNewLocationEndDate(trip.startDate)
+      } else {
+        setNewLocationStartDate('')
+        setNewLocationEndDate('')
+      }
       setLocationMode('existing')
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Could not create and add location.')
@@ -456,6 +544,78 @@ export function TripDetailPage() {
       alert(err instanceof Error ? err.message : 'Could not remove location.')
     } finally {
       setRemovingLocationId(null)
+    }
+  }
+
+  async function handleLocationImageSelected(entryId: number, file?: File) {
+    if (!isOwner || !file) return
+    setUploadingLocationId(entryId)
+    try {
+      const imageUrl = await uploadTripLocationImage(entryId, file)
+      setTripLocations((prev) =>
+        prev.map((entry) => (entry.id === entryId ? { ...entry, imageUrl } : entry)),
+      )
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Could not upload location image.')
+    } finally {
+      setUploadingLocationId(null)
+    }
+  }
+
+  async function handleRemoveLocationImage(entryId: number) {
+    if (!isOwner) return
+    if (!window.confirm('Remove this location image from the trip?')) return
+    setRemovingLocationImageId(entryId)
+    try {
+      await deleteTripLocationImage(entryId)
+      setTripLocations((prev) =>
+        prev.map((entry) => (entry.id === entryId ? { ...entry, imageUrl: '' } : entry)),
+      )
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Could not remove location image.')
+    } finally {
+      setRemovingLocationImageId(null)
+    }
+  }
+
+  function openTripLocationEdit(entry: TripLocationResponse) {
+    setEditingTripLocationId(entry.id)
+    setEditTripLocationDescription(entry.description)
+    setEditTripLocationStartDate(isoToDateInput(entry.startDate))
+    setEditTripLocationEndDate(isoToDateInput(entry.endDate))
+  }
+
+  function cancelTripLocationEdit() {
+    setEditingTripLocationId(null)
+  }
+
+  async function handleSaveTripLocationEdit(entry: TripLocationResponse) {
+    if (!isOwner) return
+    if (!editTripLocationStartDate || !editTripLocationEndDate) {
+      alert('Start and end date are required.')
+      return
+    }
+    if (editTripLocationEndDate < editTripLocationStartDate) {
+      alert('End date must be on or after start date.')
+      return
+    }
+    setSavingTripLocationEditId(entry.id)
+    try {
+      const updated = await patchTripLocation(
+        entry.id,
+        {
+          description: editTripLocationDescription.trim(),
+          startDate: `${editTripLocationStartDate}T00:00:00`,
+          endDate: `${editTripLocationEndDate}T23:59:59`,
+        },
+        entry.locationName,
+      )
+      setTripLocations((prev) => prev.map((e) => (e.id === entry.id ? updated : e)))
+      setEditingTripLocationId(null)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Could not save visit details.')
+    } finally {
+      setSavingTripLocationEditId(null)
     }
   }
 
@@ -685,21 +845,155 @@ export function TripDetailPage() {
                           <FontAwesomeIcon icon={faImage} aria-label="Location image placeholder" />
                           {entry.locationName}
                         </div>
-                        <p className="mt-1 text-sm text-slate-700">{entry.description}</p>
-                        <button
-                          type="button"
-                          disabled
-                          aria-label="Upload location image coming soon"
-                          className="mt-2 rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-500"
-                        >
-                          Upload location image (coming soon)
-                        </button>
+                        {editingTripLocationId === entry.id && isOwner && showTripManagement ? (
+                          <div className="mt-2 space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3">
+                            <p className="text-xs font-medium text-slate-600">
+                              Visit on this trip (not the shared location record)
+                            </p>
+                            <label className="block text-xs font-medium text-slate-700">
+                              Notes / description
+                              <textarea
+                                value={editTripLocationDescription}
+                                onChange={(e) => setEditTripLocationDescription(e.target.value)}
+                                rows={3}
+                                className="mt-1 w-full max-w-md rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900"
+                              />
+                            </label>
+                            <div className="flex flex-wrap gap-3">
+                              <label className="text-xs font-medium text-slate-700">
+                                Start date
+                                <input
+                                  type="date"
+                                  value={editTripLocationStartDate}
+                                  onChange={(e) => setEditTripLocationStartDate(e.target.value)}
+                                  className="mt-1 block rounded-md border border-slate-300 px-2 py-1 text-sm"
+                                />
+                              </label>
+                              <label className="text-xs font-medium text-slate-700">
+                                End date
+                                <input
+                                  type="date"
+                                  value={editTripLocationEndDate}
+                                  onChange={(e) => setEditTripLocationEndDate(e.target.value)}
+                                  className="mt-1 block rounded-md border border-slate-300 px-2 py-1 text-sm"
+                                />
+                              </label>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() => void handleSaveTripLocationEdit(entry)}
+                                disabled={savingTripLocationEditId === entry.id}
+                                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 hover:bg-slate-100 disabled:opacity-50"
+                              >
+                                {savingTripLocationEditId === entry.id ? 'Saving…' : 'Save'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={cancelTripLocationEdit}
+                                disabled={savingTripLocationEditId === entry.id}
+                                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <dl className="mt-2 grid max-w-md gap-1 text-xs text-slate-600 sm:grid-cols-2">
+                              <div>
+                                <dt className="font-medium text-slate-500">Start</dt>
+                                <dd className="text-slate-800">
+                                  {formatTripLocationDateTime(entry.startDate)}
+                                </dd>
+                              </div>
+                              <div>
+                                <dt className="font-medium text-slate-500">End</dt>
+                                <dd className="text-slate-800">
+                                  {formatTripLocationDateTime(entry.endDate)}
+                                </dd>
+                              </div>
+                            </dl>
+                            <p className="mt-2 text-sm text-slate-700 whitespace-pre-wrap">
+                              {entry.description?.trim()
+                                ? entry.description
+                                : 'No description for this visit yet.'}
+                            </p>
+                            {isOwner && showTripManagement && (
+                              <button
+                                type="button"
+                                onClick={() => openTripLocationEdit(entry)}
+                                disabled={
+                                  savingTripLocationEditId !== null ||
+                                  uploadingLocationId === entry.id ||
+                                  removingLocationImageId === entry.id
+                                }
+                                className="mt-2 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                              >
+                                Edit visit details
+                              </button>
+                            )}
+                          </>
+                        )}
+                        {entry.imageUrl ? (
+                          <img
+                            src={entry.imageUrl}
+                            alt={`Location ${entry.locationName}`}
+                            className="mt-2 h-40 w-full max-w-md rounded-md border border-slate-200 object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <p className="mt-2 text-xs text-slate-500">No image uploaded yet.</p>
+                        )}
+                        {isOwner && showTripManagement && (
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">
+                              {uploadingLocationId === entry.id
+                                ? 'Uploading image...'
+                                : 'Upload location image'}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                disabled={
+                                  uploadingLocationId === entry.id ||
+                                  removingLocationImageId === entry.id ||
+                                  editingTripLocationId === entry.id
+                                }
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0]
+                                  void handleLocationImageSelected(entry.id, file)
+                                  e.currentTarget.value = ''
+                                }}
+                              />
+                            </label>
+                            {entry.imageUrl ? (
+                              <button
+                                type="button"
+                                onClick={() => void handleRemoveLocationImage(entry.id)}
+                                disabled={
+                                  removingLocationImageId === entry.id ||
+                                  uploadingLocationId === entry.id ||
+                                  editingTripLocationId === entry.id
+                                }
+                                aria-label={`Remove image for ${entry.locationName}`}
+                                className="rounded-md border border-red-300 bg-white px-2 py-1 text-xs font-medium text-red-800 hover:bg-red-50 disabled:opacity-50"
+                              >
+                                {removingLocationImageId === entry.id ? 'Removing…' : 'Remove image'}
+                              </button>
+                            ) : null}
+                          </div>
+                        )}
                       </div>
                       {isOwner && showTripManagement && (
                         <button
                           type="button"
                           onClick={() => void handleRemoveLocation(entry.id)}
-                          disabled={removingLocationId === entry.id}
+                          disabled={
+                            removingLocationId === entry.id ||
+                            editingTripLocationId === entry.id ||
+                            savingTripLocationEditId === entry.id
+                          }
                           aria-label={`Remove location ${entry.locationName}`}
                           className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-800 hover:bg-red-50 disabled:opacity-50"
                         >
@@ -812,7 +1106,9 @@ export function TripDetailPage() {
                         disabled={
                           savingLocation ||
                           !selectedExistingLocation ||
-                          !existingLocationDescription.trim()
+                          !existingLocationDescription.trim() ||
+                          !existingLocationStartDate ||
+                          !existingLocationEndDate
                         }
                         aria-label={savingLocation ? 'Adding selected location' : 'Add selected location'}
                         className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
@@ -828,16 +1124,29 @@ export function TripDetailPage() {
                       onChange={(e) => setExistingLocationDescription(e.target.value)}
                       className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     />
-                    <div className="mt-2 flex items-center gap-2">
-                      <button
-                        type="button"
-                        disabled
-                        aria-label="Add location image coming soon"
-                        className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-500"
-                      >
-                        Add image (coming soon)
-                      </button>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <label className="text-xs text-slate-700">
+                        Start date
+                        <input
+                          type="date"
+                          value={existingLocationStartDate}
+                          onChange={(e) => setExistingLocationStartDate(e.target.value)}
+                          className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                        />
+                      </label>
+                      <label className="text-xs text-slate-700">
+                        End date
+                        <input
+                          type="date"
+                          value={existingLocationEndDate}
+                          onChange={(e) => setExistingLocationEndDate(e.target.value)}
+                          className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                        />
+                      </label>
                     </div>
+                    <p className="mt-2 text-xs text-slate-500">
+                      You can upload an image after adding the location.
+                    </p>
                   </div>
                 ) : (
                   <div className="rounded-md border border-slate-300 bg-white p-3 shadow-sm">
@@ -858,7 +1167,9 @@ export function TripDetailPage() {
                         disabled={
                           savingLocation ||
                           !newLocationName.trim() ||
-                          !newLocationDescription.trim()
+                          !newLocationDescription.trim() ||
+                          !newLocationStartDate ||
+                          !newLocationEndDate
                         }
                         aria-label={savingLocation ? 'Saving new location' : 'Create and add location'}
                         className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
@@ -874,16 +1185,29 @@ export function TripDetailPage() {
                       onChange={(e) => setNewLocationDescription(e.target.value)}
                       className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                     />
-                    <div className="mt-2 flex items-center gap-2">
-                      <button
-                        type="button"
-                        disabled
-                        aria-label="Add location image coming soon"
-                        className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-500"
-                      >
-                        Add image (coming soon)
-                      </button>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <label className="text-xs text-slate-700">
+                        Start date
+                        <input
+                          type="date"
+                          value={newLocationStartDate}
+                          onChange={(e) => setNewLocationStartDate(e.target.value)}
+                          className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                        />
+                      </label>
+                      <label className="text-xs text-slate-700">
+                        End date
+                        <input
+                          type="date"
+                          value={newLocationEndDate}
+                          onChange={(e) => setNewLocationEndDate(e.target.value)}
+                          className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                        />
+                      </label>
                     </div>
+                    <p className="mt-2 text-xs text-slate-500">
+                      You can upload an image after creating the location entry.
+                    </p>
                   </div>
                 )}
                 {locationMode === 'existing' &&
