@@ -5,7 +5,6 @@ import {
   faHouse,
   faRightFromBracket,
   faRightToBracket,
-  faUserPlus,
   faUser,
 } from '@fortawesome/free-solid-svg-icons'
 import { useAuth } from '../context/AuthContext'
@@ -67,12 +66,6 @@ export function Layout() {
                   <span className="inline-flex items-center gap-2">
                     <FontAwesomeIcon icon={faRightToBracket} aria-hidden="true" />
                     Log in
-                  </span>
-                </NavLink>
-                <NavLink to="/register" className={navLinkClass} aria-label="Register">
-                  <span className="inline-flex items-center gap-2">
-                    <FontAwesomeIcon icon={faUserPlus} aria-hidden="true" />
-                    Register
                   </span>
                 </NavLink>
               </>

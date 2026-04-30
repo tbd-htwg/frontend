@@ -3,7 +3,6 @@ import type {
   HalEntity,
   SignedImageUploadRequest,
   SignedImageUploadResponse,
-  UserCreateRequest,
   UserDetailsResponse,
   UserPatchRequest,
   UserPutRequest,
@@ -35,14 +34,6 @@ type UserCollection = HalCollection<HalEntity<UserEntityBody>>
 export async function listUsers(): Promise<UserResponse[]> {
   const model = await requestJson<UserCollection>('/users', { method: 'GET' })
   return embeddedItems(model, 'users').map(toUser)
-}
-
-export async function registerUser(body: UserCreateRequest): Promise<UserResponse> {
-  const entity = await requestJson<HalEntity<UserEntityBody>>('/users', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  })
-  return toUser(entity)
 }
 
 export async function findUserByEmail(email: string): Promise<UserResponse | null> {
