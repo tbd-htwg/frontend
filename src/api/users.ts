@@ -16,6 +16,7 @@ type UserEntityBody = {
   email?: string
   name?: string
   imageUrl?: string
+  profileImageUrl?: string
   description?: string
 }
 
@@ -24,7 +25,7 @@ function toUser(entity: HalEntity<UserEntityBody>): UserResponse {
     id: idFromEntity(entity),
     email: entity.email ?? '',
     name: entity.name ?? '',
-    imageUrl: entity.imageUrl ?? '',
+    imageUrl: entity.profileImageUrl ?? entity.imageUrl ?? '',
     description: entity.description ?? '',
   }
 }
@@ -75,10 +76,22 @@ export async function findUserByName(name: string): Promise<UserResponse | null>
 }
 
 export async function getUserById(id: number): Promise<UserDetailsResponse> {
-  const entity = await requestJson<HalEntity<UserEntityBody>>(`/users/${id}`, {
+  const profile = await requestJson<{
+    id?: number
+    name?: string
+    description?: string
+    profileImageUrl?: string
+    email?: string | null
+  }>(`/users/${id}/profile`, {
     method: 'GET',
   })
-  return toUser(entity)
+  return {
+    id: profile.id ?? id,
+    email: profile.email ?? '',
+    name: profile.name ?? '',
+    imageUrl: profile.profileImageUrl ?? '',
+    description: profile.description ?? '',
+  }
 }
 
 export async function replaceUser(
@@ -124,5 +137,5 @@ export async function uploadUserProfileImage(id: number, file: File): Promise<st
     } satisfies SignedImageUploadRequest),
   })
   await uploadFileToSignedUrl(signed.uploadUrl, file, signed.contentType)
-  return signed.objectUrl
+  return signed.signedReadUrl
 }

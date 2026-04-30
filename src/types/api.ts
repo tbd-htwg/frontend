@@ -52,6 +52,10 @@ export type TripListItemResponse = {
   destination: string
   startDate: string
   shortDescription: string
+  authorId?: number
+  authorName?: string
+  authorProfileImageUrl?: string
+  locations?: string[]
   /** Present when returned from Spring Data REST (HAL `user` link). */
   userId?: number
 }
@@ -69,6 +73,9 @@ export type TripSearchResult = {
 
 export type TripDetailsResponse = TripListItemResponse & {
   longDescription: string
+  tripLocations: TripLocationResponse[]
+  transports: TransportResponse[]
+  accommodations: AccommodationResponse[]
 }
 
 export type TripCreateRequest = {
@@ -97,10 +104,16 @@ export type TripLocationResponse = {
   tripId: number
   locationId: number
   description: string
-  imageUrl: string
+  images: TripLocationImageResponse[]
   locationName: string
+  address?: string
   startDate?: string
   endDate?: string
+}
+
+export type TripLocationImageResponse = {
+  id: number
+  signedReadUrl: string
 }
 
 /** Partial update for a trip-location (per-trip visit), not the shared location record. */
@@ -116,8 +129,9 @@ export type SignedImageUploadRequest = {
 }
 
 export type SignedImageUploadResponse = {
+  imageId?: number | null
   uploadUrl: string
-  objectUrl: string
+  signedReadUrl: string
   objectName: string
   contentType: string
 }

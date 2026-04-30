@@ -4,6 +4,7 @@ import type {
   LocationResponse,
   SignedImageUploadRequest,
   SignedImageUploadResponse,
+  TripLocationImageResponse,
   TripLocationPatchRequest,
   TripLocationResponse,
 } from '../types/api'
@@ -13,27 +14,40 @@ import {
   hrefForResource,
   idFromEntity,
   idFromHref,
-  pathFromHref,
 } from './hal'
-import { getLocationById } from './locations'
 
 type TripLocationEntityBody = {
   description?: string
-  imageUrl?: string
+  images?: TripLocationImageResponse[]
+  signedImageUrls?: string[]
+  locationName?: string
+  address?: string
   startDate?: string
   endDate?: string
 }
 
 function toTripLocation(entity: HalEntity<TripLocationEntityBody>): TripLocationResponse {
+  const projectedImages =
+    entity.images?.filter(
+      (image): image is TripLocationImageResponse =>
+        Number.isFinite(image.id) && typeof image.signedReadUrl === 'string' && image.signedReadUrl.length > 0,
+    ) ?? []
   return {
     id: idFromEntity(entity),
     tripId: idFromHref(entity._links?.trip?.href),
     locationId: idFromHref(entity._links?.location?.href),
     description: entity.description ?? '',
-    imageUrl: entity.imageUrl ?? '',
+    images:
+      projectedImages.length > 0
+        ? projectedImages
+        : (entity.signedImageUrls ?? []).map((url, index) => ({
+            id: -1 - index,
+            signedReadUrl: url,
+          })),
     startDate: entity.startDate,
     endDate: entity.endDate,
-    locationName: '',
+    locationName: entity.locationName ?? '',
+    address: entity.address,
   }
 }
 
@@ -50,7 +64,7 @@ export async function listTripLocationsByTripId(
   tripId: number,
 ): Promise<TripLocationResponse[]> {
   const model = await requestJson<TripLocationCollection>(
-    `/trip-locations/search/findByTripId?tripId=${tripId}&size=${TRIP_LOCATIONS_PAGE_SIZE}`,
+    `/trip-locations/search/findByTripId?tripId=${tripId}&size=${TRIP_LOCATIONS_PAGE_SIZE}&projection=withImages`,
     { method: 'GET' },
   )
   // Spring Data REST uses "trip-locations" as the HAL collection key.
@@ -58,23 +72,13 @@ export async function listTripLocationsByTripId(
     ...embeddedItems(model, 'trip-locations'),
     ...embeddedItems(model, 'tripLocations'),
   ]
-  return Promise.all(
-    rawEntries.map(async (rawEntry) => {
-      const entry = toTripLocation(rawEntry)
-      const locationHref = rawEntry._links?.location?.href
-      const location = locationHref
-        ? await requestJson<{ name?: string }>(pathFromHref(locationHref), {
-            method: 'GET',
-          })
-        : Number.isFinite(entry.locationId)
-          ? await getLocationById(entry.locationId)
-          : { name: 'Unknown location' }
-      return {
-        ...entry,
-        locationName: location.name ?? 'Unknown location',
-      }
-    }),
-  )
+  return rawEntries.map((rawEntry) => {
+    const entry = toTripLocation(rawEntry)
+    return {
+      ...entry,
+      locationName: entry.locationName || 'Unknown location',
+    }
+  })
 }
 
 export async function addTripLocation(input: {
@@ -90,7 +94,6 @@ export async function addTripLocation(input: {
       trip: hrefForResource(`/trips/${input.tripId}`),
       location: hrefForResource(`/locations/${input.location.id}`),
       description: input.description,
-      imageUrl: '',
       startDate: input.startDate,
       endDate: input.endDate,
     }),
@@ -121,10 +124,19 @@ export function deleteTripLocationImage(tripLocationId: number): Promise<void> {
   return requestVoid(`/trip-locations/${tripLocationId}/images`, { method: 'DELETE' })
 }
 
+export function deleteTripLocationImageById(
+  tripLocationId: number,
+  imageId: number,
+): Promise<void> {
+  return requestVoid(`/trip-locations/${tripLocationId}/images/${imageId}`, {
+    method: 'DELETE',
+  })
+}
+
 export async function uploadTripLocationImage(
   tripLocationId: number,
   file: File,
-): Promise<string> {
+): Promise<TripLocationImageResponse> {
   const contentType = file.type?.trim()
   if (!contentType.startsWith('image/')) {
     throw new Error('Only image files are allowed.')
@@ -140,5 +152,8 @@ export async function uploadTripLocationImage(
     },
   )
   await uploadFileToSignedUrl(signed.uploadUrl, file, signed.contentType)
-  return signed.objectUrl
+  if (!signed.imageId || !Number.isFinite(signed.imageId)) {
+    throw new Error('Upload succeeded but no image id was returned by the server.')
+  }
+  return { id: signed.imageId, signedReadUrl: signed.signedReadUrl }
 }
