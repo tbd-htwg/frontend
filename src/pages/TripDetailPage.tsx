@@ -17,7 +17,6 @@ import {
   addTripAccommodation,
   createAccommodation,
   deleteTripAccommodation,
-  listTripAccommodationsByTripId,
   searchAccommodationsByNameContaining,
 } from '../api/accommodations'
 import { createComment, listCommentsByTripId } from '../api/comments'
@@ -27,14 +26,12 @@ import {
   addTripTransport,
   createTransport,
   deleteTripTransport,
-  listTripTransportsByTripId,
   searchTransportsByTypeContaining,
 } from '../api/transports'
 import {
   addTripLocation,
   deleteTripLocation,
-  deleteTripLocationImage,
-  listTripLocationsByTripId,
+  deleteTripLocationImageById,
   patchTripLocation,
   uploadTripLocationImage,
 } from '../api/tripLocations'
@@ -163,7 +160,7 @@ export function TripDetailPage() {
   const [newLocationEndDate, setNewLocationEndDate] = useState('')
   const [savingLocation, setSavingLocation] = useState(false)
   const [removingLocationId, setRemovingLocationId] = useState<number | null>(null)
-  const [removingLocationImageId, setRemovingLocationImageId] = useState<number | null>(null)
+  const [removingImageId, setRemovingImageId] = useState<number | null>(null)
   const [uploadingLocationId, setUploadingLocationId] = useState<number | null>(null)
   const [editingTripLocationId, setEditingTripLocationId] = useState<number | null>(null)
   const [editTripLocationDescription, setEditTripLocationDescription] = useState('')
@@ -311,34 +308,21 @@ export function TripDetailPage() {
 
     const load = async () => {
       try {
-        const [t, owner, loadedComments, loadedTripLocations, loadedLikeCount] =
+        const [t, owner, loadedComments, loadedLikeCount] =
           await Promise.all([
             getTrip(tripId),
             getTripOwner(tripId),
             listCommentsByTripId(tripId),
-            listTripLocationsByTripId(tripId),
             countTripLikes(tripId),
           ])
         if (cancelled) return
         setTrip(t)
         setTripOwner(owner)
         setComments(loadedComments)
-        setTripLocations(loadedTripLocations)
+        setTripLocations(t.tripLocations ?? [])
+        setTripTransports(t.transports ?? [])
+        setTripAccommodations(t.accommodations ?? [])
         setLikeCount(loadedLikeCount)
-        const [loadedTripTransports, loadedTripAccommodations] = await Promise.allSettled([
-          listTripTransportsByTripId(tripId),
-          listTripAccommodationsByTripId(tripId),
-        ])
-        if (!cancelled) {
-          setTripTransports(
-            loadedTripTransports.status === 'fulfilled' ? loadedTripTransports.value : [],
-          )
-          setTripAccommodations(
-            loadedTripAccommodations.status === 'fulfilled'
-              ? loadedTripAccommodations.value
-              : [],
-          )
-        }
         if (user) {
           const likedByUser = await isTripLikedByUser(user.id, tripId)
           if (cancelled) return
@@ -551,9 +535,13 @@ export function TripDetailPage() {
     if (!isOwner || !file) return
     setUploadingLocationId(entryId)
     try {
-      const imageUrl = await uploadTripLocationImage(entryId, file)
+      const image = await uploadTripLocationImage(entryId, file)
       setTripLocations((prev) =>
-        prev.map((entry) => (entry.id === entryId ? { ...entry, imageUrl } : entry)),
+        prev.map((entry) =>
+          entry.id === entryId
+            ? { ...entry, images: [...entry.images, image] }
+            : entry,
+        ),
       )
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Could not upload location image.')
@@ -562,19 +550,23 @@ export function TripDetailPage() {
     }
   }
 
-  async function handleRemoveLocationImage(entryId: number) {
+  async function handleRemoveLocationImage(entryId: number, imageId: number) {
     if (!isOwner) return
-    if (!window.confirm('Remove this location image from the trip?')) return
-    setRemovingLocationImageId(entryId)
+    if (!window.confirm('Remove this image from the location?')) return
+    setRemovingImageId(imageId)
     try {
-      await deleteTripLocationImage(entryId)
+      await deleteTripLocationImageById(entryId, imageId)
       setTripLocations((prev) =>
-        prev.map((entry) => (entry.id === entryId ? { ...entry, imageUrl: '' } : entry)),
+        prev.map((entry) =>
+          entry.id === entryId
+            ? { ...entry, images: entry.images.filter((img) => img.id !== imageId) }
+            : entry,
+        ),
       )
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Could not remove location image.')
+      alert(err instanceof Error ? err.message : 'Could not remove image.')
     } finally {
-      setRemovingLocationImageId(null)
+      setRemovingImageId(null)
     }
   }
 
@@ -768,10 +760,10 @@ export function TripDetailPage() {
                   by{' '}
                   <Link
                     to={`/users/${tripOwner.id}`}
-                    aria-label={`Open profile of ${tripOwner.name}`}
+                    aria-label={`Open profile of ${tripOwner.name || 'traveller'}`}
                     className="font-medium hover:underline"
                   >
-                    @{tripOwner.name}
+                    @{tripOwner.name || 'traveller'}
                   </Link>
                 </p>
               )}
@@ -926,7 +918,7 @@ export function TripDetailPage() {
                                 disabled={
                                   savingTripLocationEditId !== null ||
                                   uploadingLocationId === entry.id ||
-                                  removingLocationImageId === entry.id
+                                  removingImageId !== null
                                 }
                                 className="mt-2 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                               >
@@ -935,54 +927,62 @@ export function TripDetailPage() {
                             )}
                           </>
                         )}
-                        {entry.imageUrl ? (
-                          <img
-                            src={entry.imageUrl}
-                            alt={`Location ${entry.locationName}`}
-                            className="mt-2 h-40 w-full max-w-md rounded-md border border-slate-200 object-cover"
-                            loading="lazy"
-                          />
+                        {!user ? (
+                          <p className="mt-2 text-xs text-slate-500">
+                            Log in to view images for this location.
+                          </p>
+                        ) : entry.images.length > 0 || (isOwner && showTripManagement) ? (
+                          <div className="mt-2 flex max-w-full gap-2 overflow-x-auto pb-1">
+                            {entry.images.map((image, index) => (
+                              <div key={`${entry.id}-${image.id}-${index}`} className="relative shrink-0">
+                                <img
+                                  src={image.signedReadUrl}
+                                  alt={`Location ${entry.locationName} image ${index + 1}`}
+                                  className="h-40 w-56 rounded-md border border-slate-200 object-cover"
+                                  loading="lazy"
+                                />
+                                {isOwner && showTripManagement && image.id > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleRemoveLocationImage(entry.id, image.id)}
+                                    disabled={
+                                      removingImageId === image.id ||
+                                      uploadingLocationId === entry.id ||
+                                      editingTripLocationId === entry.id
+                                    }
+                                    aria-label={`Remove image ${index + 1} for ${entry.locationName}`}
+                                    className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-xs font-bold text-white hover:bg-black/80 disabled:opacity-50"
+                                  >
+                                    {removingImageId === image.id ? '…' : '×'}
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                            {isOwner && showTripManagement && (
+                              <label className="inline-flex h-40 w-56 shrink-0 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-700 hover:bg-slate-100">
+                                {uploadingLocationId === entry.id
+                                  ? 'Uploading image...'
+                                  : 'Add image'}
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  disabled={
+                                    uploadingLocationId === entry.id ||
+                                    removingImageId !== null ||
+                                    editingTripLocationId === entry.id
+                                  }
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0]
+                                    void handleLocationImageSelected(entry.id, file)
+                                    e.currentTarget.value = ''
+                                  }}
+                                />
+                              </label>
+                            )}
+                          </div>
                         ) : (
                           <p className="mt-2 text-xs text-slate-500">No image uploaded yet.</p>
-                        )}
-                        {isOwner && showTripManagement && (
-                          <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">
-                              {uploadingLocationId === entry.id
-                                ? 'Uploading image...'
-                                : 'Upload location image'}
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                disabled={
-                                  uploadingLocationId === entry.id ||
-                                  removingLocationImageId === entry.id ||
-                                  editingTripLocationId === entry.id
-                                }
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0]
-                                  void handleLocationImageSelected(entry.id, file)
-                                  e.currentTarget.value = ''
-                                }}
-                              />
-                            </label>
-                            {entry.imageUrl ? (
-                              <button
-                                type="button"
-                                onClick={() => void handleRemoveLocationImage(entry.id)}
-                                disabled={
-                                  removingLocationImageId === entry.id ||
-                                  uploadingLocationId === entry.id ||
-                                  editingTripLocationId === entry.id
-                                }
-                                aria-label={`Remove image for ${entry.locationName}`}
-                                className="rounded-md border border-red-300 bg-white px-2 py-1 text-xs font-medium text-red-800 hover:bg-red-50 disabled:opacity-50"
-                              >
-                                {removingLocationImageId === entry.id ? 'Removing…' : 'Remove image'}
-                              </button>
-                            ) : null}
-                          </div>
                         )}
                       </div>
                       {isOwner && showTripManagement && (
