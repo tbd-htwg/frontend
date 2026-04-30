@@ -19,17 +19,31 @@ type TripEntityBody = {
   startDate?: string
   shortDescription?: string
   longDescription?: string
+  authorId?: number
+  authorName?: string
+  authorProfileImageUrl?: string
+  locations?: string[]
+  tripLocations?: TripDetailsResponse['tripLocations']
+  transports?: TripDetailsResponse['transports']
+  accommodations?: TripDetailsResponse['accommodations']
 }
 
 function toTripSummary(entity: HalEntity<TripEntityBody>): TripListItemResponse {
   const userIdRaw = idFromHref(entity._links?.user?.href)
+  const authorIdRaw = entity.authorId ?? userIdRaw
   return {
     id: idFromEntity(entity),
     title: entity.title ?? '',
     destination: entity.destination ?? '',
     startDate: entity.startDate ?? '',
     shortDescription: entity.shortDescription ?? '',
-    ...(Number.isFinite(userIdRaw) ? { userId: userIdRaw } : {}),
+    ...(Number.isFinite(authorIdRaw) ? { authorId: authorIdRaw } : {}),
+    ...(Number.isFinite(authorIdRaw) ? { userId: authorIdRaw } : {}),
+    ...(entity.authorName ? { authorName: entity.authorName } : {}),
+    ...(entity.authorProfileImageUrl
+      ? { authorProfileImageUrl: entity.authorProfileImageUrl }
+      : {}),
+    ...(entity.locations ? { locations: entity.locations } : {}),
   }
 }
 
@@ -37,6 +51,9 @@ function toTripDetails(entity: HalEntity<TripEntityBody>): TripDetailsResponse {
   return {
     ...toTripSummary(entity),
     longDescription: entity.longDescription ?? '',
+    tripLocations: entity.tripLocations ?? [],
+    transports: entity.transports ?? [],
+    accommodations: entity.accommodations ?? [],
   }
 }
 
@@ -73,9 +90,12 @@ export async function listTrips(
   page = 1,
   size = 10,
 ): Promise<PaginatedResponse<TripListItemResponse>> {
-  const model = await requestJson<TripCollection>(`/trips?${pageQuery(page, size)}`, {
-    method: 'GET',
-  })
+  const model = await requestJson<TripCollection>(
+    `/trips?${pageQuery(page, size)}&projection=list`,
+    {
+      method: 'GET',
+    },
+  )
   return toTripPage(model)
 }
 
@@ -85,7 +105,7 @@ export async function findTripsByUserId(
   size = 10,
 ): Promise<PaginatedResponse<TripListItemResponse>> {
   const model = await requestJson<TripCollection>(
-    `/trips/search/findByUserId?userId=${userId}&${pageQuery(page, size)}`,
+    `/trips/search/findByUserId?userId=${userId}&${pageQuery(page, size)}&projection=list`,
     { method: 'GET' },
   )
   return toTripPage(model)
@@ -97,7 +117,7 @@ export async function searchTripsByLikedUser(
   size = 10,
 ): Promise<PaginatedResponse<TripListItemResponse>> {
   const model = await requestJson<TripCollection>(
-    `/trips/search/findByLikedByUsersId?userId=${userId}&${pageQuery(page, size)}`,
+    `/trips/search/findByLikedByUsersId?userId=${userId}&${pageQuery(page, size)}&projection=list`,
     { method: 'GET' },
   )
   return toTripPage(model)
@@ -142,21 +162,24 @@ export function countTripLikes(tripId: number): Promise<number> {
 
 export async function getTripOwner(tripId: number): Promise<UserResponse> {
   const entity = await requestJson<
-    HalEntity<{ email?: string; name?: string; imageUrl?: string; description?: string }>
-  >(`/trips/${tripId}/user`, { method: 'GET' })
+    HalEntity<{ email?: string; name?: string; profileImageUrl?: string; description?: string }>
+  >(`/trips/${tripId}/user?projection=public`, { method: 'GET' })
   return {
     id: idFromEntity(entity),
     email: entity.email ?? '',
     name: entity.name ?? '',
-    imageUrl: entity.imageUrl ?? '',
+    imageUrl: entity.profileImageUrl ?? '',
     description: entity.description ?? '',
   }
 }
 
 export async function getTrip(id: number): Promise<TripDetailsResponse> {
-  const entity = await requestJson<HalEntity<TripEntityBody>>(`/trips/${id}`, {
-    method: 'GET',
-  })
+  const entity = await requestJson<HalEntity<TripEntityBody>>(
+    `/trips/${id}?projection=fullDetail`,
+    {
+      method: 'GET',
+    },
+  )
   return toTripDetails(entity)
 }
 

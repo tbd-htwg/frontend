@@ -100,7 +100,7 @@ export function UserProfilePage() {
             </div>
           </div>
           <div className="mt-4">
-            {profile.imageUrl ? (
+            {user && profile.imageUrl ? (
               <img
                 src={profile.imageUrl}
                 alt={`${profile.name}'s profile`}
@@ -108,8 +108,8 @@ export function UserProfilePage() {
                 loading="lazy"
               />
             ) : (
-              <div className="flex h-40 w-40 items-center justify-center rounded-full border border-dashed border-slate-400 text-sm text-slate-500">
-                No profile image
+              <div className="flex h-40 w-40 items-center justify-center rounded-full border border-dashed border-slate-400 px-3 text-center text-sm text-slate-500">
+                {user ? 'No profile image' : 'Log in to view profile pictures'}
               </div>
             )}
           </div>

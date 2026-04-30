@@ -6,10 +6,7 @@
       "type": "node-terminal",
       "request": "launch",
       "command": "npm run dev",
-      "cwd": "${workspaceFolder}",
-      "env": {
-        "VITE_GOOGLE_CLIENT_ID": "YOUR_CLIENT_ID.apps.googleusercontent.com"
-      }
+      "cwd": "${workspaceFolder}"
     }
   ]
 }

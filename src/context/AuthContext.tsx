@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { authDevLogin, authGoogle, authMe, authRegister, type LoginResponse } from '../api/auth'
+import { authDevLogin, authGoogle, authMe, type LoginResponse } from '../api/auth'
 import { SESSION_STORAGE_KEY } from '../auth/sessionStorageKey'
 import type { UserResponse } from '../types/api'
 
@@ -18,7 +18,6 @@ type AuthContextValue = {
   loginWithGoogle: (credential: string) => Promise<void>
   /** Local Spring profile only: sign in without Google. */
   loginDev: (email: string, name?: string) => Promise<void>
-  register: (email: string, name: string) => Promise<void>
   logout: () => void
   updateSessionUser: (u: UserResponse) => void
 }
@@ -99,16 +98,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     applyLoginResponse(setAccessToken, setUser, r)
   }, [])
 
-  const register = useCallback(async (email: string, name: string) => {
-    const r = await authRegister({
-      email: email.trim(),
-      name: name.trim(),
-      imageUrl: '',
-      description: '',
-    })
-    applyLoginResponse(setAccessToken, setUser, r)
-  }, [])
-
   const logout = useCallback(() => {
     setAccessToken(null)
     setUser(null)
@@ -124,11 +113,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       accessToken,
       loginWithGoogle,
       loginDev,
-      register,
       logout,
       updateSessionUser,
     }),
-    [user, accessToken, loginWithGoogle, loginDev, register, logout, updateSessionUser],
+    [user, accessToken, loginWithGoogle, loginDev, logout, updateSessionUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
