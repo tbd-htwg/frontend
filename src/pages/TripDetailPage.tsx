@@ -20,7 +20,8 @@ import {
   deleteTripAccommodation,
   searchAccommodationsByNameContaining,
 } from '../api/accommodations'
-import { createComment, deleteComment, listCommentsByTripId } from '../api/comments'
+import { getTripCommunity, loadMoreTripComments } from '../api/community'
+import { createComment, deleteComment } from '../api/comments'
 import { createLocation, searchLocationsByNameContaining } from '../api/locations'
 import { isTripLikedByCurrentUser, likeTrip, unlikeTrip } from '../api/likes'
 import {
@@ -36,7 +37,7 @@ import {
   patchTripLocation,
   uploadTripLocationImage,
 } from '../api/tripLocations'
-import { countTripLikes, deleteTrip, getTrip, getTripOwner } from '../api/trips'
+import { countTripLikes, deleteTrip, getTrip } from '../api/trips'
 import { ApiError } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
@@ -47,7 +48,6 @@ import type {
   TransportResponse,
   TripDetailsResponse,
   TripLocationResponse,
-  UserResponse,
 } from '../types/api'
 
 function formatDate(iso: string) {
@@ -98,7 +98,6 @@ export function TripDetailPage() {
   const tripId = id ? Number(id) : NaN
 
   const [trip, setTrip] = useState<TripDetailsResponse | null>(null)
-  const [tripOwner, setTripOwner] = useState<UserResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isOwner, setIsOwner] = useState(false)
@@ -111,6 +110,10 @@ export function TripDetailPage() {
   const [likedByMe, setLikedByMe] = useState(false)
   const [liking, setLiking] = useState(false)
   const [comments, setComments] = useState<CommentResponse[]>([])
+  const [commentsNextCursor, setCommentsNextCursor] = useState<string | null>(null)
+  const [hasMoreComments, setHasMoreComments] = useState(false)
+  const [loadingMoreComments, setLoadingMoreComments] = useState(false)
+  const [totalCommentCount, setTotalCommentCount] = useState(0)
   const [commentText, setCommentText] = useState('')
   const [commenting, setCommenting] = useState(false)
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null)
@@ -310,26 +313,26 @@ export function TripDetailPage() {
 
     const load = async () => {
       try {
-        const [t, owner, loadedComments, loadedLikeCount] =
-          await Promise.all([
-            getTrip(tripId),
-            getTripOwner(tripId),
-            listCommentsByTripId(tripId),
-            countTripLikes(tripId),
-          ])
+        const [t, community] = await Promise.all([
+          getTrip(tripId),
+          getTripCommunity(tripId),
+        ])
         if (cancelled) return
         setTrip(t)
-        setTripOwner(owner)
-        setComments(loadedComments)
+        setComments(community.comments)
+        setCommentsNextCursor(community.commentsNextCursor ?? null)
+        setHasMoreComments(community.hasMoreComments)
+        setTotalCommentCount(community.totalCommentCount)
         setTripLocations(t.tripLocations ?? [])
         setTripTransports(t.transports ?? [])
         setTripAccommodations(t.accommodations ?? [])
-        setLikeCount(loadedLikeCount)
+        setLikeCount(community.likeCount)
         if (user) {
-          const likedByUser = await isTripLikedByCurrentUser(tripId)
-          if (cancelled) return
-          setIsOwner(owner.id === user.id)
-          setLikedByMe(likedByUser)
+          const authorId = t.authorId ?? t.userId
+          setIsOwner(
+            Number.isFinite(authorId) ? authorId === user.id : false,
+          )
+          setLikedByMe(community.likedByCurrentUser ?? false)
         } else {
           setIsOwner(false)
           setLikedByMe(false)
@@ -411,6 +414,21 @@ export function TripDetailPage() {
     }
   }
 
+  async function handleLoadMoreComments() {
+    if (!trip || !commentsNextCursor || loadingMoreComments) return
+    setLoadingMoreComments(true)
+    try {
+      const page = await loadMoreTripComments(trip.id, commentsNextCursor, 10)
+      setComments((prev) => [...prev, ...page.items])
+      setCommentsNextCursor(page.nextCursor)
+      setHasMoreComments(page.hasMore)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Could not load more comments.')
+    } finally {
+      setLoadingMoreComments(false)
+    }
+  }
+
   async function handleCommentSubmit() {
     if (!user || !trip || !commentText.trim()) return
     setCommenting(true)
@@ -420,10 +438,11 @@ export function TripDetailPage() {
         {
           ...created,
           userId: user.id,
-          userName: user.name,
+          userName: created.userName || user.name,
         },
         ...prev,
       ])
+      setTotalCommentCount((c) => c + 1)
       setCommentText('')
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Could not add comment.')
@@ -450,6 +469,7 @@ export function TripDetailPage() {
     try {
       await deleteComment(comment.id)
       setComments((prev) => prev.filter((c) => c.id !== comment.id))
+      setTotalCommentCount((c) => Math.max(0, c - 1))
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Could not delete comment.')
     } finally {
@@ -782,15 +802,15 @@ export function TripDetailPage() {
               <p className="mt-1 text-slate-600">
                 {trip.destination} · {formatDate(trip.startDate)}
               </p>
-              {tripOwner && Number.isFinite(tripOwner.id) && (
+              {Number.isFinite(trip.authorId ?? trip.userId ?? NaN) && (
                 <p className="mt-1 text-sm text-slate-600">
                   by{' '}
                   <Link
-                    to={`/users/${tripOwner.id}`}
-                    aria-label={`Open profile of ${tripOwner.name || 'traveller'}`}
+                    to={`/users/${trip.authorId ?? trip.userId}`}
+                    aria-label={`Open profile of ${trip.authorName || 'traveller'}`}
                     className="font-medium hover:underline"
                   >
-                    @{tripOwner.name || 'traveller'}
+                    @{trip.authorName || 'traveller'}
                   </Link>
                 </p>
               )}
@@ -1684,7 +1704,16 @@ export function TripDetailPage() {
             )}
 
             <div className="mt-4">
-              <h3 className="text-sm font-medium text-slate-800">Comments</h3>
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-medium text-slate-800">Comments</h3>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {totalCommentCount === 1
+                      ? '1 comment'
+                      : `${totalCommentCount} comments`}
+                  </p>
+                </div>
+              </div>
               {user ? (
                 <div className="mt-2 flex flex-col gap-2">
                   <textarea
@@ -1712,64 +1741,82 @@ export function TripDetailPage() {
               {comments.length === 0 ? (
                 <p className="mt-3 text-sm text-slate-600">No comments yet.</p>
               ) : (
-                <ul className="mt-3 space-y-2">
-                  {comments.map((comment) => {
-                    const canDeleteComment =
-                      !!user &&
-                      !!comment.id &&
-                      (comment.userId === user.id || isOwner)
-                    return (
-                    <li
-                      key={
-                        comment.id ||
-                        `${comment.userId}-${comment.createdAt}-${comment.content.slice(0, 48)}`
-                      }
-                      className="rounded-md border border-slate-300 p-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="flex min-w-0 flex-1 items-start gap-2 text-sm text-slate-800">
-                          <FontAwesomeIcon
-                            icon={faComment}
-                            aria-hidden="true"
-                            className="mt-0.5 shrink-0 text-slate-500"
-                          />
-                          <span>{comment.content}</span>
-                        </p>
-                        {canDeleteComment ? (
-                          <button
-                            type="button"
-                            onClick={() => void handleDeleteComment(comment)}
-                            disabled={deletingCommentId === comment.id}
-                            aria-label={
-                              deletingCommentId === comment.id
-                                ? 'Deleting comment'
-                                : comment.userId === user.id
-                                  ? 'Delete your comment'
-                                  : 'Remove comment from your trip'
-                            }
-                            className="shrink-0 rounded-md border border-slate-300 p-1.5 text-slate-600 hover:border-red-300 hover:text-red-700 disabled:opacity-50"
-                          >
-                            <FontAwesomeIcon icon={faTrash} aria-hidden="true" />
-                          </button>
-                        ) : null}
-                      </div>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {Number.isFinite(comment.userId) ? (
-                          <Link
-                            to={`/users/${comment.userId}`}
-                            aria-label={`Open profile of ${comment.userName || 'traveller'}`}
-                            className="font-medium text-slate-600 hover:underline"
-                          >
-                            @{comment.userName || 'traveller'}
-                          </Link>
-                        ) : (
-                          `@${comment.userName || 'traveller'}`
-                        )}{' '}
-                        ·{' '}
-                        {new Date(comment.createdAt).toLocaleString()}
-                      </p>
-                    </li>
-                  )})}
-                </ul>
+                <>
+                  <ul className="mt-3 space-y-2">
+                    {comments.map((comment) => {
+                      const canDeleteComment =
+                        !!user &&
+                        !!comment.id &&
+                        (comment.userId === user.id || isOwner)
+                      return (
+                        <li
+                          key={
+                            comment.id ||
+                            `${comment.userId}-${comment.createdAt}-${comment.content.slice(0, 48)}`
+                          }
+                          className="rounded-md border border-slate-300 p-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="flex min-w-0 flex-1 items-start gap-2 text-sm text-slate-800">
+                              <FontAwesomeIcon
+                                icon={faComment}
+                                aria-hidden="true"
+                                className="mt-0.5 shrink-0 text-slate-500"
+                              />
+                              <span>{comment.content}</span>
+                            </p>
+                            {canDeleteComment ? (
+                              <button
+                                type="button"
+                                onClick={() => void handleDeleteComment(comment)}
+                                disabled={deletingCommentId === comment.id}
+                                aria-label={
+                                  deletingCommentId === comment.id
+                                    ? 'Deleting comment'
+                                    : comment.userId === user.id
+                                      ? 'Delete your comment'
+                                      : 'Remove comment from your trip'
+                                }
+                                className="shrink-0 rounded-md border border-slate-300 p-1.5 text-slate-600 hover:border-red-300 hover:text-red-700 disabled:opacity-50"
+                              >
+                                <FontAwesomeIcon icon={faTrash} aria-hidden="true" />
+                              </button>
+                            ) : null}
+                          </div>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {Number.isFinite(comment.userId) ? (
+                              <Link
+                                to={`/users/${comment.userId}`}
+                                aria-label={`Open profile of ${comment.userName || 'traveller'}`}
+                                className="font-medium text-slate-600 hover:underline"
+                              >
+                                @{comment.userName || 'traveller'}
+                              </Link>
+                            ) : (
+                              `@${comment.userName || 'traveller'}`
+                            )}{' '}
+                            ·{' '}
+                            {new Date(comment.createdAt).toLocaleString()}
+                          </p>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                  {hasMoreComments && commentsNextCursor ? (
+                    <div className="mt-4">
+                      <button
+                        type="button"
+                        onClick={() => void handleLoadMoreComments()}
+                        disabled={loadingMoreComments}
+                        aria-label={
+                          loadingMoreComments ? 'Loading more comments' : 'Load more comments'
+                        }
+                        className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+                      >
+                        {loadingMoreComments ? 'Loading…' : 'Load more comments'}
+                      </button>
+                    </div>
+                  ) : null}
+                </>
               )}
             </div>
           </section>
