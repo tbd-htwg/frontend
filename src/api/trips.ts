@@ -5,6 +5,7 @@ import type {
   TripCreateRequest,
   TripDetailsResponse,
   TripListItemResponse,
+  TripLocationResponse,
   TripPatchRequest,
   TripPutRequest,
   TripSearchResult,
@@ -165,6 +166,45 @@ export async function searchTrips(
 }
 
 /** Batch signed URLs for feed carousels (after fast {@link listTrips} / {@link searchTrips}). */
+/** Merge second-stage signed URLs from {@link fetchTripDetailLocationImageUrls} into trip stops. */
+export function mergeTripDetailLocationImageUrls(
+  locations: TripLocationResponse[],
+  urlsByStopId: Record<number, string[]>,
+): TripLocationResponse[] {
+  return locations.map((loc) => {
+    const base: TripLocationResponse = {
+      ...loc,
+      images: loc.images ?? [],
+    }
+    const urls = urlsByStopId[loc.id]
+    if (!urls?.length) return base
+    return {
+      ...base,
+      images: urls.map((signedReadUrl, index) => ({
+        id: -1 - index,
+        signedReadUrl,
+      })),
+    }
+  })
+}
+
+/** Signed URLs per trip-location id (authenticated clients only; anonymous gets empty strings omitted). */
+export async function fetchTripDetailLocationImageUrls(
+  tripId: number,
+): Promise<Record<number, string[]>> {
+  const raw = await requestJson<Record<string, string[]>>(
+    `/trips/${tripId}/trip-location-image-urls`,
+    { method: 'GET' },
+  )
+  const out: Record<number, string[]> = {}
+  if (!raw) return out
+  for (const [k, v] of Object.entries(raw)) {
+    const id = Number(k)
+    if (Number.isFinite(id) && Array.isArray(v)) out[id] = v
+  }
+  return out
+}
+
 export async function fetchFeedLocationImageUrls(
   tripIds: number[],
 ): Promise<Record<number, string[]>> {
@@ -202,7 +242,7 @@ export async function getTripOwner(tripId: number): Promise<UserResponse> {
 
 export async function getTrip(id: number): Promise<TripDetailsResponse> {
   const entity = await requestJson<HalEntity<TripEntityBody>>(
-    `/trips/${id}?projection=fullDetail`,
+    `/trips/${id}?projection=fullDetailFast`,
     {
       method: 'GET',
     },

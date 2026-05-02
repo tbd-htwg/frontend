@@ -37,7 +37,13 @@ import {
   patchTripLocation,
   uploadTripLocationImage,
 } from '../api/tripLocations'
-import { countTripLikes, deleteTrip, getTrip } from '../api/trips'
+import {
+  countTripLikes,
+  deleteTrip,
+  fetchTripDetailLocationImageUrls,
+  getTrip,
+  mergeTripDetailLocationImageUrls,
+} from '../api/trips'
 import { ApiError } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
@@ -313,9 +319,10 @@ export function TripDetailPage() {
 
     const load = async () => {
       try {
-        const [t, community] = await Promise.all([
+        const [t, community, urlsByStop] = await Promise.all([
           getTrip(tripId),
           getTripCommunity(tripId),
+          user ? fetchTripDetailLocationImageUrls(tripId) : Promise.resolve({}),
         ])
         if (cancelled) return
         setTrip(t)
@@ -323,7 +330,7 @@ export function TripDetailPage() {
         setCommentsNextCursor(community.commentsNextCursor ?? null)
         setHasMoreComments(community.hasMoreComments)
         setTotalCommentCount(community.totalCommentCount)
-        setTripLocations(t.tripLocations ?? [])
+        setTripLocations(mergeTripDetailLocationImageUrls(t.tripLocations ?? [], urlsByStop))
         setTripTransports(t.transports ?? [])
         setTripAccommodations(t.accommodations ?? [])
         setLikeCount(community.likeCount)
@@ -353,7 +360,7 @@ export function TripDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [tripId, user])
+  }, [tripId, user?.id])
 
   useEffect(() => {
     setShowTripManagement(false)
@@ -586,7 +593,7 @@ export function TripDetailPage() {
       setTripLocations((prev) =>
         prev.map((entry) =>
           entry.id === entryId
-            ? { ...entry, images: [...entry.images, image] }
+            ? { ...entry, images: [...(entry.images ?? []), image] }
             : entry,
         ),
       )
@@ -606,7 +613,7 @@ export function TripDetailPage() {
       setTripLocations((prev) =>
         prev.map((entry) =>
           entry.id === entryId
-            ? { ...entry, images: entry.images.filter((img) => img.id !== imageId) }
+            ? { ...entry, images: (entry.images ?? []).filter((img) => img.id !== imageId) }
             : entry,
         ),
       )
@@ -978,9 +985,9 @@ export function TripDetailPage() {
                           <p className="mt-2 text-xs text-slate-500">
                             Log in to view images for this location.
                           </p>
-                        ) : entry.images.length > 0 || (isOwner && showTripManagement) ? (
+                        ) : (entry.images?.length ?? 0) > 0 || (isOwner && showTripManagement) ? (
                           <div className="mt-2 flex max-w-full gap-2 overflow-x-auto pb-1">
-                            {entry.images.map((image, index) => (
+                            {(entry.images ?? []).map((image, index) => (
                               <div key={`${entry.id}-${image.id}-${index}`} className="relative shrink-0">
                                 <img
                                   src={image.signedReadUrl}
