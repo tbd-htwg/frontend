@@ -1,7 +1,8 @@
 import type {
-  HalCollection,
+  AccommodationResponse,
   HalEntity,
   PaginatedResponse,
+  TransportResponse,
   TripCreateRequest,
   TripDetailsResponse,
   TripListItemResponse,
@@ -9,60 +10,136 @@ import type {
   TripPatchRequest,
   TripPutRequest,
   TripSearchResult,
-  UserResponse,
 } from '../types/api'
 import { requestJson, requestVoid } from './client'
-import { hrefForResource, idFromEntity, idFromHref, paginatedItems } from './hal'
+import { hrefForResource } from './hal'
 
-type TripEntityBody = {
-  title?: string
-  destination?: string
-  startDate?: string
-  shortDescription?: string
-  longDescription?: string
-  authorId?: number
-  authorName?: string
-  authorProfileImageUrl?: string
-  locations?: string[]
-  accommodationNames?: string[]
-  transportTypes?: string[]
-  locationImageUrls?: string[]
-  tripLocations?: TripDetailsResponse['tripLocations']
-  transports?: TripDetailsResponse['transports']
-  accommodations?: TripDetailsResponse['accommodations']
+/**
+ * Backend response shape for the feed endpoints under {@code /api/v2/trips/feed*} and
+ * {@code /api/v2/trips/{id}/detail}. These are served by the dedicated DTO controllers in
+ * {@code com.tripplanning.trip.read} and replace the Spring Data REST {@code ?projection=...}
+ * paths whose lazy-association walks were the SQL bottleneck under load.
+ */
+type TripFeedAuthorDto = {
+  id: number
+  name: string
+  profileImageUrl?: string | null
 }
 
-function toTripSummary(entity: HalEntity<TripEntityBody>): TripListItemResponse {
-  const userIdRaw = idFromHref(entity._links?.user?.href)
-  const authorIdRaw = entity.authorId ?? userIdRaw
+type TripFeedItemDto = {
+  id: number
+  title: string
+  destination: string
+  startDate: string
+  shortDescription: string
+  author: TripFeedAuthorDto
+  locations: string[]
+  accommodationNames: string[]
+  transportTypes: string[]
+}
+
+type TripFeedDetailStopDto = {
+  id: number
+  locationId: number
+  locationName: string
+  description: string
+  startDate?: string
+  endDate?: string
+  imageUrls: string[]
+}
+
+type TripFeedAccommodationDto = AccommodationResponse
+
+type TripFeedTransportDto = TransportResponse
+
+type TripFeedDetailDto = {
+  id: number
+  title: string
+  destination: string
+  startDate: string
+  shortDescription: string
+  longDescription: string
+  author: TripFeedAuthorDto
+  stops: TripFeedDetailStopDto[]
+  accommodations: TripFeedAccommodationDto[]
+  transports: TripFeedTransportDto[]
+}
+
+type TripFeedPageDto<T> = {
+  items: T[]
+  page: number
+  size: number
+  totalItems: number
+  totalPages: number
+}
+
+function toTripSummary(item: TripFeedItemDto): TripListItemResponse {
   return {
-    id: idFromEntity(entity),
-    title: entity.title ?? '',
-    destination: entity.destination ?? '',
-    startDate: entity.startDate ?? '',
-    shortDescription: entity.shortDescription ?? '',
-    ...(Number.isFinite(authorIdRaw) ? { authorId: authorIdRaw } : {}),
-    ...(Number.isFinite(authorIdRaw) ? { userId: authorIdRaw } : {}),
-    ...(entity.authorName ? { authorName: entity.authorName } : {}),
-    ...(entity.authorProfileImageUrl
-      ? { authorProfileImageUrl: entity.authorProfileImageUrl }
+    id: item.id,
+    title: item.title ?? '',
+    destination: item.destination ?? '',
+    startDate: item.startDate ?? '',
+    shortDescription: item.shortDescription ?? '',
+    authorId: item.author?.id,
+    userId: item.author?.id,
+    ...(item.author?.name ? { authorName: item.author.name } : {}),
+    ...(item.author?.profileImageUrl
+      ? { authorProfileImageUrl: item.author.profileImageUrl }
       : {}),
-    ...(entity.locations ? { locations: entity.locations } : {}),
-    ...(entity.accommodationNames ? { accommodationNames: entity.accommodationNames } : {}),
-    ...(entity.transportTypes ? { transportTypes: entity.transportTypes } : {}),
-    ...(entity.locationImageUrls?.length
-      ? { locationImageUrls: entity.locationImageUrls }
-      : {}),
+    locations: item.locations ?? [],
+    accommodationNames: item.accommodationNames ?? [],
+    transportTypes: item.transportTypes ?? [],
   }
 }
 
-function toTripDetails(entity: HalEntity<TripEntityBody>): TripDetailsResponse {
+function toTripPage(
+  payload: TripFeedPageDto<TripFeedItemDto>,
+): PaginatedResponse<TripListItemResponse> {
+  const items = (payload.items ?? []).map(toTripSummary)
+  const size = payload.size > 0 ? payload.size : items.length
+  const totalItems = payload.totalItems ?? items.length
   return {
-    ...toTripSummary(entity),
-    longDescription: entity.longDescription ?? '',
-    tripLocations: entity.tripLocations ?? [],
-    transports: entity.transports ?? [],
-    accommodations: entity.accommodations ?? [],
+    items,
+    currentPage: (payload.page ?? 0) + 1,
+    pageSize: size,
+    totalItems,
+    totalPages: payload.totalPages ?? Math.max(1, Math.ceil(totalItems / Math.max(1, size))),
+  }
+}
+
+function toTripLocation(stop: TripFeedDetailStopDto, tripId: number): TripLocationResponse {
+  return {
+    id: stop.id,
+    tripId,
+    locationId: stop.locationId,
+    description: stop.description ?? '',
+    images: (stop.imageUrls ?? []).map((url, index) => ({
+      id: -1 - index,
+      signedReadUrl: url,
+    })),
+    locationName: stop.locationName || 'Unknown location',
+    startDate: stop.startDate,
+    endDate: stop.endDate,
+  }
+}
+
+function toTripDetails(detail: TripFeedDetailDto): TripDetailsResponse {
+  return {
+    id: detail.id,
+    title: detail.title ?? '',
+    destination: detail.destination ?? '',
+    startDate: detail.startDate ?? '',
+    shortDescription: detail.shortDescription ?? '',
+    longDescription: detail.longDescription ?? '',
+    authorId: detail.author?.id,
+    userId: detail.author?.id,
+    ...(detail.author?.name ? { authorName: detail.author.name } : {}),
+    ...(detail.author?.profileImageUrl
+      ? { authorProfileImageUrl: detail.author.profileImageUrl }
+      : {}),
+    tripLocations: (detail.stops ?? []).map((stop) => toTripLocation(stop, detail.id)),
+    transports: detail.transports ?? [],
+    accommodations: detail.accommodations ?? [],
   }
 }
 
@@ -77,17 +154,7 @@ function toTripRequest(body: TripCreateRequest | TripPutRequest | TripPatchReque
   }
 }
 
-type TripCollection = HalCollection<HalEntity<TripEntityBody>>
-
-function toTripPage(model: TripCollection): PaginatedResponse<TripListItemResponse> {
-  const page = paginatedItems(model, 'trips')
-  return {
-    ...page,
-    items: page.items.map(toTripSummary),
-  }
-}
-
-function pageQuery(page: number, size: number): string {
+function feedQuery(page: number, size: number): string {
   const params = new URLSearchParams({
     page: String(Math.max(0, page - 1)),
     size: String(size),
@@ -99,13 +166,11 @@ export async function listTrips(
   page = 1,
   size = 10,
 ): Promise<PaginatedResponse<TripListItemResponse>> {
-  const model = await requestJson<TripCollection>(
-    `/trips?${pageQuery(page, size)}&projection=list`,
-    {
-      method: 'GET',
-    },
+  const payload = await requestJson<TripFeedPageDto<TripFeedItemDto>>(
+    `/trips/feed?${feedQuery(page, size)}`,
+    { method: 'GET' },
   )
-  return toTripPage(model)
+  return toTripPage(payload)
 }
 
 export async function findTripsByUserId(
@@ -113,11 +178,11 @@ export async function findTripsByUserId(
   page = 1,
   size = 10,
 ): Promise<PaginatedResponse<TripListItemResponse>> {
-  const model = await requestJson<TripCollection>(
-    `/trips/search/findByUserId?userId=${userId}&${pageQuery(page, size)}&projection=list`,
+  const payload = await requestJson<TripFeedPageDto<TripFeedItemDto>>(
+    `/trips/feed/by-user?userId=${userId}&${feedQuery(page, size)}`,
     { method: 'GET' },
   )
-  return toTripPage(model)
+  return toTripPage(payload)
 }
 
 export async function searchTripsByLikedUser(
@@ -125,11 +190,11 @@ export async function searchTripsByLikedUser(
   page = 1,
   size = 10,
 ): Promise<PaginatedResponse<TripListItemResponse>> {
-  const model = await requestJson<TripCollection>(
-    `/trips/search/findByLikedByUsersId?userId=${userId}&${pageQuery(page, size)}&projection=list`,
+  const payload = await requestJson<TripFeedPageDto<TripFeedItemDto>>(
+    `/trips/feed/liked-by?userId=${userId}&${feedQuery(page, size)}`,
     { method: 'GET' },
   )
-  return toTripPage(model)
+  return toTripPage(payload)
 }
 
 type SpringPageTripSearchDto = {
@@ -165,30 +230,11 @@ export async function searchTrips(
   }
 }
 
-/** Batch signed URLs for feed carousels (after fast {@link listTrips} / {@link searchTrips}). */
-/** Merge second-stage signed URLs from {@link fetchTripDetailLocationImageUrls} into trip stops. */
-export function mergeTripDetailLocationImageUrls(
-  locations: TripLocationResponse[],
-  urlsByStopId: Record<number, string[]>,
-): TripLocationResponse[] {
-  return locations.map((loc) => {
-    const base: TripLocationResponse = {
-      ...loc,
-      images: loc.images ?? [],
-    }
-    const urls = urlsByStopId[loc.id]
-    if (!urls?.length) return base
-    return {
-      ...base,
-      images: urls.map((signedReadUrl, index) => ({
-        id: -1 - index,
-        signedReadUrl,
-      })),
-    }
-  })
-}
-
-/** Signed URLs per trip-location id (authenticated clients only; anonymous gets empty strings omitted). */
+/**
+ * Trip detail now returns stop image URLs inline (`stops[].imageUrls`). The standalone
+ * second-stage call is no longer required by the SPA, but the helper stays exported because
+ * older callers and integration tests can still reach the underlying controller.
+ */
 export async function fetchTripDetailLocationImageUrls(
   tripId: number,
 ): Promise<Record<number, string[]>> {
@@ -227,35 +273,39 @@ export function countTripLikes(tripId: number): Promise<number> {
   return requestJson<number>(`/trips/search/countLikes?tripId=${tripId}`, { method: 'GET' })
 }
 
-export async function getTripOwner(tripId: number): Promise<UserResponse> {
-  const entity = await requestJson<
-    HalEntity<{ email?: string; name?: string; profileImageUrl?: string; description?: string }>
-  >(`/trips/${tripId}/user?projection=public`, { method: 'GET' })
-  return {
-    id: idFromEntity(entity),
-    email: entity.email ?? '',
-    name: entity.name ?? '',
-    imageUrl: entity.profileImageUrl ?? '',
-    description: entity.description ?? '',
-  }
-}
-
 export async function getTrip(id: number): Promise<TripDetailsResponse> {
-  const entity = await requestJson<HalEntity<TripEntityBody>>(
-    `/trips/${id}?projection=fullDetailFast`,
-    {
-      method: 'GET',
-    },
-  )
-  return toTripDetails(entity)
+  const detail = await requestJson<TripFeedDetailDto>(`/trips/${id}/detail`, { method: 'GET' })
+  return toTripDetails(detail)
 }
 
+type TripEntityBody = {
+  id?: number
+  title?: string
+  destination?: string
+  startDate?: string
+  shortDescription?: string
+  longDescription?: string
+}
+
+function idFromHalEntity(entity: HalEntity<TripEntityBody>): number {
+  if (Number.isFinite(entity.id)) return entity.id as number
+  const href = entity._links?.self?.href ?? ''
+  const last = href.split('?')[0].split('/').filter(Boolean).at(-1)
+  const parsed = last ? Number(last) : NaN
+  return Number.isFinite(parsed) ? parsed : NaN
+}
+
+/**
+ * Create returns a minimal {@link TripDetailsResponse} so the existing form callers can read
+ * {@code created.id} for navigation. We deliberately avoid a follow-up {@code /detail} call
+ * here since the caller has the form values already and only consumes the id.
+ */
 export async function createTrip(body: TripCreateRequest): Promise<TripDetailsResponse> {
   const entity = await requestJson<HalEntity<TripEntityBody>>('/trips', {
     method: 'POST',
     body: JSON.stringify(toTripRequest(body)),
   })
-  return toTripDetails(entity)
+  return summarizeTripEntity(entity, body)
 }
 
 export async function replaceTrip(
@@ -266,7 +316,7 @@ export async function replaceTrip(
     method: 'PUT',
     body: JSON.stringify(toTripRequest(body)),
   })
-  return toTripDetails(entity)
+  return summarizeTripEntity(entity, body)
 }
 
 export async function patchTrip(
@@ -277,9 +327,27 @@ export async function patchTrip(
     method: 'PATCH',
     body: JSON.stringify(toTripRequest(body)),
   })
-  return toTripDetails(entity)
+  return summarizeTripEntity(entity, body)
 }
 
 export function deleteTrip(id: number): Promise<void> {
   return requestVoid(`/trips/${id}`, { method: 'DELETE' })
+}
+
+function summarizeTripEntity(
+  entity: HalEntity<TripEntityBody>,
+  body: TripCreateRequest | TripPutRequest | TripPatchRequest,
+): TripDetailsResponse {
+  return {
+    id: idFromHalEntity(entity),
+    title: entity.title ?? body.title ?? '',
+    destination: entity.destination ?? body.destination ?? '',
+    startDate: entity.startDate ?? body.startDate ?? '',
+    shortDescription: entity.shortDescription ?? body.shortDescription ?? '',
+    longDescription: entity.longDescription ?? body.longDescription ?? '',
+    ...(body.userId ? { authorId: body.userId, userId: body.userId } : {}),
+    tripLocations: [],
+    transports: [],
+    accommodations: [],
+  }
 }
