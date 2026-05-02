@@ -23,6 +23,9 @@ type TripEntityBody = {
   authorName?: string
   authorProfileImageUrl?: string
   locations?: string[]
+  accommodationNames?: string[]
+  transportTypes?: string[]
+  locationImageUrls?: string[]
   tripLocations?: TripDetailsResponse['tripLocations']
   transports?: TripDetailsResponse['transports']
   accommodations?: TripDetailsResponse['accommodations']
@@ -44,6 +47,11 @@ function toTripSummary(entity: HalEntity<TripEntityBody>): TripListItemResponse 
       ? { authorProfileImageUrl: entity.authorProfileImageUrl }
       : {}),
     ...(entity.locations ? { locations: entity.locations } : {}),
+    ...(entity.accommodationNames ? { accommodationNames: entity.accommodationNames } : {}),
+    ...(entity.transportTypes ? { transportTypes: entity.transportTypes } : {}),
+    ...(entity.locationImageUrls?.length
+      ? { locationImageUrls: entity.locationImageUrls }
+      : {}),
   }
 }
 
@@ -154,6 +162,25 @@ export async function searchTrips(
     totalItems: raw.totalElements ?? items.length,
     totalPages,
   }
+}
+
+/** Batch signed URLs for feed carousels (after fast {@link listTrips} / {@link searchTrips}). */
+export async function fetchFeedLocationImageUrls(
+  tripIds: number[],
+): Promise<Record<number, string[]>> {
+  if (tripIds.length === 0) return {}
+  const params = new URLSearchParams()
+  for (const id of tripIds) params.append('tripId', String(id))
+  const raw = await requestJson<Record<string, string[]>>(`/trips/feed-location-images?${params}`, {
+    method: 'GET',
+  })
+  const out: Record<number, string[]> = {}
+  if (!raw) return out
+  for (const [k, v] of Object.entries(raw)) {
+    const id = Number(k)
+    if (Number.isFinite(id) && Array.isArray(v)) out[id] = v
+  }
+  return out
 }
 
 export function countTripLikes(tripId: number): Promise<number> {

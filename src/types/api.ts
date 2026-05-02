@@ -56,6 +56,10 @@ export type TripListItemResponse = {
   authorName?: string
   authorProfileImageUrl?: string
   locations?: string[]
+  accommodationNames?: string[]
+  transportTypes?: string[]
+  /** Signed URLs for all trip-location images; populated only when authenticated. */
+  locationImageUrls?: string[]
   /** Present when returned from Spring Data REST (HAL `user` link). */
   userId?: number
 }
@@ -66,7 +70,13 @@ export type TripSearchResult = {
   title: string
   author: string
   shortDescription: string
+  destination?: string
+  startDate?: string
   locations: string[]
+  accommodationNames?: string[]
+  transportTypes?: string[]
+  /** Signed URLs for trip-location images when authenticated. */
+  locationImageUrls?: string[]
   /** Author user id when returned by the search API. */
   userId?: number
 }

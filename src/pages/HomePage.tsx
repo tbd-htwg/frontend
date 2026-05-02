@@ -1,31 +1,50 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faPenToSquare } from '@fortawesome/free-solid-svg-icons'
-import { listTrips, searchTrips } from '../api/trips'
+import { fetchFeedLocationImageUrls, listTrips, searchTrips } from '../api/trips'
 import { ApiError } from '../api/client'
 import { PaginationControls } from '../components/PaginationControls'
+import { TripFeedCard, type TripFeedCardProps } from '../components/TripFeedCard'
 import { useAuth } from '../context/AuthContext'
 import type { PaginatedResponse, TripListItemResponse, TripSearchResult } from '../types/api'
 
 const PAGE_SIZE = 10
 
-function isCurrentUserTrip(
-  user: { id: number } | null,
-  trip: { userId?: number },
-): boolean {
-  return user != null && trip.userId != null && trip.userId === user.id
+function tripFeedPropsFromBrowse(
+  t: TripListItemResponse,
+  showLocationImages: boolean,
+  feedImagesByTripId: Record<number, string[]>,
+): TripFeedCardProps {
+  return {
+    id: t.id,
+    title: t.title,
+    shortDescription: t.shortDescription?.trim() || undefined,
+    destination: t.destination,
+    startDate: t.startDate,
+    authorLabel: t.authorName,
+    locations: t.locations,
+    accommodationNames: t.accommodationNames,
+    transportTypes: t.transportTypes,
+    showLocationImages,
+    locationImageUrls: feedImagesByTripId[t.id],
+  }
 }
 
-function formatDate(iso: string) {
-  try {
-    return new Date(iso + 'T12:00:00').toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    })
-  } catch {
-    return iso
+function tripFeedPropsFromSearch(
+  t: TripSearchResult,
+  showLocationImages: boolean,
+  feedImagesByTripId: Record<number, string[]>,
+): TripFeedCardProps {
+  return {
+    id: t.id,
+    title: t.title,
+    shortDescription: t.shortDescription?.trim() || undefined,
+    destination: t.destination,
+    startDate: t.startDate,
+    authorLabel: t.author,
+    locations: t.locations,
+    accommodationNames: t.accommodationNames,
+    transportTypes: t.transportTypes,
+    showLocationImages,
+    locationImageUrls: feedImagesByTripId[t.id],
   }
 }
 
@@ -39,6 +58,7 @@ export function HomePage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [feedImagesByTripId, setFeedImagesByTripId] = useState<Record<number, string[]>>({})
   const { user } = useAuth()
 
   useEffect(() => {
@@ -112,6 +132,27 @@ export function HomePage() {
   }, [currentPage, query, debouncedQuery])
 
   const showSearch = Boolean(debouncedQuery.trim())
+
+  useEffect(() => {
+    if (!user) {
+      setFeedImagesByTripId({})
+      return
+    }
+    const page = showSearch ? searchPage : browsePage
+    const items = page?.items ?? []
+    if (items.length === 0) {
+      setFeedImagesByTripId({})
+      return
+    }
+    const ids = items.map((t) => t.id)
+    let cancelled = false
+    fetchFeedLocationImageUrls(ids).then((map) => {
+      if (!cancelled) setFeedImagesByTripId(map)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [user, showSearch, browsePage, searchPage])
   const searchItems = searchPage?.items ?? []
   const browseItems = browsePage?.items ?? []
   const visibleTrips = showSearch ? searchItems : browseItems
@@ -160,73 +201,19 @@ export function HomePage() {
             itemLabel="trips"
             onPageChange={setCurrentPage}
           />
-          <ul className="mt-6 divide-y divide-slate-300 rounded-lg border border-slate-300 bg-white shadow-sm">
+          <ul className="mt-6 space-y-4">
             {showSearch
               ? searchItems.map((t) => (
-                  <li
+                  <TripFeedCard
                     key={t.id}
-                    className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-                  >
-                    <div>
-                      <Link
-                        to={`/trips/${t.id}`}
-                        aria-label={`Open trip ${t.title}`}
-                        className="font-medium text-slate-900 hover:underline"
-                      >
-                        {t.title}
-                      </Link>
-                      <p className="text-sm text-slate-600">
-                        {t.author}
-                        {t.locations && t.locations.length > 0
-                          ? ` · ${t.locations.join(', ')}`
-                          : null}
-                      </p>
-                      {t.shortDescription ? (
-                        <p className="mt-1 line-clamp-2 text-sm text-slate-500">
-                          {t.shortDescription}
-                        </p>
-                      ) : null}
-                    </div>
-                    {isCurrentUserTrip(user, t) && (
-                      <Link
-                        to={`/trips/${t.id}/edit`}
-                        aria-label={`Edit trip ${t.title}`}
-                        className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:underline"
-                      >
-                        <FontAwesomeIcon icon={faPenToSquare} aria-hidden="true" />
-                        Edit
-                      </Link>
-                    )}
-                  </li>
+                    {...tripFeedPropsFromSearch(t, user != null, feedImagesByTripId)}
+                  />
                 ))
               : browseItems.map((t) => (
-                  <li
+                  <TripFeedCard
                     key={t.id}
-                    className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-                  >
-                    <div>
-                      <Link
-                        to={`/trips/${t.id}`}
-                        aria-label={`Open trip ${t.title}`}
-                        className="font-medium text-slate-900 hover:underline"
-                      >
-                        {t.title}
-                      </Link>
-                      <p className="text-sm text-slate-600">
-                        {t.destination} · {formatDate(t.startDate)}
-                      </p>
-                    </div>
-                    {isCurrentUserTrip(user, t) && (
-                      <Link
-                        to={`/trips/${t.id}/edit`}
-                        aria-label={`Edit trip ${t.title}`}
-                        className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:underline"
-                      >
-                        <FontAwesomeIcon icon={faPenToSquare} aria-hidden="true" />
-                        Edit
-                      </Link>
-                    )}
-                  </li>
+                    {...tripFeedPropsFromBrowse(t, user != null, feedImagesByTripId)}
+                  />
                 ))}
           </ul>
         </>
