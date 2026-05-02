@@ -1,5 +1,4 @@
 import type {
-  HalCollection,
   HalEntity,
   LocationResponse,
   SignedImageUploadRequest,
@@ -9,12 +8,7 @@ import type {
   TripLocationResponse,
 } from '../types/api'
 import { requestJson, requestVoid, uploadFileToSignedUrl } from './client'
-import {
-  embeddedItems,
-  hrefForResource,
-  idFromEntity,
-  idFromHref,
-} from './hal'
+import { hrefForResource, idFromEntity, idFromHref } from './hal'
 
 type TripLocationEntityBody = {
   description?: string
@@ -49,36 +43,6 @@ function toTripLocation(entity: HalEntity<TripLocationEntityBody>): TripLocation
     locationName: entity.locationName ?? '',
     address: entity.address,
   }
-}
-
-type TripLocationCollection = HalCollection<HalEntity<TripLocationEntityBody>>
-
-/**
- * Audit category D: the repository query is paginated server-side; ask for a
- * generous upper bound instead of relying on the default page of 20. Real
- * pagination UI would replace this.
- */
-const TRIP_LOCATIONS_PAGE_SIZE = 200
-
-export async function listTripLocationsByTripId(
-  tripId: number,
-): Promise<TripLocationResponse[]> {
-  const model = await requestJson<TripLocationCollection>(
-    `/trip-locations/search/findByTripId?tripId=${tripId}&size=${TRIP_LOCATIONS_PAGE_SIZE}&projection=withImages`,
-    { method: 'GET' },
-  )
-  // Spring Data REST uses "trip-locations" as the HAL collection key.
-  const rawEntries = [
-    ...embeddedItems(model, 'trip-locations'),
-    ...embeddedItems(model, 'tripLocations'),
-  ]
-  return rawEntries.map((rawEntry) => {
-    const entry = toTripLocation(rawEntry)
-    return {
-      ...entry,
-      locationName: entry.locationName || 'Unknown location',
-    }
-  })
 }
 
 export async function addTripLocation(input: {

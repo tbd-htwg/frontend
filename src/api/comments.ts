@@ -1,24 +1,24 @@
 import type { CommentResponse, HalCollection, HalEntity } from '../types/api'
-import { requestJson } from './client'
+import { requestJson, requestVoid } from './client'
 import {
+  documentIdFromSelfHref,
   embeddedItems,
   hrefForResource,
-  idFromEntity,
   idFromHref,
-  pathFromHref,
 } from './hal'
 
 type CommentEntityBody = {
   content?: string
   createdAt?: string
+  userName?: string
 }
 
 function toComment(entity: HalEntity<CommentEntityBody>): CommentResponse {
   return {
-    id: idFromEntity(entity),
+    id: documentIdFromSelfHref(entity._links?.self?.href),
     tripId: idFromHref(entity._links?.trip?.href),
     userId: idFromHref(entity._links?.user?.href),
-    userName: '',
+    userName: entity.userName ?? '',
     content: entity.content ?? '',
     createdAt: entity.createdAt ?? '',
   }
@@ -27,35 +27,19 @@ function toComment(entity: HalEntity<CommentEntityBody>): CommentResponse {
 type CommentCollection = HalCollection<HalEntity<CommentEntityBody>>
 
 /**
- * Audit category D (unbounded child list): the repository query is now paginated
- * on the backend. We request a reasonable upper bound here; a proper "load more"
- * UI is a follow-up. Spring Data REST ignores oversized `size` values capped by
- * the server config, so this stays safe against very chatty trips.
+ * HAL search endpoint (paginated). Prefer {@link getTripCommunity} on the trip detail page.
+ * User display names are included by the backend (no N+1 user fetches).
  */
-const COMMENTS_PAGE_SIZE = 100
-
-export async function listCommentsByTripId(tripId: number): Promise<CommentResponse[]> {
+export async function listCommentsByTripId(
+  tripId: number,
+  size = 10,
+): Promise<CommentResponse[]> {
   const model = await requestJson<CommentCollection>(
-    `/comments/search/findByTripIdOrderByCreatedAtDesc?tripId=${tripId}&size=${COMMENTS_PAGE_SIZE}`,
+    `/comments/search/findByTripIdOrderByCreatedAtDesc?tripId=${tripId}&size=${size}`,
     { method: 'GET' },
   )
   const rawComments = embeddedItems(model, 'comments')
-  return Promise.all(
-    rawComments.map(async (rawComment) => {
-      const base = toComment(rawComment)
-      const userHref = rawComment._links?.user?.href
-      if (!userHref) return { ...base, userName: 'traveller' }
-      const userEntity = await requestJson<HalEntity<{ name?: string }>>(
-        pathFromHref(userHref),
-        { method: 'GET' },
-      )
-      return {
-        ...base,
-        userId: idFromEntity(userEntity),
-        userName: userEntity.name ?? 'traveller',
-      }
-    }),
-  )
+  return rawComments.map((raw) => toComment(raw))
 }
 
 export async function createComment(
@@ -73,4 +57,9 @@ export async function createComment(
     }),
   })
   return toComment(entity)
+}
+
+export async function deleteComment(commentId: string): Promise<void> {
+  const encoded = encodeURIComponent(commentId)
+  await requestVoid(`/comments/${encoded}`, { method: 'DELETE' })
 }
