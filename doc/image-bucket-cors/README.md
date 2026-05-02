@@ -6,7 +6,7 @@ This directory contains the CORS policy for browser uploads to signed Google Clo
 
 - **Signer service account:** Create a dedicated service account whose credentials are used only to **sign** GCS V4 URLs. Grant that account **`roles/storage.objectCreator`** (and usually **`roles/storage.objectViewer`**) on the image bucket so signed `PUT`s succeed (step 5 below).
 - **Runtime deletes objects:** The **Cloud Run runtime** service account performs **server-side `storage.delete`** when users remove profile or trip-location images (`DELETE …/images`). It needs **`storage.objects.delete`** on the image bucket (step 5b). Without it, the API still clears the URL in the database but orphaned objects remain in GCS. A practical predefined role is **`roles/storage.objectAdmin`** on the bucket for that SA only; for least privilege, use a **custom role** that includes `storage.objects.delete` (and optionally `storage.objects.get`).
-- **Runtime impersonates signer:** Grant the **Cloud Run runtime** service account **`roles/iam.serviceAccountTokenCreator`** on the **signer** service account so the backend can impersonate the signer when minting signed URLs (step 4), rather than using the runtime identity to sign. Set **`SPRING_CLOUD_GCP_IMPERSONATE_SERVICE_ACCOUNT`** to the signer email in the backend environment (step 8).
+- **Runtime impersonates signer:** Grant the **Cloud Run runtime** service account **`roles/iam.serviceAccountTokenCreator`** on the **signer** service account so the backend can impersonate the signer when minting signed URLs (step 4), rather than using the runtime identity to sign. Set **`GCP_IMPERSONATE_SERVICE_ACCOUNT`** to the signer email in the backend environment (step 8).
 - **Local development:** For Application Default Credentials on a workstation, grant **TokenCreator** on the signer to your **user** principal as well (second command block in step 4).
 - **API:** Enable **`iamcredentials.googleapis.com`** on the project before impersonation-based signing works (step 3).
 
@@ -121,5 +121,5 @@ gcloud storage buckets describe "gs://${BUCKET_NAME}" \
 Set this in backend runtime environment (Cloud Run/GitHub vars):
 
 ```bash
-SPRING_CLOUD_GCP_IMPERSONATE_SERVICE_ACCOUNT="${SIGNER_SA}"
+GCP_IMPERSONATE_SERVICE_ACCOUNT="${SIGNER_SA}"
 ```

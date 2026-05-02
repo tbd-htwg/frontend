@@ -1,28 +1,55 @@
-# Trip Planner (frontend)
+# Trip planner (frontend)
 
-Single-page app for managing leisure trips: browse everyone’s trips, sign in with **Google Identity Platform (Firebase Authentication)** or a **dev-only** backend login when using the backend `local` Spring profile, and maintain your profile and trips against the REST API.
+Single-page application for a **trip planning** course project (HTWG Cloud Application Development): browse and search trips, view and edit trip detail (locations, accommodations, transports), manage your profile, and use **comments** and **likes** against the Spring Boot API. Sign in with **Google (Firebase Authentication)** or, during local development, the **dev login** path when the backend runs the **`local`** Spring profile.
+
+**Sibling API:** [../backend/README.md](../backend/README.md) (when this repo sits next to `backend/` in a monorepo). **Agent-oriented notes:** [AGENTS.md](AGENTS.md).
+
+**Paths:** Commands use the **frontend project root** (`package.json` here). In a monorepo that is often `frontend/` under a parent folder; if you opened **only** the frontend repository, you are already at that root. Links like `../backend/` assume that layout—use your real backend path if it differs.
 
 ## Technologies
 
-- **React** (with **React DOM**)
-- **TypeScript**
-- **Vite** (dev server with HMR)
-- **Tailwind CSS** (via `@tailwindcss/vite`)
-- **React Router**
-- **ESLint** (TypeScript + React Hooks + React Refresh)
+- **React** 19, **TypeScript**, **Vite** 6 (dev server with HMR)
+- **Tailwind CSS** 4 (`@tailwindcss/vite`)
+- **React Router** 7
+- **Font Awesome** (React bindings) for icons
+- **ESLint** (TypeScript, React Hooks, React Refresh)
+
+## Main screens
+
+| Area | Source |
+|------|--------|
+| Home / discovery | [`src/pages/HomePage.tsx`](src/pages/HomePage.tsx) |
+| Trip detail | [`src/pages/TripDetailPage.tsx`](src/pages/TripDetailPage.tsx) |
+| Create / edit trip | [`src/pages/TripNewPage.tsx`](src/pages/TripNewPage.tsx), [`src/pages/TripEditPage.tsx`](src/pages/TripEditPage.tsx) |
+| Login | [`src/pages/LoginPage.tsx`](src/pages/LoginPage.tsx) |
+| Profile (current user) | [`src/pages/ProfilePage.tsx`](src/pages/ProfilePage.tsx) |
+| Public user profile | [`src/pages/UserProfilePage.tsx`](src/pages/UserProfilePage.tsx) |
+| Legal | [`src/pages/ImpressumPage.tsx`](src/pages/ImpressumPage.tsx) |
+
+Routing and layout: [`src/App.tsx`](src/App.tsx), [`src/components/Layout.tsx`](src/components/Layout.tsx), [`src/components/ProtectedRoute.tsx`](src/components/ProtectedRoute.tsx).
 
 ## Run locally (hot reload)
 
-1. Install dependencies: `npm install`
-2. Start the API on `http://localhost:8080` (see the course backend).
-3. From this directory: `npm run dev` — Vite serves the app with **hot module replacement** (default URL is printed in the terminal, usually `http://localhost:5173`).
+1. Install dependencies: **`npm install`**
+2. Start the API on **`http://localhost:8080`** (see the backend README; **`local`** profile is easiest).
+3. From this project root: **`npm run dev`** — Vite prints the URL (usually **`http://localhost:5173`**).
 
-Optional: copy `.env.example` to `.env`.
+### API base URL and proxy
 
-- `VITE_API_BASE_URL` — only if your API is not reachable via the Vite dev proxy at `http://localhost:8080/api/v2`. Leave unset or empty for same-origin `/api/v2`.
+By default the app calls **same-origin** paths **`/api/v2`** and **`/api/search`**. In dev, [`vite.config.ts`](vite.config.ts) **proxies** those to **`http://localhost:8080`**, so you usually **do not** set `VITE_API_BASE_URL`.
 
-The SPA stores `{ accessToken, user }` in `sessionStorage` and sends `Authorization: Bearer …` on API requests after login.
+Copy [`.env.example`](.env.example) to **`.env`** only if you must point at a different API base (e.g. no proxy, or a remote backend). Use a value **without** a trailing slash, e.g. `http://localhost:8080/api/v2` when not using the proxy.
 
-## Run locally with Google Sign-In
+### Authentication
 
-The Firebase app config is initialized in `index.html`. Start the backend with Google auth enabled as described in the **backend** README, then use **Log in** and the Google button on `http://localhost:5173`. For local testing **without** Google, keep the backend on the `local` profile and use the **Dev sign-in** block on the login page (shown only in Vite dev mode).
+- After login, **`accessToken`** and **`user`** are stored in **`sessionStorage`**; API requests send **`Authorization: Bearer …`** when required.
+- **Google:** use **Log in** and the Google control; Firebase is initialized from [`index.html`](index.html).
+- **Dev sign-in:** shown only when running **`npm run dev`**. Requires the backend **`local`** profile and **`POST /api/v2/auth/dev-login`**.
+
+### CORS and production
+
+Local dev relies on the Vite proxy, so the browser only talks to the dev server. In production the static files are often served by **Caddy** or similar in [../infrastructure](../infrastructure) (monorepo path), which routes **`/api/v2`** (and related paths) to the backend container; configure the backend CORS allowlist for your public origin.
+
+## API contract snapshot
+
+An exported OpenAPI document may live under [`doc/swagger_v2.json`](doc/swagger_v2.json). Regenerate it from a running backend when the API changes — see the backend project’s `AGENTS.md` or README ([`../backend/AGENTS.md`](../backend/AGENTS.md) in a monorepo).
