@@ -5,6 +5,7 @@ import { faPenToSquare } from '@fortawesome/free-solid-svg-icons'
 import { listTrips, searchTrips } from '../api/trips'
 import { ApiError } from '../api/client'
 import { PaginationControls } from '../components/PaginationControls'
+import { TripSearchBar } from '../components/TripSearchBar'
 import { useAuth } from '../context/AuthContext'
 import type { PaginatedResponse, TripListItemResponse, TripSearchResult } from '../types/api'
 
@@ -62,52 +63,56 @@ export function HomePage() {
       return
     }
 
+    const abort = new AbortController()
     let cancelled = false
     setLoading(true)
     setError(null)
     setBrowsePage(null)
     setSearchPage(null)
 
+    const ignoreAbort = (err: unknown) =>
+      err instanceof DOMException && err.name === 'AbortError'
+
     if (debouncedQuery.trim()) {
-      searchTrips(debouncedQuery, currentPage, PAGE_SIZE)
+      searchTrips(debouncedQuery, currentPage, PAGE_SIZE, { signal: abort.signal })
         .then((data) => {
           if (!cancelled) setSearchPage(data)
         })
         .catch((err) => {
-          if (!cancelled) {
-            setError(
-              err instanceof ApiError
-                ? err.message
-                : 'Could not search trips. Is the API running?',
-            )
-          }
+          if (cancelled || ignoreAbort(err)) return
+          setError(
+            err instanceof ApiError
+              ? err.message
+              : 'Could not search trips. Is the API running?',
+          )
         })
         .finally(() => {
           if (!cancelled) setLoading(false)
         })
       return () => {
         cancelled = true
+        abort.abort()
       }
     }
 
-    listTrips(currentPage, PAGE_SIZE)
+    listTrips(currentPage, PAGE_SIZE, { signal: abort.signal })
       .then((data) => {
         if (!cancelled) setBrowsePage(data)
       })
       .catch((err) => {
-        if (!cancelled) {
-          setError(
-            err instanceof ApiError
-              ? err.message
-              : 'Could not load trips. Is the API running?',
-          )
-        }
+        if (cancelled || ignoreAbort(err)) return
+        setError(
+          err instanceof ApiError
+            ? err.message
+            : 'Could not load trips. Is the API running?',
+        )
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
       })
     return () => {
       cancelled = true
+      abort.abort()
     }
   }, [currentPage, query, debouncedQuery])
 
@@ -128,13 +133,7 @@ export function HomePage() {
         Trips from every traveller on the platform.
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search trips (title, description, places, transport, …)"
-          aria-label="Search trips by text"
-          className="w-full max-w-md rounded-md border border-slate-300 px-3 py-2 text-sm"
-        />
+        <TripSearchBar value={query} onChange={setQuery} />
       </div>
 
       {loading && <p className="mt-6 text-slate-500">Loading trips…</p>}

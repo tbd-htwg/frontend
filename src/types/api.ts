@@ -60,6 +60,20 @@ export type TripListItemResponse = {
   userId?: number
 }
 
+/** Autocomplete hit (GET /api/search/suggest/*). */
+export type SearchSuggestion = {
+  id: number
+  label: string
+  secondary?: string | null
+}
+
+/** Bundled catalog suggests (GET /api/search/suggest/filters). */
+export type FacetFilterSuggestResponse = {
+  transports: SearchSuggestion[]
+  locations: SearchSuggestion[]
+  accommodations: SearchSuggestion[]
+}
+
 /** Full-text trip search hit (GET /api/search/trips). */
 export type TripSearchResult = {
   id: number

@@ -89,11 +89,13 @@ function pageQuery(page: number, size: number): string {
 export async function listTrips(
   page = 1,
   size = 10,
+  init?: RequestInit,
 ): Promise<PaginatedResponse<TripListItemResponse>> {
   const model = await requestJson<TripCollection>(
     `/trips?${pageQuery(page, size)}&projection=list`,
     {
       method: 'GET',
+      ...init,
     },
   )
   return toTripPage(model)
@@ -136,6 +138,7 @@ export async function searchTrips(
   q: string,
   page = 1,
   size = 10,
+  init?: RequestInit,
 ): Promise<PaginatedResponse<TripSearchResult>> {
   const params = new URLSearchParams({
     q: q.trim(),
@@ -144,6 +147,7 @@ export async function searchTrips(
   })
   const raw = await requestJson<SpringPageTripSearchDto>(`/api/search/trips?${params}`, {
     method: 'GET',
+    ...init,
   })
   const items = raw.content ?? []
   const totalPages = Math.max(1, raw.totalPages ?? 1)
