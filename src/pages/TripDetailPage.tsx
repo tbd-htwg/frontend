@@ -11,6 +11,7 @@ import {
   faPenToSquare,
   faPersonWalkingLuggage,
   faPlus,
+  faTrash,
   faUser,
 } from '@fortawesome/free-solid-svg-icons'
 import {
@@ -19,9 +20,9 @@ import {
   deleteTripAccommodation,
   searchAccommodationsByNameContaining,
 } from '../api/accommodations'
-import { createComment, listCommentsByTripId } from '../api/comments'
+import { createComment, deleteComment, listCommentsByTripId } from '../api/comments'
 import { createLocation, searchLocationsByNameContaining } from '../api/locations'
-import { isTripLikedByUser, likeTrip, unlikeTrip } from '../api/likes'
+import { isTripLikedByCurrentUser, likeTrip, unlikeTrip } from '../api/likes'
 import {
   addTripTransport,
   createTransport,
@@ -112,6 +113,7 @@ export function TripDetailPage() {
   const [comments, setComments] = useState<CommentResponse[]>([])
   const [commentText, setCommentText] = useState('')
   const [commenting, setCommenting] = useState(false)
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null)
   const [tripLocations, setTripLocations] = useState<TripLocationResponse[]>([])
   /** Locations created in this session (add-new flow); search fills suggestions via API. */
   const [locations, setLocations] = useState<LocationResponse[]>([])
@@ -324,7 +326,7 @@ export function TripDetailPage() {
         setTripAccommodations(t.accommodations ?? [])
         setLikeCount(loadedLikeCount)
         if (user) {
-          const likedByUser = await isTripLikedByUser(user.id, tripId)
+          const likedByUser = await isTripLikedByCurrentUser(tripId)
           if (cancelled) return
           setIsOwner(owner.id === user.id)
           setLikedByMe(likedByUser)
@@ -397,7 +399,7 @@ export function TripDetailPage() {
         await likeTrip(user.id, trip.id)
       }
       const [likedByUser, likes] = await Promise.all([
-        isTripLikedByUser(user.id, trip.id),
+        isTripLikedByCurrentUser(trip.id),
         countTripLikes(trip.id),
       ])
       setLikedByMe(likedByUser)
@@ -427,6 +429,31 @@ export function TripDetailPage() {
       alert(err instanceof Error ? err.message : 'Could not add comment.')
     } finally {
       setCommenting(false)
+    }
+  }
+
+  async function handleDeleteComment(comment: CommentResponse) {
+    if (!user || !comment.id) return
+    const mine = comment.userId === user.id
+    const ownerDeleting = isOwner
+    if (!mine && !ownerDeleting) return
+    if (
+      !window.confirm(
+        mine
+          ? 'Delete your comment?'
+          : 'Remove this comment from your trip?',
+      )
+    ) {
+      return
+    }
+    setDeletingCommentId(comment.id)
+    try {
+      await deleteComment(comment.id)
+      setComments((prev) => prev.filter((c) => c.id !== comment.id))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Could not delete comment.')
+    } finally {
+      setDeletingCommentId(null)
     }
   }
 
@@ -1686,16 +1713,45 @@ export function TripDetailPage() {
                 <p className="mt-3 text-sm text-slate-600">No comments yet.</p>
               ) : (
                 <ul className="mt-3 space-y-2">
-                  {comments.map((comment) => (
-                    <li key={comment.id} className="rounded-md border border-slate-300 p-2">
-                      <p className="flex items-start gap-2 text-sm text-slate-800">
-                        <FontAwesomeIcon
-                          icon={faComment}
-                          aria-hidden="true"
-                          className="mt-0.5 shrink-0 text-slate-500"
-                        />
-                        <span>{comment.content}</span>
-                      </p>
+                  {comments.map((comment) => {
+                    const canDeleteComment =
+                      !!user &&
+                      !!comment.id &&
+                      (comment.userId === user.id || isOwner)
+                    return (
+                    <li
+                      key={
+                        comment.id ||
+                        `${comment.userId}-${comment.createdAt}-${comment.content.slice(0, 48)}`
+                      }
+                      className="rounded-md border border-slate-300 p-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="flex min-w-0 flex-1 items-start gap-2 text-sm text-slate-800">
+                          <FontAwesomeIcon
+                            icon={faComment}
+                            aria-hidden="true"
+                            className="mt-0.5 shrink-0 text-slate-500"
+                          />
+                          <span>{comment.content}</span>
+                        </p>
+                        {canDeleteComment ? (
+                          <button
+                            type="button"
+                            onClick={() => void handleDeleteComment(comment)}
+                            disabled={deletingCommentId === comment.id}
+                            aria-label={
+                              deletingCommentId === comment.id
+                                ? 'Deleting comment'
+                                : comment.userId === user.id
+                                  ? 'Delete your comment'
+                                  : 'Remove comment from your trip'
+                            }
+                            className="shrink-0 rounded-md border border-slate-300 p-1.5 text-slate-600 hover:border-red-300 hover:text-red-700 disabled:opacity-50"
+                          >
+                            <FontAwesomeIcon icon={faTrash} aria-hidden="true" />
+                          </button>
+                        ) : null}
+                      </div>
                       <p className="mt-1 text-xs text-slate-500">
                         {Number.isFinite(comment.userId) ? (
                           <Link
@@ -1712,7 +1768,7 @@ export function TripDetailPage() {
                         {new Date(comment.createdAt).toLocaleString()}
                       </p>
                     </li>
-                  ))}
+                  )})}
                 </ul>
               )}
             </div>

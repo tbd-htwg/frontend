@@ -100,20 +100,30 @@ async function request(path: string, init?: RequestInit): Promise<Response> {
 }
 
 /**
- * GET returning whether the resource exists (200 vs 404). Other status codes throw {@link ApiError}.
+ * HEAD request: backend exposes membership checks (e.g. likedTrips) via 204 vs 404 only for HEAD,
+ * not GET — GET would miss {@code LikeController} and fall through to security/SDR (often 401).
  */
 export async function getExists(path: string): Promise<boolean> {
-  const res = await fetch(resolveApiUrl(path), { method: 'GET' })
+  const headers = new Headers()
+  const token = bearerFromSessionStorage()
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+  const res = await fetch(resolveApiUrl(path), { method: 'HEAD', headers })
   if (res.status === 404) return false
-  if (!res.ok) {
-    const errText = await res.text()
-    throw new ApiError(
-      errText || res.statusText || 'Request failed',
-      res.status,
-      errText,
-    )
-  }
-  return true
+  if (res.ok) return true
+  const errText = await res.text()
+  throw new ApiError(
+    errText || res.statusText || 'Request failed',
+    res.status,
+    errText,
+  )
+}
+
+/** GET with Bearer token from session (no default Content-Type). */
+export async function authorizedGet(path: string): Promise<Response> {
+  const headers = new Headers()
+  const token = bearerFromSessionStorage()
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+  return fetch(resolveApiUrl(path), { method: 'GET', headers })
 }
 
 export async function requestJson<T>(

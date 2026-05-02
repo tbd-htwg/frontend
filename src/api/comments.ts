@@ -1,6 +1,7 @@
 import type { CommentResponse, HalCollection, HalEntity } from '../types/api'
-import { requestJson } from './client'
+import { requestJson, requestVoid } from './client'
 import {
+  documentIdFromSelfHref,
   embeddedItems,
   hrefForResource,
   idFromEntity,
@@ -15,7 +16,7 @@ type CommentEntityBody = {
 
 function toComment(entity: HalEntity<CommentEntityBody>): CommentResponse {
   return {
-    id: idFromEntity(entity),
+    id: documentIdFromSelfHref(entity._links?.self?.href),
     tripId: idFromHref(entity._links?.trip?.href),
     userId: idFromHref(entity._links?.user?.href),
     userName: '',
@@ -73,4 +74,9 @@ export async function createComment(
     }),
   })
   return toComment(entity)
+}
+
+export async function deleteComment(commentId: string): Promise<void> {
+  const encoded = encodeURIComponent(commentId)
+  await requestVoid(`/comments/${encoded}`, { method: 'DELETE' })
 }

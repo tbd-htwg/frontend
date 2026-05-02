@@ -149,7 +149,8 @@ export type AccommodationResponse = {
 }
 
 export type CommentResponse = {
-  id: number
+  /** Firestore document id (string), not numeric SQL id */
+  id: string
   tripId: number
   userId: number
   userName: string

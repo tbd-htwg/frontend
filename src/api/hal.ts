@@ -17,6 +17,18 @@ export function idFromEntity<T>(entity: HalEntity<T>): number {
   return idFromHref(entity._links?.self?.href)
 }
 
+/** Last path segment of `self` href — use for Firestore-backed HAL resources with non-numeric ids. */
+export function documentIdFromSelfHref(href: string | undefined): string {
+  if (!href) return ''
+  try {
+    const pathOnly = href.split('?')[0].replace(/\{.*$/, '').replace(/\/$/, '')
+    const segment = pathOnly.split('/').filter(Boolean).at(-1)
+    return segment ? decodeURIComponent(segment) : ''
+  } catch {
+    return ''
+  }
+}
+
 export function hrefForResource(path: string): string {
   return path.startsWith('/') ? path : `/${path}`
 }
