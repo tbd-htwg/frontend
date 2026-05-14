@@ -106,7 +106,11 @@ export type UserDetailsResponse = UserResponse
 
 export type LocationResponse = {
   id: number
-  name: string
+  city: string
+  countryCode?: string
+  latitude?: number
+  longitude?: number
+  formattedAddress?: string
 }
 
 export type TripLocationResponse = {
@@ -116,6 +120,7 @@ export type TripLocationResponse = {
   description: string
   images: TripLocationImageResponse[]
   locationName: string
+  formattedAddress?: string
   address?: string
   startDate?: string
   endDate?: string
@@ -166,4 +171,38 @@ export type CommentResponse = {
   userName: string
   content: string
   createdAt: string
+}
+
+export type ExternalTourResponse = {
+  id: string
+  title: string
+  price: string
+  url: string
+}
+
+export type ExternalDailyForecast = {
+  date: string
+  tempMax: number
+  tempMin: number
+  weatherCode: number
+  description: string
+}
+
+export type ExternalWeatherData = {
+  currentTemp: number
+  currentWeatherCode: number
+  currentDescription: string
+  dailyForecasts: ExternalDailyForecast[]
+}
+
+export type ExternalTravelWarning = {
+  country: string
+  status: string
+  message: string
+}
+
+export type TripExternalInfoResponse = {
+  warning?: ExternalTravelWarning
+  weather?: ExternalWeatherData
+  tours: ExternalTourResponse[]
 }

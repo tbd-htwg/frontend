@@ -22,7 +22,7 @@ import {
 } from '../api/accommodations'
 import { getTripCommunity, loadMoreTripComments } from '../api/community'
 import { createComment, deleteComment } from '../api/comments'
-import { createLocation, searchLocationsByNameContaining } from '../api/locations'
+import { createLocation, searchLocationsByCityContaining } from '../api/locations'
 import { isTripLikedByCurrentUser, likeTrip, unlikeTrip } from '../api/likes'
 import {
   addTripTransport,
@@ -41,6 +41,7 @@ import { countTripLikes, deleteTrip, getTrip } from '../api/trips'
 import { ApiError } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
+import { getExternalTripInfo } from '../api/externalInfo'
 import type {
   AccommodationResponse,
   CommentResponse,
@@ -48,6 +49,7 @@ import type {
   TransportResponse,
   TripDetailsResponse,
   TripLocationResponse,
+  TripExternalInfoResponse
 } from '../types/api'
 
 function formatDate(iso: string) {
@@ -177,6 +179,10 @@ export function TripDetailPage() {
   const debouncedLocationSearch = useDebouncedValue(locationSearch, 300)
   const debouncedTransportSearch = useDebouncedValue(transportSearch, 300)
 
+  const [externalData, setExternalData] = useState<TripExternalInfoResponse | null>(null)
+  const [loadingExternal, setLoadingExternal] = useState(false)
+  const [locationExternalInfo, setLocationExternalInfo] = useState<Record<number, TripExternalInfoResponse>>({})
+
   // Fetch suggestions when the user focuses the search field (even with an
   // empty query, which the paginated backend endpoint interprets as "give me
   // the newest page") and when the debounced query changes while the popover
@@ -202,7 +208,7 @@ export function TripDetailPage() {
     if (!showLocationSuggestions) return
     const q = debouncedLocationSearch.trim()
     let cancelled = false
-    searchLocationsByNameContaining(q)
+    searchLocationsByCityContaining(q)
       .then((hits) => {
         if (!cancelled) setLocationApiHits(hits)
       })
@@ -233,7 +239,7 @@ export function TripDetailPage() {
   const locationSuggestions = useMemo(() => {
     const q = locationSearch.trim().toLowerCase()
     const local = q
-      ? locations.filter((l) => l.name.toLowerCase().includes(q))
+      ? locations.filter((l) => l.city.toLowerCase().includes(q))
       : []
     return mergeById(locationApiHits, local)
   }, [locationApiHits, locations, locationSearch])
@@ -283,7 +289,7 @@ export function TripDetailPage() {
       setSelectedExistingLocation(null)
       return
     }
-    const match = locationSuggestions.find((l) => l.name.toLowerCase() === q)
+    const match = locationSuggestions.find((l) => l.city.toLowerCase() === q)
     setSelectedExistingLocation(match ?? null)
   }, [locationSearch, locationSuggestions])
 
@@ -374,6 +380,70 @@ export function TripDetailPage() {
       setShowLocationAddPanel(false)
     }
   }, [showTripManagement])
+
+  useEffect(() => {
+    if (!trip?.destination) {
+      setExternalData(null)
+      setLoadingExternal(false)
+      return
+    }
+
+    let cancelled = false
+    setLoadingExternal(true)
+    setExternalData(null)
+
+    getExternalTripInfo(trip.destination, 'FR')
+      .then((data) => {
+        if (!cancelled) setExternalData(data)
+      })
+      .catch((err) => {
+        console.error('External Service Error:', err)
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingExternal(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [trip?.destination])
+
+  useEffect(() => {
+    if (!tripLocations.length) {
+      setLocationExternalInfo({})
+      return
+    }
+
+    let cancelled = false
+    const infoMap: Record<number, TripExternalInfoResponse> = { ...locationExternalInfo }
+
+    const fetchMissingLocationInfo = async () => {
+      for (const location of tripLocations) {
+        if (cancelled) break
+        // Skip if we already have info for this location
+        if (location.id in infoMap) {
+          continue
+        }
+        try {
+          const data = await getExternalTripInfo(location.locationName, 'FR')
+          if (!cancelled) {
+            infoMap[location.id] = data
+          }
+        } catch (err) {
+          console.error(`Failed to fetch external info for location ${location.locationName}:`, err)
+        }
+      }
+      if (!cancelled) {
+        setLocationExternalInfo(infoMap)
+      }
+    }
+
+    fetchMissingLocationInfo()
+
+    return () => {
+      cancelled = true
+    }
+  }, [tripLocations])
 
   async function handleDelete() {
     if (!trip || !isOwner) return
@@ -511,6 +581,21 @@ export function TripDetailPage() {
       }
       setLocationSearch('')
       setSelectedExistingLocation(null)
+      // Fetch external info for the added location
+      if (selectedExistingLocation) {
+        getExternalTripInfo(selectedExistingLocation.city, 'FR')
+          .then((data) => {
+            setLocationExternalInfo((prev) => {
+              const map = { ...prev }
+              const newestLocation = tripLocations[tripLocations.length - 1]
+              if (newestLocation) {
+                map[newestLocation.id] = data
+              }
+              return map
+            })
+          })
+          .catch((err) => console.error('Failed to fetch external info for location:', err))
+      }
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Could not add existing location.')
     } finally {
@@ -554,6 +639,19 @@ export function TripDetailPage() {
         setNewLocationEndDate('')
       }
       setLocationMode('existing')
+      // Fetch external info for the created location
+      getExternalTripInfo(newLocationName.trim(), 'FR')
+        .then((data) => {
+          setLocationExternalInfo((prev) => {
+            const map = { ...prev }
+            const newestLocation = tripLocations[tripLocations.length - 1]
+            if (newestLocation) {
+              map[newestLocation.id] = data
+            }
+            return map
+          })
+        })
+        .catch((err) => console.error('Failed to fetch external info for location:', err))
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Could not create and add location.')
     } finally {
@@ -863,6 +961,89 @@ export function TripDetailPage() {
           <p className="mt-6 text-sm font-medium text-slate-700">Details</p>
           <p className="mt-1 whitespace-pre-wrap text-slate-800">{trip.longDescription}</p>
 
+          {/* --- START EXTERNAL INFO DASHBOARD --- */}
+{(loadingExternal || externalData) && (
+  <section className="mt-8 grid gap-4 sm:grid-cols-2">
+    
+    {/* Linke Spalte: Wetter & Sicherheit */}
+    <div className="rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
+      <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Live Travel Status</h2>
+      {loadingExternal ? (
+        <p className="mt-4 text-sm text-slate-500 animate-pulse text-center">Fetching live data...</p>
+      ) : (
+        <div className="mt-4 space-y-5">
+          {/* Aktuelles Wetter */}
+          {externalData?.weather && (
+            <div className="flex items-center gap-4">
+              <div className="text-4xl" title={externalData.weather.currentDescription}>
+                {/* Einfaches Mapping: Code < 3 (Klar/Bewölkt) -> Sonne, sonst Regen/Schnee */}
+                {externalData.weather.currentWeatherCode < 3 ? '☀️' : '🌧️'}
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-slate-900">{externalData.weather.currentTemp}°C</p>
+                <p className="text-sm text-slate-600 capitalize">{externalData.weather.currentDescription}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Reisewarnung */}
+          {externalData?.warning && (
+            <div className={`rounded-md border p-3 text-xs ${
+              externalData.warning.status.toLowerCase().includes('warn') 
+              ? 'border-red-200 bg-red-50 text-red-800' 
+              : 'border-amber-200 bg-amber-50 text-amber-800'
+            }`}>
+              <p className="flex items-center gap-2 font-bold mb-1">
+                <FontAwesomeIcon icon={faGear} className="animate-spin-slow" /> 
+                Safety Update: {externalData.warning.country}
+              </p>
+              <p className="leading-relaxed">{externalData.warning.message}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+
+    {/* Rechte Spalte: Viator Aktivitäten */}
+    <div className="rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Local Activities</h2>
+        <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 font-medium">Viator API</span>
+      </div>
+      
+      {loadingExternal ? (
+        <div className="mt-4 space-y-2">
+          <div className="h-4 bg-slate-100 rounded animate-pulse w-3/4"></div>
+          <div className="h-4 bg-slate-100 rounded animate-pulse w-1/2"></div>
+        </div>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {externalData?.tours && externalData.tours.length > 0 ? (
+            externalData.tours.slice(0, 4).map((tour) => (
+              <li key={tour.id} className="group">
+                <a 
+                  href={tour.url} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="flex flex-col border-l-2 border-slate-100 pl-3 transition-colors hover:border-blue-500"
+                >
+                  <span className="text-sm font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
+                    {tour.title}
+                  </span>
+                  <span className="text-xs text-slate-500">{tour.price}</span>
+                </a>
+              </li>
+            ))
+          ) : (
+            <p className="text-xs text-slate-500 italic text-center py-4">No activities found for this destination.</p>
+          )}
+        </ul>
+      )}
+    </div>
+  </section>
+)}
+{/* --- ENDE EXTERNAL INFO DASHBOARD --- */}
+
           <section className="mt-8">
 
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -881,6 +1062,11 @@ export function TripDetailPage() {
                           <FontAwesomeIcon icon={faImage} aria-label="Location image placeholder" />
                           {entry.locationName}
                         </div>
+                        {entry.formattedAddress || entry.address ? (
+                          <p className="mt-1 text-xs text-slate-600">
+                            {entry.formattedAddress ?? entry.address}
+                          </p>
+                        ) : null}
                         {editingTripLocationId === entry.id && isOwner && showTripManagement ? (
                           <div className="mt-2 space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3">
                             <p className="text-xs font-medium text-slate-600">
@@ -1050,6 +1236,75 @@ export function TripDetailPage() {
               </ul>
             )}
 
+            {/* External Info for Locations - displayed below the list */}
+            {tripLocations.length > 0 && (
+              <div className="mt-6 space-y-4">
+                <h3 className="text-lg font-medium text-slate-900">Travel Information by Location</h3>
+                {Object.keys(locationExternalInfo).length === 0 ? (
+                  <p className="text-sm text-slate-600 italic py-4">Loading travel information...</p>
+                ) : (
+                  tripLocations.map((entry) => {
+                    const info = locationExternalInfo[entry.id]
+                    if (!info) return null
+                    return (
+                      <div key={entry.id} className="rounded-md border border-slate-300 bg-white p-4">
+                        <h4 className="text-sm font-medium text-slate-900 mb-3">{entry.locationName}</h4>
+                        <div className="grid gap-4 sm:grid-cols-3">
+                          {/* Weather */}
+                          {info?.weather && (
+                            <div className="rounded-md border border-slate-200 bg-blue-50 p-3">
+                              <p className="text-xs font-bold uppercase text-slate-600 mb-2">Weather</p>
+                              <div className="flex items-center gap-2">
+                                <div className="text-2xl">
+                                  {info.weather.currentWeatherCode < 3 ? '☀️' : '🌧️'}
+                                </div>
+                                <div>
+                                  <p className="text-lg font-bold text-slate-900">{info.weather.currentTemp}°C</p>
+                                  <p className="text-xs text-slate-600 capitalize">{info.weather.currentDescription}</p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {/* Travel Warning */}
+                          {info?.warning && (
+                            <div className={`rounded-md border p-3 text-xs ${
+                              info.warning.status.toLowerCase().includes('warn') 
+                              ? 'border-red-200 bg-red-50 text-red-800' 
+                              : 'border-amber-200 bg-amber-50 text-amber-800'
+                            }`}>
+                              <p className="font-bold mb-1">🚨 Safety Update</p>
+                              <p className="font-medium">{info.warning.country}</p>
+                              <p className="mt-1 leading-relaxed">{info.warning.message}</p>
+                            </div>
+                          )}
+                          {/* Activities */}
+                          {info?.tours && info.tours.length > 0 && (
+                            <div className="rounded-md border border-slate-200 bg-blue-50 p-3">
+                              <p className="text-xs font-bold uppercase text-slate-600 mb-2">Activities (Viator)</p>
+                              <ul className="space-y-1.5">
+                                {info.tours.slice(0, 3).map((tour) => (
+                                  <li key={tour.id}>
+                                    <a
+                                      href={tour.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs font-medium text-blue-700 hover:text-blue-900 underline break-words"
+                                    >
+                                      {tour.title}
+                                    </a>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            )}
+
             {isOwner && showTripManagement && (
               <div className="mt-4 rounded-md border border-slate-300 bg-slate-100 p-3">
                 <div className="flex items-start gap-2">
@@ -1109,8 +1364,8 @@ export function TripDetailPage() {
                     <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
                       <div className="relative">
                         <input
-                          placeholder="Search locations"
-                          aria-label="Search existing locations"
+                          placeholder="Search cities"
+                          aria-label="Search existing cities"
                           value={locationSearch}
                           onFocus={() => setShowLocationSuggestions(true)}
                           onBlur={() => {
@@ -1129,15 +1384,18 @@ export function TripDetailPage() {
                               <li key={l.id}>
                                 <button
                                   type="button"
-                                  aria-label={`Select location ${l.name}`}
+                                  aria-label={`Select location ${l.city}`}
                                   className="w-full px-3 py-2 text-left text-sm hover:bg-slate-100"
                                   onMouseDown={() => {
                                     setSelectedExistingLocation(l)
-                                    setLocationSearch(l.name)
+                                    setLocationSearch(l.city)
                                     setShowLocationSuggestions(false)
                                   }}
                                 >
-                                  {l.name}
+                                  <span className="block font-medium text-slate-900">{l.city}</span>
+                                  {l.formattedAddress ? (
+                                    <span className="block text-xs text-slate-500">{l.formattedAddress}</span>
+                                  ) : null}
                                 </button>
                               </li>
                             ))}
@@ -1199,8 +1457,8 @@ export function TripDetailPage() {
                     </p>
                     <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
                       <input
-                        placeholder="New location name"
-                        aria-label="New location name"
+                        placeholder="New location city"
+                        aria-label="New location city"
                         value={newLocationName}
                         onChange={(e) => setNewLocationName(e.target.value)}
                         className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"

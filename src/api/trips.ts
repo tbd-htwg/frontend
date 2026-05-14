@@ -46,6 +46,8 @@ type TripFeedDetailStopDto = {
   startDate?: string
   endDate?: string
   imageUrls: string[]
+  formattedAddress?: string
+  address?: string
 }
 
 type TripFeedAccommodationDto = AccommodationResponse
@@ -118,6 +120,7 @@ function toTripLocation(stop: TripFeedDetailStopDto, tripId: number): TripLocati
       signedReadUrl: url,
     })),
     locationName: stop.locationName || 'Unknown location',
+    formattedAddress: stop.formattedAddress ?? stop.address,
     startDate: stop.startDate,
     endDate: stop.endDate,
   }

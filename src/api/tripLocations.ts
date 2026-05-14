@@ -8,13 +8,14 @@ import type {
   TripLocationResponse,
 } from '../types/api'
 import { requestJson, requestVoid, uploadFileToSignedUrl } from './client'
-import { hrefForResource, idFromEntity, idFromHref } from './hal'
+import { idFromEntity, idFromHref } from './hal'
 
 type TripLocationEntityBody = {
   description?: string
   images?: TripLocationImageResponse[]
   signedImageUrls?: string[]
   locationName?: string
+  formattedAddress?: string
   address?: string
   startDate?: string
   endDate?: string
@@ -41,6 +42,7 @@ function toTripLocation(entity: HalEntity<TripLocationEntityBody>): TripLocation
     startDate: entity.startDate,
     endDate: entity.endDate,
     locationName: entity.locationName ?? '',
+          formattedAddress: entity.formattedAddress ?? entity.address,
     address: entity.address,
   }
 }
@@ -55,8 +57,8 @@ export async function addTripLocation(input: {
   const entity = await requestJson<HalEntity<TripLocationEntityBody>>('/trip-locations', {
     method: 'POST',
     body: JSON.stringify({
-      trip: hrefForResource(`/trips/${input.tripId}`),
-      location: hrefForResource(`/locations/${input.location.id}`),
+      tripId: input.tripId,
+      city: input.location.city,
       description: input.description,
       startDate: input.startDate,
       endDate: input.endDate,
@@ -64,7 +66,7 @@ export async function addTripLocation(input: {
   })
   return {
     ...toTripLocation(entity),
-    locationName: input.location.name,
+    locationName: input.location.city,
   }
 }
 
@@ -75,13 +77,13 @@ export function deleteTripLocation(id: number): Promise<void> {
 export async function patchTripLocation(
   id: number,
   body: TripLocationPatchRequest,
-  locationName: string,
+  city: string,
 ): Promise<TripLocationResponse> {
   const entity = await requestJson<HalEntity<TripLocationEntityBody>>(`/trip-locations/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(body),
   })
-  return { ...toTripLocation(entity), locationName }
+  return { ...toTripLocation(entity), locationName: city }
 }
 
 export function deleteTripLocationImage(tripLocationId: number): Promise<void> {

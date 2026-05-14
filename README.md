@@ -40,6 +40,8 @@ By default the app calls **same-origin** paths **`/api/v2`** and **`/api/search`
 
 Copy [`.env.example`](.env.example) to **`.env`** only if you must point at a different API base (e.g. no proxy, or a remote backend). Use a value **without** a trailing slash, e.g. `http://localhost:8080/api/v2` when not using the proxy.
 
+The external travel-info widget in [`src/pages/TripDetailPage.tsx`](src/pages/TripDetailPage.tsx) now goes through the backend gateway at `/api/v2/external/details`, so the browser only needs the main backend origin.
+
 ### Authentication
 
 - After login, **`accessToken`** and **`user`** are stored in **`sessionStorage`**; API requests send **`Authorization: Bearer …`** when required.
