@@ -1,14 +1,8 @@
 import { useState, type FormEvent } from 'react'
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-
-function firebaseAuth() {
-  const firebase = window.firebase
-  if (!firebase || !firebase.auth) {
-    throw new Error('Firebase is not available.')
-  }
-  return firebase
-}
+import { getFirebaseAuth } from '../lib/firebaseApp'
 
 export function LoginPage() {
   const { loginWithGoogle, loginDev } = useAuth()
@@ -26,10 +20,10 @@ export function LoginPage() {
     setError(null)
     setGoogleSubmitting(true)
     try {
-      const firebase = firebaseAuth()
-      const provider = new firebase.auth.GoogleAuthProvider()
-      const result = await firebase.auth().signInWithPopup(provider)
-      const credential = await result.user?.getIdToken()
+      const auth = getFirebaseAuth()
+      const provider = new GoogleAuthProvider()
+      const result = await signInWithPopup(auth, provider)
+      const credential = await result.user.getIdToken()
       if (!credential) {
         throw new Error('Could not get Firebase ID token.')
       }

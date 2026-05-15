@@ -13,7 +13,7 @@ Concise context for AI assistants and contributors working in this directory. Fo
 - Entry: [`src/main.tsx`](src/main.tsx), routing in [`src/App.tsx`](src/App.tsx).
 - API calls: [`src/api/client.ts`](src/api/client.ts) plus feature modules under [`src/api/`](src/api/) (`auth`, `trips`, `users`, `comments`, `likes`, HAL helpers, etc.).
 - Auth state: [`src/context/AuthContext.tsx`](src/context/AuthContext.tsx); session key in [`src/auth/sessionStorageKey.ts`](src/auth/sessionStorageKey.ts).
-- Firebase client config is loaded from [`index.html`](index.html) (Identity Platform / Firebase Auth).
+- Firebase / Identity Platform: [`src/lib/firebaseApp.ts`](src/lib/firebaseApp.ts); env `VITE_FIREBASE_*` in [`.env.example`](.env.example). Must match backend `TRIPPLANNING_AUTH_FIREBASE_PROJECT_ID`.
 
 ## Backend coupling
 

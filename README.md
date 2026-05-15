@@ -43,7 +43,7 @@ Copy [`.env.example`](.env.example) to **`.env`** only if you must point at a di
 ### Authentication
 
 - After login, **`accessToken`** and **`user`** are stored in **`sessionStorage`**; API requests send **`Authorization: Bearer …`** when required.
-- **Google:** use **Log in** and the Google control; Firebase is initialized from [`index.html`](index.html).
+- **Google:** **Sign in with Google** uses the Firebase JS SDK (`firebase` npm package) initialized from **`VITE_FIREBASE_API_KEY`**, **`VITE_FIREBASE_AUTH_DOMAIN`**, and **`VITE_FIREBASE_PROJECT_ID`** in **`.env`** (see [`.env.example`](.env.example)). Those values must come from the **same** Firebase/GCP project as the API’s **`TRIPPLANNING_AUTH_FIREBASE_PROJECT_ID`** (GKE: trip-service ConfigMap).
 - **Dev sign-in:** shown only when running **`npm run dev`**. Requires the backend **`local`** profile and **`POST /api/v2/auth/dev-login`**.
 
 ### CORS and production
