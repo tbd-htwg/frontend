@@ -32,13 +32,23 @@ Routing and layout: [`src/App.tsx`](src/App.tsx), [`src/components/Layout.tsx`](
 
 1. Install dependencies: **`npm install`**
 2. Start the API on **`http://localhost:8080`** (see the backend README; **`local`** profile is easiest).
-3. From this project root: **`npm run dev`** — Vite prints the URL (usually **`http://localhost:5173`**).
+3. From this project root, pick a dev profile:
+
+| Command | API target | When to use |
+|---------|------------|-------------|
+| **`npm run dev:minikube`** | `http://localhost:8080` (Vite proxy) | [Minikube local stack](../backend/docs/gettingstarted/README.md): run `./scripts/local-dev.sh port-forward` first |
+| **`npm run dev:k8s`** | `https://api.k8s.tbd-htwg.de` (Vite proxy) | GKE / ms2 cloud API (DNS + TLS must work) |
+| **`npm run dev`** | `http://localhost:8080` (default proxy) | Same as minikube if you use plain `vite` |
+
+Vite prints the dev URL (usually **`http://localhost:5173`**).
+
+Copy [`.env.example`](.env.example) to **`.env`** and set **`VITE_FIREBASE_*`** for Google sign-in (same GCP project as the API).
 
 ### API base URL and proxy
 
-By default the app calls **same-origin** paths **`/api/v2`** and **`/api/search`**. In dev, [`vite.config.ts`](vite.config.ts) **proxies** those to **`http://localhost:8080`**, so you usually **do not** set `VITE_API_BASE_URL`.
+The app calls **same-origin** paths **`/api/v2`** and **`/api/search`**. In dev, [`vite.config.ts`](vite.config.ts) **proxies** those to **`VITE_DEV_API_PROXY_TARGET`** (from [`.env.k8s`](.env.k8s) or [`.env.minikube`](.env.minikube) depending on the script). You usually **do not** set `VITE_API_BASE_URL`.
 
-Copy [`.env.example`](.env.example) to **`.env`** only if you must point at a different API base (e.g. no proxy, or a remote backend). Use a value **without** a trailing slash, e.g. `http://localhost:8080/api/v2` when not using the proxy.
+For a direct API URL without the proxy (e.g. production build), set **`VITE_API_BASE_URL`** to the API origin **without** a trailing slash.
 
 The external travel-info widget in [`src/pages/TripDetailPage.tsx`](src/pages/TripDetailPage.tsx) now goes through the backend gateway at `/api/v2/external/details`, so the browser only needs the main backend origin.
 

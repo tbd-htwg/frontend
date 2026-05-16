@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:k8s": "vite --mode k8s",
+    "dev:minikube": "vite --mode minikube",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
