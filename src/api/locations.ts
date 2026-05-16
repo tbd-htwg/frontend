@@ -4,13 +4,20 @@ import { embeddedItems, idFromEntity } from './hal'
 
 type LocationEntityBody = {
   city?: string
-  name?: string
+  countryCode?: string
+  latitude?: number
+  longitude?: number
+  formattedAddress?: string
 }
 
 function toLocation(entity: HalEntity<LocationEntityBody>): LocationResponse {
   return {
     id: idFromEntity(entity),
-    name: entity.city ?? entity.name ?? '',
+    city: entity.city ?? '',
+    countryCode: entity.countryCode,
+    latitude: entity.latitude,
+    longitude: entity.longitude,
+    formattedAddress: entity.formattedAddress,
   }
 }
 
@@ -27,7 +34,7 @@ export async function listLocations(): Promise<LocationResponse[]> {
  */
 const LOCATION_SUGGESTION_PAGE_SIZE = 10
 
-export async function searchLocationsByNameContaining(
+export async function searchLocationsByCityContaining(
   city: string,
   size: number = LOCATION_SUGGESTION_PAGE_SIZE,
 ): Promise<LocationResponse[]> {
@@ -48,6 +55,9 @@ export async function searchLocationsByNameContaining(
     throw e
   }
 }
+
+/** @deprecated Use {@link searchLocationsByCityContaining}. */
+export const searchLocationsByNameContaining = searchLocationsByCityContaining
 
 export async function getLocationById(id: number): Promise<LocationResponse> {
   const entity = await requestJson<HalEntity<LocationEntityBody>>(`/locations/${id}`, {

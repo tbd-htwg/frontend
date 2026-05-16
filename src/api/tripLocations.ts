@@ -15,6 +15,7 @@ type TripLocationEntityBody = {
   images?: TripLocationImageResponse[]
   signedImageUrls?: string[]
   locationName?: string
+  formattedAddress?: string
   address?: string
   startDate?: string
   endDate?: string
@@ -47,6 +48,7 @@ function toTripLocationFromHal(entity: HalEntity<TripLocationEntityBody>): TripL
     startDate: entity.startDate,
     endDate: entity.endDate,
     locationName: entity.locationName ?? '',
+    formattedAddress: entity.formattedAddress ?? entity.address,
     address: entity.address,
   }
 }
