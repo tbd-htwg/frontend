@@ -3,13 +3,14 @@ import { ApiError, requestJson } from './client'
 import { embeddedItems, idFromEntity } from './hal'
 
 type LocationEntityBody = {
+  city?: string
   name?: string
 }
 
 function toLocation(entity: HalEntity<LocationEntityBody>): LocationResponse {
   return {
     id: idFromEntity(entity),
-    name: entity.name ?? '',
+    name: entity.city ?? entity.name ?? '',
   }
 }
 
@@ -21,26 +22,24 @@ export async function listLocations(): Promise<LocationResponse[]> {
 }
 
 /**
- * Audit category A fix: paginated. Empty `name` matches every row (LIKE '%%')
- * so this can be called on focus to prefill a suggestion dropdown;
- * `sort=id,desc` puts the newest locations first (IDENTITY ids preserve
- * insertion order).
+ * Paginated city search for location suggestions.
+ * Empty `city` matches every row (LIKE '%%') on focus; `sort=id,desc` prefers newest rows.
  */
 const LOCATION_SUGGESTION_PAGE_SIZE = 10
 
 export async function searchLocationsByNameContaining(
-  name: string,
+  city: string,
   size: number = LOCATION_SUGGESTION_PAGE_SIZE,
 ): Promise<LocationResponse[]> {
-  const q = name.trim()
+  const q = city.trim()
   const params = new URLSearchParams({
-    name: q,
+    city: q,
     size: String(size),
     sort: 'id,desc',
   })
   try {
     const model = await requestJson<LocationCollection>(
-      `/locations/search/findByNameContainingIgnoreCase?${params.toString()}`,
+      `/locations/search/findByCityContainingIgnoreCase?${params.toString()}`,
       { method: 'GET' },
     )
     return embeddedItems(model, 'locations').map(toLocation)
@@ -53,14 +52,6 @@ export async function searchLocationsByNameContaining(
 export async function getLocationById(id: number): Promise<LocationResponse> {
   const entity = await requestJson<HalEntity<LocationEntityBody>>(`/locations/${id}`, {
     method: 'GET',
-  })
-  return toLocation(entity)
-}
-
-export async function createLocation(name: string): Promise<LocationResponse> {
-  const entity = await requestJson<HalEntity<LocationEntityBody>>('/locations', {
-    method: 'POST',
-    body: JSON.stringify({ name }),
   })
   return toLocation(entity)
 }

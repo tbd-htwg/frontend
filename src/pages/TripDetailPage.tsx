@@ -22,7 +22,7 @@ import {
 } from '../api/accommodations'
 import { getTripCommunity, loadMoreTripComments } from '../api/community'
 import { createComment, deleteComment } from '../api/comments'
-import { createLocation, searchLocationsByNameContaining } from '../api/locations'
+import { searchLocationsByNameContaining } from '../api/locations'
 import { isTripLikedByCurrentUser, likeTrip, unlikeTrip } from '../api/likes'
 import {
   addTripTransport,
@@ -118,8 +118,6 @@ export function TripDetailPage() {
   const [commenting, setCommenting] = useState(false)
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null)
   const [tripLocations, setTripLocations] = useState<TripLocationResponse[]>([])
-  /** Locations created in this session (add-new flow); search fills suggestions via API. */
-  const [locations, setLocations] = useState<LocationResponse[]>([])
   const [tripTransports, setTripTransports] = useState<TransportResponse[]>([])
   /** Transports created in this session; search fills suggestions via API. */
   const [sessionTransports, setSessionTransports] = useState<TransportResponse[]>([])
@@ -230,13 +228,7 @@ export function TripDetailPage() {
     }
   }, [debouncedTransportSearch, showTransportSuggestions])
 
-  const locationSuggestions = useMemo(() => {
-    const q = locationSearch.trim().toLowerCase()
-    const local = q
-      ? locations.filter((l) => l.name.toLowerCase().includes(q))
-      : []
-    return mergeById(locationApiHits, local)
-  }, [locationApiHits, locations, locationSearch])
+  const locationSuggestions = useMemo(() => locationApiHits, [locationApiHits])
 
   const transportSuggestions = useMemo(() => {
     const q = transportSearch.trim().toLowerCase()
@@ -495,7 +487,7 @@ export function TripDetailPage() {
       }
       const created = await addTripLocation({
         tripId: trip.id,
-        location: selectedLocation,
+        city: selectedLocation.name,
         description: existingLocationDescription.trim(),
         startDate: `${existingLocationStartDate}T00:00:00`,
         endDate: `${existingLocationEndDate}T23:59:59`,
@@ -534,11 +526,9 @@ export function TripDetailPage() {
     }
     setSavingLocation(true)
     try {
-      const createdLocation = await createLocation(newLocationName.trim())
-      setLocations((prev) => [...prev, createdLocation])
       const created = await addTripLocation({
         tripId: trip.id,
-        location: createdLocation,
+        city: newLocationName.trim(),
         description: newLocationDescription.trim(),
         startDate: `${newLocationStartDate}T00:00:00`,
         endDate: `${newLocationEndDate}T23:59:59`,

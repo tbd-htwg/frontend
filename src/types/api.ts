@@ -104,6 +104,7 @@ export type TripPatchRequest = Partial<TripCreateRequest>
 /** Same shape as {@link UserResponse}; kept as a named type for user-profile views. */
 export type UserDetailsResponse = UserResponse
 
+/** Display name; maps from backend {@code location.city}. */
 export type LocationResponse = {
   id: number
   name: string

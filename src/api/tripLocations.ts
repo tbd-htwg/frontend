@@ -1,6 +1,5 @@
 import type {
   HalEntity,
-  LocationResponse,
   SignedImageUploadRequest,
   SignedImageUploadResponse,
   TripLocationImageResponse,
@@ -8,9 +7,10 @@ import type {
   TripLocationResponse,
 } from '../types/api'
 import { requestJson, requestVoid, uploadFileToSignedUrl } from './client'
-import { hrefForResource, idFromEntity, idFromHref } from './hal'
+import { idFromEntity, idFromHref } from './hal'
 
 type TripLocationEntityBody = {
+  id?: number
   description?: string
   images?: TripLocationImageResponse[]
   signedImageUrls?: string[]
@@ -18,9 +18,15 @@ type TripLocationEntityBody = {
   address?: string
   startDate?: string
   endDate?: string
+  location?: {
+    id?: number
+    city?: string
+    formattedAddress?: string
+  }
+  trip?: { id?: number }
 }
 
-function toTripLocation(entity: HalEntity<TripLocationEntityBody>): TripLocationResponse {
+function toTripLocationFromHal(entity: HalEntity<TripLocationEntityBody>): TripLocationResponse {
   const projectedImages =
     entity.images?.filter(
       (image): image is TripLocationImageResponse =>
@@ -45,27 +51,40 @@ function toTripLocation(entity: HalEntity<TripLocationEntityBody>): TripLocation
   }
 }
 
+function toTripLocationFromCreate(body: TripLocationEntityBody): TripLocationResponse {
+  return {
+    id: body.id ?? 0,
+    tripId: body.trip?.id ?? 0,
+    locationId: body.location?.id ?? 0,
+    description: body.description ?? '',
+    images: [],
+    startDate: body.startDate,
+    endDate: body.endDate,
+    locationName: body.location?.city ?? '',
+    address: body.location?.formattedAddress,
+  }
+}
+
 export async function addTripLocation(input: {
   tripId: number
-  location: LocationResponse
+  city: string
   description: string
   startDate: string
   endDate: string
+  formattedAddress?: string
 }): Promise<TripLocationResponse> {
-  const entity = await requestJson<HalEntity<TripLocationEntityBody>>('/trip-locations', {
+  const body = await requestJson<TripLocationEntityBody & { id: number }>('/trip-locations', {
     method: 'POST',
     body: JSON.stringify({
-      trip: hrefForResource(`/trips/${input.tripId}`),
-      location: hrefForResource(`/locations/${input.location.id}`),
+      tripId: input.tripId,
+      city: input.city.trim(),
       description: input.description,
       startDate: input.startDate,
       endDate: input.endDate,
+      formattedAddress: input.formattedAddress,
     }),
   })
-  return {
-    ...toTripLocation(entity),
-    locationName: input.location.name,
-  }
+  return toTripLocationFromCreate(body)
 }
 
 export function deleteTripLocation(id: number): Promise<void> {
@@ -81,7 +100,7 @@ export async function patchTripLocation(
     method: 'PATCH',
     body: JSON.stringify(body),
   })
-  return { ...toTripLocation(entity), locationName }
+  return { ...toTripLocationFromHal(entity), locationName }
 }
 
 export function deleteTripLocationImage(tripLocationId: number): Promise<void> {
