@@ -1,12 +1,13 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { APP_TITLE, appTitleInitials } from '../branding'
 import { TEAM_MEMBERS } from '../data/teamMembers'
 
 export function ImpressumPage() {
   useEffect(() => {
-    document.title = 'Impressum — Trip Planner'
+    document.title = `Impressum — ${appTitleInitials()}`
     return () => {
-      document.title = 'Trip Planner'
+      document.title = appTitleInitials()
     }
   }, [])
 
@@ -21,7 +22,7 @@ export function ImpressumPage() {
       <h1 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900">Impressum</h1>
       <p className="mt-2 text-sm text-slate-600">
         Angaben gemäß § 5 TMG (Telemediengesetz) für das studentische Projekt{' '}
-        <span className="font-medium text-slate-800">Trip Planner</span> im Rahmen der
+        <span className="font-medium text-slate-800">{APP_TITLE}</span> im Rahmen der
         Veranstaltung Cloud Application Development.
       </p>
 

@@ -10,6 +10,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { ProfileModalProvider } from '../context/ProfileModalContext'
 import { TripModalProvider, useTripModal } from '../context/TripModalContext'
+import { AppBrand } from './AppBrand'
 import { ProfileFormModal } from './profile/ProfileFormModal'
 import { TripFormModal } from './trip/TripFormModal'
 
@@ -34,13 +35,7 @@ function LayoutShell() {
     <div className="flex min-h-screen flex-col bg-slate-100 text-slate-900">
       <header className="border-b border-slate-300 bg-white">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-4">
-          <Link
-            to="/"
-            aria-label="Trip Planner home"
-            className="text-lg font-semibold tracking-tight text-slate-900"
-          >
-            Trip Planner
-          </Link>
+          <AppBrand />
           <LayoutNav />
         </div>
       </header>

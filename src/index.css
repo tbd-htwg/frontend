@@ -8,3 +8,30 @@ body {
   margin: 0;
   min-height: 100vh;
 }
+
+/* Header title retract (same idea as staticvita contract-vowels). */
+.app-brand__retract {
+  display: inline-block;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  vertical-align: bottom;
+  transition:
+    opacity 0.7s ease,
+    max-width 0.7s ease;
+}
+
+.app-brand--expanded .app-brand__retract {
+  max-width: 12ch;
+  opacity: 1;
+}
+
+.app-brand__keep {
+  display: inline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-brand__retract {
+    transition: none;
+  }
+}
