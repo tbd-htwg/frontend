@@ -6,8 +6,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 
 import {
 
-  faComment,
-
   faGear,
 
   faHeart,
@@ -16,13 +14,9 @@ import {
 
   faImage,
 
-  faMinus,
-
   faPenToSquare,
 
   faPersonWalkingLuggage,
-
-  faPlus,
 
   faTrash,
 
@@ -72,8 +66,6 @@ import {
 
   getTripLocationExternalInfo,
 
-  patchTripLocation,
-
   uploadTripLocationImage,
 
 } from '../api/tripLocations'
@@ -88,6 +80,12 @@ import { useDebouncedValue } from '../hooks/useDebouncedValue'
 
 import { searchGeocodeSuggestions } from '../api/externalInfo'
 import { LocationTravelInfo } from '../components/LocationTravelInfo'
+import { TripSectionHeader } from '../components/TripSectionHeader'
+import { AddLocationModal } from '../components/trip/AddLocationModal'
+import { AddAccommodationModal } from '../components/trip/AddAccommodationModal'
+import { AddTransportModal } from '../components/trip/AddTransportModal'
+import { EditLocationVisitModal } from '../components/trip/EditLocationVisitModal'
+import { useTripModal } from '../context/TripModalContext'
 
 import type {
 
@@ -130,18 +128,6 @@ function formatDate(iso: string) {
     return iso
 
   }
-
-}
-
-
-
-function isoToDateInput(iso?: string): string {
-
-  if (!iso) return ''
-
-  const m = /^(\d{4}-\d{2}-\d{2})/.exec(iso)
-
-  return m?.[1] ?? iso.slice(0, 10)
 
 }
 
@@ -200,6 +186,7 @@ export function TripDetailPage() {
   const navigate = useNavigate()
 
   const { user } = useAuth()
+  const { openEditTrip, tripSaveRevision, lastTripBaseUpdate } = useTripModal()
 
   const tripId = id ? Number(id) : NaN
 
@@ -215,11 +202,11 @@ export function TripDetailPage() {
 
   const [showTripManagement, setShowTripManagement] = useState(false)
 
-  const [showTransportAddPanel, setShowTransportAddPanel] = useState(false)
+  const [showAddTransportModal, setShowAddTransportModal] = useState(false)
 
-  const [showAccommodationAddPanel, setShowAccommodationAddPanel] = useState(false)
+  const [showAddAccommodationModal, setShowAddAccommodationModal] = useState(false)
 
-  const [showLocationAddPanel, setShowLocationAddPanel] = useState(false)
+  const [showAddLocationModal, setShowAddLocationModal] = useState(false)
 
   const [deleting, setDeleting] = useState(false)
 
@@ -351,14 +338,6 @@ export function TripDetailPage() {
   const [uploadingLocationId, setUploadingLocationId] = useState<number | null>(null)
 
   const [editingTripLocationId, setEditingTripLocationId] = useState<number | null>(null)
-
-  const [editTripLocationDescription, setEditTripLocationDescription] = useState('')
-
-  const [editTripLocationStartDate, setEditTripLocationStartDate] = useState('')
-
-  const [editTripLocationEndDate, setEditTripLocationEndDate] = useState('')
-
-  const [savingTripLocationEditId, setSavingTripLocationEditId] = useState<number | null>(null)
 
 
 
@@ -774,13 +753,45 @@ export function TripDetailPage() {
 
   useEffect(() => {
 
+    if (!lastTripBaseUpdate || lastTripBaseUpdate.tripId !== tripId) return
+
+    setTrip((prev) =>
+
+      prev
+
+        ? {
+
+            ...prev,
+
+            title: lastTripBaseUpdate.title,
+
+            destination: lastTripBaseUpdate.destination,
+
+            startDate: lastTripBaseUpdate.startDate,
+
+            shortDescription: lastTripBaseUpdate.shortDescription,
+
+            longDescription: lastTripBaseUpdate.longDescription,
+
+          }
+
+        : prev,
+
+    )
+
+  }, [tripSaveRevision, lastTripBaseUpdate, tripId])
+
+
+
+  useEffect(() => {
+
     setShowTripManagement(false)
 
-    setShowTransportAddPanel(false)
+    setShowAddTransportModal(false)
 
-    setShowAccommodationAddPanel(false)
+    setShowAddAccommodationModal(false)
 
-    setShowLocationAddPanel(false)
+    setShowAddLocationModal(false)
 
   }, [tripId])
 
@@ -806,11 +817,11 @@ export function TripDetailPage() {
 
     if (!showTripManagement) {
 
-      setShowTransportAddPanel(false)
+      setShowAddTransportModal(false)
 
-      setShowAccommodationAddPanel(false)
+      setShowAddAccommodationModal(false)
 
-      setShowLocationAddPanel(false)
+      setShowAddLocationModal(false)
 
     }
 
@@ -1179,6 +1190,8 @@ export function TripDetailPage() {
 
       setSelectedExistingLocation(null)
 
+      setShowAddLocationModal(false)
+
       getTripLocationExternalInfo(created.id)
 
         .then((data) => {
@@ -1290,6 +1303,8 @@ export function TripDetailPage() {
       }
 
       setLocationMode('existing')
+
+      setShowAddLocationModal(false)
 
       getTripLocationExternalInfo(created.id)
 
@@ -1425,17 +1440,11 @@ export function TripDetailPage() {
 
     setEditingTripLocationId(entry.id)
 
-    setEditTripLocationDescription(entry.description)
-
-    setEditTripLocationStartDate(isoToDateInput(entry.startDate))
-
-    setEditTripLocationEndDate(isoToDateInput(entry.endDate))
-
   }
 
 
 
-  function cancelTripLocationEdit() {
+  function closeTripLocationEdit() {
 
     setEditingTripLocationId(null)
 
@@ -1443,61 +1452,9 @@ export function TripDetailPage() {
 
 
 
-  async function handleSaveTripLocationEdit(entry: TripLocationResponse) {
+  function handleLocationVisitSaved(updated: TripLocationResponse) {
 
-    if (!isOwner) return
-
-    if (!editTripLocationStartDate || !editTripLocationEndDate) {
-
-      alert('Start and end date are required.')
-
-      return
-
-    }
-
-    if (editTripLocationEndDate < editTripLocationStartDate) {
-
-      alert('End date must be on or after start date.')
-
-      return
-
-    }
-
-    setSavingTripLocationEditId(entry.id)
-
-    try {
-
-      const updated = await patchTripLocation(
-
-        entry.id,
-
-        {
-
-          description: editTripLocationDescription.trim(),
-
-          startDate: `${editTripLocationStartDate}T00:00:00`,
-
-          endDate: `${editTripLocationEndDate}T23:59:59`,
-
-        },
-
-        entry.locationName,
-
-      )
-
-      setTripLocations((prev) => prev.map((e) => (e.id === entry.id ? updated : e)))
-
-      setEditingTripLocationId(null)
-
-    } catch (err) {
-
-      alert(err instanceof Error ? err.message : 'Could not save visit details.')
-
-    } finally {
-
-      setSavingTripLocationEditId(null)
-
-    }
+    setTripLocations((prev) => prev.map((e) => (e.id === updated.id ? updated : e)))
 
   }
 
@@ -1530,6 +1487,8 @@ export function TripDetailPage() {
       setTransportSearch('')
 
       setSelectedExistingTransport(null)
+
+      setShowAddTransportModal(false)
 
     } catch (err) {
 
@@ -1570,6 +1529,8 @@ export function TripDetailPage() {
       setNewTransportType('')
 
       setTransportMode('existing')
+
+      setShowAddTransportModal(false)
 
     } catch (err) {
 
@@ -1641,6 +1602,8 @@ export function TripDetailPage() {
 
       setSelectedExistingAccommodation(null)
 
+      setShowAddAccommodationModal(false)
+
     } catch (err) {
 
       alert(err instanceof Error ? err.message : 'Could not add accommodation.')
@@ -1706,6 +1669,8 @@ export function TripDetailPage() {
       setNewAccommodationAddress('')
 
       setAccommodationMode('existing')
+
+      setShowAddAccommodationModal(false)
 
     } catch (err) {
 
@@ -1821,9 +1786,11 @@ export function TripDetailPage() {
 
               <div className="flex flex-wrap gap-2">
 
-                <Link
+                <button
 
-                  to={`/trips/${trip.id}/edit`}
+                  type="button"
+
+                  onClick={() => openEditTrip(trip.id)}
 
                   aria-label="Edit this trip"
 
@@ -1835,7 +1802,7 @@ export function TripDetailPage() {
 
                   Edit
 
-                </Link>
+                </button>
 
                 <button
 
@@ -1847,9 +1814,11 @@ export function TripDetailPage() {
 
                   aria-label={deleting ? 'Deleting this trip' : 'Delete this trip'}
 
-                  className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-sm font-medium text-red-800 hover:bg-red-50 disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-md border border-red-300 bg-white px-3 py-1.5 text-sm font-medium text-red-800 hover:bg-red-50 disabled:opacity-50"
 
                 >
+
+                  <FontAwesomeIcon icon={faTrash} aria-hidden="true" />
 
                   {deleting ? 'Deleting…' : 'Delete'}
 
@@ -1909,30 +1878,26 @@ export function TripDetailPage() {
 
           <p className="mt-6 text-sm font-medium text-slate-700">Short description</p>
 
-          <p className="mt-1 text-slate-800">{trip.shortDescription}</p>
+          <p className="mt-1 break-words text-slate-800">{trip.shortDescription}</p>
 
 
 
           <p className="mt-6 text-sm font-medium text-slate-700">Details</p>
 
-          <p className="mt-1 whitespace-pre-wrap text-slate-800">{trip.longDescription}</p>
+          <p className="mt-1 break-words whitespace-pre-wrap text-slate-800">{trip.longDescription}</p>
+
+          <hr className="my-8 w-full border-0 border-t border-slate-300" aria-hidden="true" />
+
+          <section>
 
 
 
-
-
-
-          <section className="mt-8">
-
-
-
-            <div className="flex flex-wrap items-start justify-between gap-3">
-
-              <h2 className="text-lg font-medium text-slate-900">Locations in this trip</h2>
-
-              <span className="text-sm text-slate-600">{tripLocations.length} entries</span>
-
-            </div>
+            <TripSectionHeader
+              title="Locations in this trip"
+              count={tripLocations.length}
+              onAdd={isOwner && showTripManagement ? () => setShowAddLocationModal(true) : undefined}
+              addAriaLabel="Add location to trip"
+            />
 
             {tripLocations.length === 0 ? (
 
@@ -1967,116 +1932,6 @@ export function TripDetailPage() {
                           </p>
 
                         ) : null}
-
-                        {editingTripLocationId === entry.id && isOwner && showTripManagement ? (
-
-                          <div className="mt-2 space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3">
-
-                            <p className="text-xs font-medium text-slate-600">
-
-                              Visit on this trip (not the shared location record)
-
-                            </p>
-
-                            <label className="block text-xs font-medium text-slate-700">
-
-                              Notes / description
-
-                              <textarea
-
-                                value={editTripLocationDescription}
-
-                                onChange={(e) => setEditTripLocationDescription(e.target.value)}
-
-                                rows={3}
-
-                                className="mt-1 w-full max-w-md rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-900"
-
-                              />
-
-                            </label>
-
-                            <div className="flex flex-wrap gap-3">
-
-                              <label className="text-xs font-medium text-slate-700">
-
-                                Start date
-
-                                <input
-
-                                  type="date"
-
-                                  value={editTripLocationStartDate}
-
-                                  onChange={(e) => setEditTripLocationStartDate(e.target.value)}
-
-                                  className="mt-1 block rounded-md border border-slate-300 px-2 py-1 text-sm"
-
-                                />
-
-                              </label>
-
-                              <label className="text-xs font-medium text-slate-700">
-
-                                End date
-
-                                <input
-
-                                  type="date"
-
-                                  value={editTripLocationEndDate}
-
-                                  onChange={(e) => setEditTripLocationEndDate(e.target.value)}
-
-                                  className="mt-1 block rounded-md border border-slate-300 px-2 py-1 text-sm"
-
-                                />
-
-                              </label>
-
-                            </div>
-
-                            <div className="flex flex-wrap gap-2">
-
-                              <button
-
-                                type="button"
-
-                                onClick={() => void handleSaveTripLocationEdit(entry)}
-
-                                disabled={savingTripLocationEditId === entry.id}
-
-                                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 hover:bg-slate-100 disabled:opacity-50"
-
-                              >
-
-                                {savingTripLocationEditId === entry.id ? 'Saving…' : 'Save'}
-
-                              </button>
-
-                              <button
-
-                                type="button"
-
-                                onClick={cancelTripLocationEdit}
-
-                                disabled={savingTripLocationEditId === entry.id}
-
-                                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-
-                              >
-
-                                Cancel
-
-                              </button>
-
-                            </div>
-
-                          </div>
-
-                        ) : (
-
-                          <>
 
                             <dl className="mt-2 grid max-w-md gap-1 text-xs text-slate-600 sm:grid-cols-2">
 
@@ -2115,38 +1970,6 @@ export function TripDetailPage() {
                                 : 'No description for this visit yet.'}
 
                             </p>
-
-                            {isOwner && showTripManagement && (
-
-                              <button
-
-                                type="button"
-
-                                onClick={() => openTripLocationEdit(entry)}
-
-                                disabled={
-
-                                  savingTripLocationEditId !== null ||
-
-                                  uploadingLocationId === entry.id ||
-
-                                  removingImageId !== null
-
-                                }
-
-                                className="mt-2 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-
-                              >
-
-                                Edit visit details
-
-                              </button>
-
-                            )}
-
-                          </>
-
-                        )}
 
                         {!user ? (
 
@@ -2266,31 +2089,65 @@ export function TripDetailPage() {
 
                       {isOwner && showTripManagement && (
 
-                        <button
+                        <div className="flex shrink-0 flex-wrap items-start gap-2">
 
-                          type="button"
+                          <button
 
-                          onClick={() => void handleRemoveLocation(entry.id)}
+                            type="button"
 
-                          disabled={
+                            onClick={() => openTripLocationEdit(entry)}
 
-                            removingLocationId === entry.id ||
+                            disabled={
 
-                            editingTripLocationId === entry.id ||
+                              editingTripLocationId === entry.id ||
 
-                            savingTripLocationEditId === entry.id
+                              uploadingLocationId === entry.id ||
 
-                          }
+                              removingImageId !== null ||
 
-                          aria-label={`Remove location ${entry.locationName}`}
+                              removingLocationId === entry.id
 
-                          className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-800 hover:bg-red-50 disabled:opacity-50"
+                            }
 
-                        >
+                            aria-label={`Edit visit details for ${entry.locationName}`}
 
-                          {removingLocationId === entry.id ? 'Removing…' : 'Remove'}
+                            className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-50"
 
-                        </button>
+                          >
+
+                            <FontAwesomeIcon icon={faPenToSquare} aria-hidden="true" />
+
+                            Edit
+
+                          </button>
+
+                          <button
+
+                            type="button"
+
+                            onClick={() => void handleRemoveLocation(entry.id)}
+
+                            disabled={
+
+                              removingLocationId === entry.id ||
+
+                              editingTripLocationId === entry.id
+
+                            }
+
+                            aria-label={`Remove location ${entry.locationName}`}
+
+                            className="inline-flex items-center gap-2 rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-800 hover:bg-red-50 disabled:opacity-50"
+
+                          >
+
+                            <FontAwesomeIcon icon={faTrash} aria-hidden="true" />
+
+                            {removingLocationId === entry.id ? 'Removing…' : 'Remove'}
+
+                          </button>
+
+                        </div>
 
                       )}
 
@@ -2318,519 +2175,6 @@ export function TripDetailPage() {
 
 
 
-            {isOwner && showTripManagement && (
-
-              <div className="mt-4 rounded-md border border-slate-300 bg-slate-100 p-3">
-
-                <div className="flex items-start gap-2">
-
-                  <div className="min-w-0 flex-1">
-
-                    <h3 className="text-sm font-medium text-slate-800">Add location</h3>
-
-                    <p className="mt-1 text-xs text-slate-600">
-
-                      Choose an existing location or create a new one.
-
-                    </p>
-
-                  </div>
-
-                  {tripLocations.length > 0 && (
-
-                    <button
-
-                      type="button"
-
-                      onClick={() => setShowLocationAddPanel((prev) => !prev)}
-
-                      aria-expanded={showLocationAddPanel}
-
-                      aria-label={
-
-                        showLocationAddPanel
-
-                          ? 'Collapse add or create location'
-
-                          : 'Expand add or create location'
-
-                      }
-
-                      className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white p-2 text-slate-700 hover:bg-slate-50"
-
-                    >
-
-                      <FontAwesomeIcon
-
-                        icon={showLocationAddPanel ? faMinus : faPlus}
-
-                        aria-hidden="true"
-
-                      />
-
-                    </button>
-
-                  )}
-
-                </div>
-
-                {(tripLocations.length === 0 || showLocationAddPanel) && (
-
-                  <>
-
-                <div className="my-4 flex items-center justify-center">
-
-                  <button
-
-                    type="button"
-
-                    onClick={() =>
-
-                      setLocationMode((prev) =>
-
-                        prev === 'existing' ? 'new' : 'existing',
-
-                      )
-
-                    }
-
-                    aria-label={
-
-                      locationMode === 'existing'
-
-                        ? 'Switch to create new location'
-
-                        : 'Switch to add existing location'
-
-                    }
-
-                    className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
-
-                  >
-
-                    {locationMode === 'existing'
-
-                      ? 'Switch to create new location'
-
-                      : 'Switch to add existing location'}
-
-                  </button>
-
-                </div>
-
-
-
-                {locationMode === 'existing' ? (
-
-                  <div className="rounded-md border border-slate-300 bg-white p-3 shadow-sm">
-
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-
-                      Add existing location
-
-                    </p>
-
-                    <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
-
-                      <div className="relative">
-
-                        <input
-
-                          placeholder="Search cities"
-
-                          aria-label="Search existing cities"
-
-                          value={locationSearch}
-
-                          onFocus={() => setShowLocationSuggestions(true)}
-
-                          onBlur={() => {
-
-                            setTimeout(() => setShowLocationSuggestions(false), 100)
-
-                          }}
-
-                          onChange={(e) => {
-
-                            const nextSearch = e.target.value
-
-                            setLocationSearch(nextSearch)
-
-                            setShowLocationSuggestions(true)
-
-                          }}
-
-                          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-
-                        />
-
-                        {showLocationSuggestions && locationSuggestions.length > 0 && (
-
-                          <ul className="absolute z-10 mt-1 max-h-44 w-full overflow-y-auto rounded-md border border-slate-300 bg-white shadow">
-
-                            {locationSuggestions.map((l) => (
-
-                              <li key={l.id}>
-
-                                <button
-
-                                  type="button"
-
-                                  aria-label={`Select location ${l.city}`}
-
-                                  className="w-full px-3 py-2 text-left text-sm hover:bg-slate-100"
-
-                                  onMouseDown={() => {
-
-                                    setSelectedExistingLocation(l)
-
-                                    setLocationSearch(l.city)
-
-                                    setShowLocationSuggestions(false)
-
-                                  }}
-
-                                >
-
-                                  <span className="block font-medium text-slate-900">{l.city}</span>
-
-                                  {l.formattedAddress ? (
-
-                                    <span className="block text-xs text-slate-500">{l.formattedAddress}</span>
-
-                                  ) : null}
-
-                                </button>
-
-                              </li>
-
-                            ))}
-
-                          </ul>
-
-                        )}
-
-                      </div>
-
-                      <button
-
-                        type="button"
-
-                        onClick={() => void handleAddExistingLocation()}
-
-                        disabled={
-
-                          savingLocation ||
-
-                          !selectedExistingLocation ||
-
-                          !existingLocationDescription.trim() ||
-
-                          !existingLocationStartDate ||
-
-                          !existingLocationEndDate
-
-                        }
-
-                        aria-label={savingLocation ? 'Adding selected location' : 'Add selected location'}
-
-                        className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
-
-                      >
-
-                        {savingLocation ? 'Adding…' : 'Add'}
-
-                      </button>
-
-                    </div>
-
-                    <textarea
-
-                      rows={2}
-
-                      placeholder="How was it there? Share a quick impression."
-
-                      aria-label="Description for selected location"
-
-                      value={existingLocationDescription}
-
-                      onChange={(e) => setExistingLocationDescription(e.target.value)}
-
-                      className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-
-                    />
-
-                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
-
-                      <label className="text-xs text-slate-700">
-
-                        Start date
-
-                        <input
-
-                          type="date"
-
-                          value={existingLocationStartDate}
-
-                          onChange={(e) => setExistingLocationStartDate(e.target.value)}
-
-                          className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
-
-                        />
-
-                      </label>
-
-                      <label className="text-xs text-slate-700">
-
-                        End date
-
-                        <input
-
-                          type="date"
-
-                          value={existingLocationEndDate}
-
-                          onChange={(e) => setExistingLocationEndDate(e.target.value)}
-
-                          className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
-
-                        />
-
-                      </label>
-
-                    </div>
-
-                    <p className="mt-2 text-xs text-slate-500">
-
-                      You can upload an image after adding the location.
-
-                    </p>
-
-                  </div>
-
-                ) : (
-
-                  <div className="rounded-md border border-slate-300 bg-white p-3 shadow-sm">
-
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-
-                      Create and add new location
-
-                    </p>
-
-                    <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
-
-                      <div className="relative">
-
-                        <input
-
-                          placeholder="Search city (pick a suggestion)"
-
-                          aria-label="New location city"
-
-                          value={newLocationName}
-
-                          onFocus={() => setShowGeocodeSuggestions(true)}
-
-                          onBlur={() => {
-
-                            setTimeout(() => setShowGeocodeSuggestions(false), 150)
-
-                          }}
-
-                          onChange={(e) => {
-
-                            setNewLocationName(e.target.value)
-
-                            setSelectedGeocode(null)
-
-                            setShowGeocodeSuggestions(true)
-
-                          }}
-
-                          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-
-                        />
-
-                        {showGeocodeSuggestions && geocodeSuggestions.length > 0 && (
-
-                          <ul className="absolute z-10 mt-1 max-h-44 w-full overflow-y-auto rounded-md border border-slate-300 bg-white shadow">
-
-                            {geocodeSuggestions.map((hit, index) => (
-
-                              <li key={`${hit.lat}-${hit.lon}-${index}`}>
-
-                                <button
-
-                                  type="button"
-
-                                  className="w-full px-3 py-2 text-left text-sm hover:bg-slate-100"
-
-                                  onMouseDown={(e) => e.preventDefault()}
-
-                                  onClick={() => {
-
-                                    setSelectedGeocode(hit)
-
-                                    setNewLocationName(hit.city)
-
-                                    setShowGeocodeSuggestions(false)
-
-                                  }}
-
-                                >
-
-                                  <span className="font-medium text-slate-900">{hit.city}</span>
-
-                                  <span className="mt-0.5 block text-xs text-slate-600">{hit.displayName}</span>
-
-                                </button>
-
-                              </li>
-
-                            ))}
-
-                          </ul>
-
-                        )}
-
-                      </div>
-
-                      <button
-
-                        type="button"
-
-                        onClick={() => void handleCreateAndAddLocation()}
-
-                        disabled={
-
-                          savingLocation ||
-
-                          !selectedGeocode ||
-
-                          !newLocationDescription.trim() ||
-
-                          !newLocationStartDate ||
-
-                          !newLocationEndDate
-
-                        }
-
-                        aria-label={savingLocation ? 'Saving new location' : 'Create and add location'}
-
-                        className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
-
-                      >
-
-                        {savingLocation ? 'Saving…' : 'Create and add'}
-
-                      </button>
-
-                    </div>
-
-                    {selectedGeocode ? (
-
-                      <p className="mt-1 text-xs text-slate-600">{selectedGeocode.displayName}</p>
-
-                    ) : (
-
-                      <p className="mt-1 text-xs text-slate-500">
-
-                        Type a city name and choose a match from the suggestions.
-
-                      </p>
-
-                    )}
-
-                    <textarea
-
-                      rows={2}
-
-                      placeholder="How was it there? Share a quick impression."
-
-                      aria-label="Description for new location"
-
-                      value={newLocationDescription}
-
-                      onChange={(e) => setNewLocationDescription(e.target.value)}
-
-                      className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-
-                    />
-
-                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
-
-                      <label className="text-xs text-slate-700">
-
-                        Start date
-
-                        <input
-
-                          type="date"
-
-                          value={newLocationStartDate}
-
-                          onChange={(e) => setNewLocationStartDate(e.target.value)}
-
-                          className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
-
-                        />
-
-                      </label>
-
-                      <label className="text-xs text-slate-700">
-
-                        End date
-
-                        <input
-
-                          type="date"
-
-                          value={newLocationEndDate}
-
-                          onChange={(e) => setNewLocationEndDate(e.target.value)}
-
-                          className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
-
-                        />
-
-                      </label>
-
-                    </div>
-
-                    <p className="mt-2 text-xs text-slate-500">
-
-                      You can upload an image after creating the location entry.
-
-                    </p>
-
-                  </div>
-
-                )}
-
-                {locationMode === 'existing' &&
-
-                  locationSearch.trim() &&
-
-                  !selectedExistingLocation &&
-
-                  locationSuggestions.length === 0 && (
-
-                  <p className="mt-2 text-xs text-slate-600">
-
-                    No matching existing locations. Use “Create new location”.
-
-                  </p>
-
-                )}
-
-                  </>
-
-                )}
-
-              </div>
-
-            )}
 
 
 
@@ -2844,13 +2188,12 @@ export function TripDetailPage() {
 
 
 
-            <div className="flex flex-wrap items-start justify-between gap-3">
-
-              <h2 className="text-lg font-medium text-slate-900">Accommodation in this trip</h2>
-
-              <span className="text-sm text-slate-600">{tripAccommodations.length} entries</span>
-
-            </div>
+            <TripSectionHeader
+              title="Accommodation in this trip"
+              count={tripAccommodations.length}
+              onAdd={isOwner && showTripManagement ? () => setShowAddAccommodationModal(true) : undefined}
+              addAriaLabel="Add accommodation to trip"
+            />
 
             {tripAccommodations.length === 0 ? (
 
@@ -2894,9 +2237,11 @@ export function TripDetailPage() {
 
                           aria-label={`Remove accommodation ${entry.name}`}
 
-                          className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-800 hover:bg-red-50 disabled:opacity-50"
+                          className="inline-flex items-center gap-2 rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-800 hover:bg-red-50 disabled:opacity-50"
 
                         >
+
+                          <FontAwesomeIcon icon={faTrash} aria-hidden="true" />
 
                           {removingAccommodationId === entry.id ? 'Removing…' : 'Remove'}
 
@@ -2914,358 +2259,6 @@ export function TripDetailPage() {
 
             )}
 
-
-
-            {isOwner && showTripManagement && (
-
-              <div className="mt-4 rounded-md border border-slate-300 bg-slate-100 p-3">
-
-                <div className="flex items-start gap-2">
-
-                  <div className="min-w-0 flex-1">
-
-                    <h3 className="text-sm font-medium text-slate-800">Add accommodation</h3>
-
-                    <p className="mt-1 text-xs text-slate-600">
-
-                      Choose an existing accommodation or create a new one.
-
-                    </p>
-
-                  </div>
-
-                  {tripAccommodations.length > 0 && (
-
-                    <button
-
-                      type="button"
-
-                      onClick={() => setShowAccommodationAddPanel((prev) => !prev)}
-
-                      aria-expanded={showAccommodationAddPanel}
-
-                      aria-label={
-
-                        showAccommodationAddPanel
-
-                          ? 'Collapse add or create accommodation'
-
-                          : 'Expand add or create accommodation'
-
-                      }
-
-                      className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white p-2 text-slate-700 hover:bg-slate-50"
-
-                    >
-
-                      <FontAwesomeIcon
-
-                        icon={showAccommodationAddPanel ? faMinus : faPlus}
-
-                        aria-hidden="true"
-
-                      />
-
-                    </button>
-
-                  )}
-
-                </div>
-
-                {(tripAccommodations.length === 0 || showAccommodationAddPanel) && (
-
-                  <>
-
-                <div className="my-4 flex items-center justify-center">
-
-                  <button
-
-                    type="button"
-
-                    onClick={() =>
-
-                      setAccommodationMode((prev) =>
-
-                        prev === 'existing' ? 'new' : 'existing',
-
-                      )
-
-                    }
-
-                    aria-label={
-
-                      accommodationMode === 'existing'
-
-                        ? 'Switch to create new accommodation'
-
-                        : 'Switch to add existing accommodation'
-
-                    }
-
-                    className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
-
-                  >
-
-                    {accommodationMode === 'existing'
-
-                      ? 'Switch to create new accommodation'
-
-                      : 'Switch to add existing accommodation'}
-
-                  </button>
-
-                </div>
-
-
-
-                {accommodationMode === 'existing' ? (
-
-                  <div className="rounded-md border border-slate-300 bg-white p-3 shadow-sm">
-
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-
-                      Add existing accommodation
-
-                    </p>
-
-                    <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
-
-                      <div className="relative">
-
-                        <input
-
-                          placeholder="Search accommodation"
-
-                          aria-label="Search existing accommodations"
-
-                          value={accommodationSearch}
-
-                          onFocus={() => setShowAccommodationSuggestions(true)}
-
-                          onBlur={() => {
-
-                            setTimeout(() => setShowAccommodationSuggestions(false), 100)
-
-                          }}
-
-                          onChange={(e) => {
-
-                            const nextSearch = e.target.value
-
-                            setAccommodationSearch(nextSearch)
-
-                            setShowAccommodationSuggestions(true)
-
-                          }}
-
-                          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-
-                        />
-
-                        {showAccommodationSuggestions &&
-
-                          accommodationSuggestions.length > 0 && (
-
-                            <ul className="absolute z-10 mt-1 max-h-44 w-full overflow-y-auto rounded-md border border-slate-300 bg-white shadow">
-
-                              {accommodationSuggestions.map((item) => (
-
-                                <li key={item.id}>
-
-                                  <button
-
-                                    type="button"
-
-                                    aria-label={`Select accommodation ${item.name}`}
-
-                                    className="w-full px-3 py-2 text-left text-sm hover:bg-slate-100"
-
-                                    onMouseDown={() => {
-
-                                      setSelectedExistingAccommodation(item)
-
-                                      setAccommodationSearch(
-
-                                        `${item.name} (${item.type})`,
-
-                                      )
-
-                                      setShowAccommodationSuggestions(false)
-
-                                    }}
-
-                                  >
-
-                                    {item.name} ({item.type}) - {item.address}
-
-                                  </button>
-
-                                </li>
-
-                              ))}
-
-                            </ul>
-
-                          )}
-
-                      </div>
-
-                      <button
-
-                        type="button"
-
-                        onClick={() => void handleAddExistingAccommodation()}
-
-                        disabled={savingAccommodation || !selectedExistingAccommodation}
-
-                        aria-label={
-
-                          savingAccommodation
-
-                            ? 'Adding selected accommodation'
-
-                            : 'Add selected accommodation'
-
-                        }
-
-                        className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
-
-                      >
-
-                        {savingAccommodation ? 'Adding…' : 'Add'}
-
-                      </button>
-
-                    </div>
-
-                  </div>
-
-                ) : (
-
-                  <div className="rounded-md border border-slate-300 bg-white p-3 shadow-sm">
-
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-
-                      Create and add new accommodation
-
-                    </p>
-
-                    <div className="mt-2 grid gap-2 sm:grid-cols-3">
-
-                      <input
-
-                        placeholder="Accommodation name"
-
-                        aria-label="New accommodation name"
-
-                        value={newAccommodationName}
-
-                        onChange={(e) => setNewAccommodationName(e.target.value)}
-
-                        className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-
-                      />
-
-                      <input
-
-                        placeholder="Type (hotel, hostel, ...)"
-
-                        aria-label="New accommodation type"
-
-                        value={newAccommodationType}
-
-                        onChange={(e) => setNewAccommodationType(e.target.value)}
-
-                        className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-
-                      />
-
-                      <input
-
-                        placeholder="Address"
-
-                        aria-label="New accommodation address"
-
-                        value={newAccommodationAddress}
-
-                        onChange={(e) => setNewAccommodationAddress(e.target.value)}
-
-                        className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-
-                      />
-
-                    </div>
-
-                    <button
-
-                      type="button"
-
-                      onClick={() => void handleCreateAndAddAccommodation()}
-
-                      disabled={
-
-                        savingAccommodation ||
-
-                        !newAccommodationName.trim() ||
-
-                        !newAccommodationType.trim() ||
-
-                        !newAccommodationAddress.trim()
-
-                      }
-
-                      aria-label={
-
-                        savingAccommodation
-
-                          ? 'Saving new accommodation'
-
-                          : 'Create and add accommodation'
-
-                      }
-
-                      className="mt-2 rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
-
-                    >
-
-                      {savingAccommodation ? 'Saving…' : 'Create and add'}
-
-                    </button>
-
-                  </div>
-
-                )}
-
-                {accommodationMode === 'existing' &&
-
-                  accommodationSearch.trim() &&
-
-                  !selectedExistingAccommodation &&
-
-                  accommodationSuggestions.length === 0 && (
-
-                    <p className="mt-2 text-xs text-slate-600">
-
-                      No matching existing accommodation. Use “Create new accommodation”.
-
-                    </p>
-
-                  )}
-
-                  </>
-
-                )}
-
-              </div>
-
-            )}
-
-
-
-
-
-
-
           </section>
 
           <hr className="my-8 w-full border-0 border-t border-slate-300" aria-hidden="true" />
@@ -3274,13 +2267,12 @@ export function TripDetailPage() {
 
 
 
-            <div className="flex flex-wrap items-start justify-between gap-3">
-
-              <h2 className="text-lg font-medium text-slate-900">Transport in this trip</h2>
-
-              <span className="text-sm text-slate-600">{tripTransports.length} entries</span>
-
-            </div>
+            <TripSectionHeader
+              title="Transport in this trip"
+              count={tripTransports.length}
+              onAdd={isOwner && showTripManagement ? () => setShowAddTransportModal(true) : undefined}
+              addAriaLabel="Add transport to trip"
+            />
 
             {tripTransports.length === 0 ? (
 
@@ -3348,613 +2340,199 @@ export function TripDetailPage() {
 
             )}
 
-
-
-            {isOwner && showTripManagement && (
-
-              <div className="mt-4 rounded-md border border-slate-300 bg-slate-100 p-3">
-
-                <div className="flex items-start gap-2">
-
-                  <div className="min-w-0 flex-1">
-
-                    <h3 className="text-sm font-medium text-slate-800">Add transport</h3>
-
-                    <p className="mt-1 text-xs text-slate-600">
-
-                      Choose an existing transport type or create a new one.
-
-                    </p>
-
-                  </div>
-
-                  {tripTransports.length > 0 && (
-
-                    <button
-
-                      type="button"
-
-                      onClick={() => setShowTransportAddPanel((prev) => !prev)}
-
-                      aria-expanded={showTransportAddPanel}
-
-                      aria-label={
-
-                        showTransportAddPanel
-
-                          ? 'Collapse add or create transport'
-
-                          : 'Expand add or create transport'
-
-                      }
-
-                      className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white p-2 text-slate-700 hover:bg-slate-50"
-
-                    >
-
-                      <FontAwesomeIcon
-
-                        icon={showTransportAddPanel ? faMinus : faPlus}
-
-                        aria-hidden="true"
-
-                      />
-
-                    </button>
-
-                  )}
-
-                </div>
-
-                {(tripTransports.length === 0 || showTransportAddPanel) && (
-
-                  <>
-
-                <div className="my-4 flex items-center justify-center">
-
-                  <button
-
-                    type="button"
-
-                    onClick={() =>
-
-                      setTransportMode((prev) =>
-
-                        prev === 'existing' ? 'new' : 'existing',
-
-                      )
-
-                    }
-
-                    aria-label={
-
-                      transportMode === 'existing'
-
-                        ? 'Switch to create new transport'
-
-                        : 'Switch to add existing transport'
-
-                    }
-
-                    className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
-
-                  >
-
-                    {transportMode === 'existing'
-
-                      ? 'Switch to create new transport'
-
-                      : 'Switch to add existing transport'}
-
-                  </button>
-
-                </div>
-
-
-
-                {transportMode === 'existing' ? (
-
-                  <div className="rounded-md border border-slate-300 bg-white p-3 shadow-sm">
-
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-
-                      Add existing transport
-
-                    </p>
-
-                    <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
-
-                      <div className="relative">
-
-                        <input
-
-                          placeholder="Search transport"
-
-                          aria-label="Search existing transport types"
-
-                          value={transportSearch}
-
-                          onFocus={() => setShowTransportSuggestions(true)}
-
-                          onBlur={() => {
-
-                            setTimeout(() => setShowTransportSuggestions(false), 100)
-
-                          }}
-
-                          onChange={(e) => {
-
-                            const nextSearch = e.target.value
-
-                            setTransportSearch(nextSearch)
-
-                            setShowTransportSuggestions(true)
-
-                          }}
-
-                          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-
-                        />
-
-                        {showTransportSuggestions && transportSuggestions.length > 0 && (
-
-                          <ul className="absolute z-10 mt-1 max-h-44 w-full overflow-y-auto rounded-md border border-slate-300 bg-white shadow">
-
-                            {transportSuggestions.map((item) => (
-
-                              <li key={item.id}>
-
-                                <button
-
-                                  type="button"
-
-                                  aria-label={`Select transport ${item.type}`}
-
-                                  className="w-full px-3 py-2 text-left text-sm hover:bg-slate-100"
-
-                                  onMouseDown={() => {
-
-                                    setSelectedExistingTransport(item)
-
-                                    setTransportSearch(item.type)
-
-                                    setShowTransportSuggestions(false)
-
-                                  }}
-
-                                >
-
-                                  {item.type}
-
-                                </button>
-
-                              </li>
-
-                            ))}
-
-                          </ul>
-
-                        )}
-
-                      </div>
-
-                      <button
-
-                        type="button"
-
-                        onClick={() => void handleAddExistingTransport()}
-
-                        disabled={savingTransport || !selectedExistingTransport}
-
-                        aria-label={savingTransport ? 'Adding selected transport' : 'Add selected transport'}
-
-                        className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
-
-                      >
-
-                        {savingTransport ? 'Adding…' : 'Add'}
-
-                      </button>
-
-                    </div>
-
-                  </div>
-
-                ) : (
-
-                  <div className="rounded-md border border-slate-300 bg-white p-3 shadow-sm">
-
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-
-                      Create and add new transport
-
-                    </p>
-
-                    <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
-
-                      <input
-
-                        placeholder="Transport type"
-
-                        aria-label="New transport type"
-
-                        value={newTransportType}
-
-                        onChange={(e) => setNewTransportType(e.target.value)}
-
-                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-
-                      />
-
-                      <button
-
-                        type="button"
-
-                        onClick={() => void handleCreateAndAddTransport()}
-
-                        disabled={savingTransport || !newTransportType.trim()}
-
-                        aria-label={savingTransport ? 'Saving new transport' : 'Create and add transport'}
-
-                        className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
-
-                      >
-
-                        {savingTransport ? 'Saving…' : 'Create and add'}
-
-                      </button>
-
-                    </div>
-
-                  </div>
-
-                )}
-
-                {transportMode === 'existing' &&
-
-                  transportSearch.trim() &&
-
-                  !selectedExistingTransport &&
-
-                  transportSuggestions.length === 0 && (
-
-                  <p className="mt-2 text-xs text-slate-600">
-
-                    No matching existing transport. Use “Create new transport”.
-
-                  </p>
-
-                )}
-
-                  </>
-
-                )}
-
-              </div>
-
-            )}
-
           </section>
 
+          <hr className="my-8 w-full border-0 border-t border-slate-300" aria-hidden="true" />
 
+          <section className="mt-8">
+            <h2 className="text-lg font-medium text-slate-900">Community</h2>
 
-          <section className="mt-8 rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
-
-            <div className="flex flex-wrap items-center justify-between gap-2">
-
-              <h2 className="text-lg font-medium text-slate-900">Community</h2>
-
-              {user ? (
-
-                <button
-
-                  type="button"
-
-                  onClick={() => void handleToggleLike()}
-
-                  disabled={liking}
-
-                  aria-label={
-
-                    liking
-
-                      ? 'Saving like status'
-
-                      : likedByMe
-
-                        ? 'Unlike this trip'
-
-                        : 'Like this trip'
-
-                  }
-
-                  aria-pressed={likedByMe}
-
-                  className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition-colors hover:text-red-600 disabled:opacity-50"
-
-                >
-
-                  <FontAwesomeIcon
-
-                    icon={faHeart}
-
-                    className={likedByMe ? 'text-red-600' : undefined}
-
-                    aria-hidden="true"
-
-                  />
-
-                  {likeCount} likes
-
-                </button>
-
-              ) : (
-
-                <p className="inline-flex items-center gap-2 text-sm text-slate-600">
-
-                  <FontAwesomeIcon icon={faHeart} aria-hidden="true" />
-
-                  {likeCount} likes
-
-                </p>
-
-              )}
-
-            </div>
-
-            {!user && (
-
-              <p className="mt-2 text-sm text-slate-600">Log in to like this trip.</p>
-
-            )}
-
-
-
-            <div className="mt-4">
-
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-
-                <div>
-
+            <div className="mt-4 rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
                   <h3 className="text-sm font-medium text-slate-800">Comments</h3>
-
                   <p className="mt-0.5 text-xs text-slate-500">
-
-                    {totalCommentCount === 1
-
-                      ? '1 comment'
-
-                      : `${totalCommentCount} comments`}
-
+                    {totalCommentCount === 1 ? '1 comment' : `${totalCommentCount} comments`}
                   </p>
-
                 </div>
-
+                <button
+                  type="button"
+                  onClick={() => void handleToggleLike()}
+                  disabled={!user || liking}
+                  aria-label={
+                    liking
+                      ? 'Saving like status'
+                      : likedByMe
+                        ? 'Unlike this trip'
+                        : 'Like this trip'
+                  }
+                  className="inline-flex shrink-0 items-center gap-2 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-800 disabled:opacity-50"
+                >
+                  <FontAwesomeIcon
+                    icon={faHeart}
+                    className={likedByMe ? 'text-red-600' : ''}
+                    aria-hidden="true"
+                  />
+                  {likeCount} {likeCount === 1 ? 'like' : 'likes'}
+                </button>
               </div>
 
               {user ? (
-
-                <div className="mt-2 flex flex-col gap-2">
-
+                <form
+                  className="mt-4 flex flex-col gap-2 sm:flex-row"
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    void handleCommentSubmit()
+                  }}
+                >
                   <textarea
-
                     rows={2}
-
                     value={commentText}
-
                     onChange={(e) => setCommentText(e.target.value)}
-
-                    placeholder="Write a comment"
-
-                    aria-label="Write a comment"
-
-                    className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-
+                    placeholder="Write a comment…"
+                    aria-label="Comment text"
+                    className="min-w-0 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
                   />
-
                   <button
-
-                    type="button"
-
-                    onClick={() => void handleCommentSubmit()}
-
+                    type="submit"
                     disabled={commenting || !commentText.trim()}
-
-                    aria-label={commenting ? 'Posting comment' : 'Post comment'}
-
-                    className="w-fit rounded-md bg-slate-900 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-
+                    className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                   >
-
-                    {commenting ? 'Posting…' : 'Post comment'}
-
+                    {commenting ? 'Posting…' : 'Post'}
                   </button>
-
-                </div>
-
+                </form>
               ) : (
-
-                <p className="mt-2 text-sm text-slate-600">Log in to comment on this trip.</p>
-
+                <p className="mt-4 text-sm text-slate-600">Log in to comment.</p>
               )}
-
-
-
-              {comments.length === 0 ? (
-
-                <p className="mt-3 text-sm text-slate-600">No comments yet.</p>
-
+              {comments.length > 0 ? (
+                <ul className="mt-4 space-y-2">
+                  {comments.map((comment) => (
+                    <li key={comment.id} className="rounded-md border border-slate-200 p-2">
+                      <p className="break-words text-sm text-slate-800">{comment.content}</p>
+                      <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs text-slate-500">
+                          {comment.userName ? `@${comment.userName}` : `Traveller #${comment.userId}`} ·{' '}
+                          {formatTripLocationDateTime(comment.createdAt)}
+                        </p>
+                        {user &&
+                        (comment.userId === user.id || isOwner) &&
+                        (comment.userId === user.id || showTripManagement) ? (
+                          <button
+                            type="button"
+                            onClick={() => void handleDeleteComment(comment)}
+                            disabled={deletingCommentId === comment.id}
+                            className="text-xs font-medium text-red-700 hover:underline disabled:opacity-50"
+                          >
+                            {deletingCommentId === comment.id ? 'Deleting…' : 'Delete'}
+                          </button>
+                        ) : null}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               ) : (
-
-                <>
-
-                  <ul className="mt-3 space-y-2">
-
-                    {comments.map((comment) => {
-
-                      const canDeleteComment =
-
-                        !!user &&
-
-                        !!comment.id &&
-
-                        (comment.userId === user.id || isOwner)
-
-                      return (
-
-                        <li
-
-                          key={
-
-                            comment.id ||
-
-                            `${comment.userId}-${comment.createdAt}-${comment.content.slice(0, 48)}`
-
-                          }
-
-                          className="rounded-md border border-slate-300 p-2">
-
-                          <div className="flex items-start justify-between gap-2">
-
-                            <p className="flex min-w-0 flex-1 items-start gap-2 text-sm text-slate-800">
-
-                              <FontAwesomeIcon
-
-                                icon={faComment}
-
-                                aria-hidden="true"
-
-                                className="mt-0.5 shrink-0 text-slate-500"
-
-                              />
-
-                              <span>{comment.content}</span>
-
-                            </p>
-
-                            {canDeleteComment ? (
-
-                              <button
-
-                                type="button"
-
-                                onClick={() => void handleDeleteComment(comment)}
-
-                                disabled={deletingCommentId === comment.id}
-
-                                aria-label={
-
-                                  deletingCommentId === comment.id
-
-                                    ? 'Deleting comment'
-
-                                    : comment.userId === user.id
-
-                                      ? 'Delete your comment'
-
-                                      : 'Remove comment from your trip'
-
-                                }
-
-                                className="shrink-0 rounded-md border border-slate-300 p-1.5 text-slate-600 hover:border-red-300 hover:text-red-700 disabled:opacity-50"
-
-                              >
-
-                                <FontAwesomeIcon icon={faTrash} aria-hidden="true" />
-
-                              </button>
-
-                            ) : null}
-
-                          </div>
-
-                          <p className="mt-1 text-xs text-slate-500">
-
-                            {Number.isFinite(comment.userId) ? (
-
-                              <Link
-
-                                to={`/users/${comment.userId}`}
-
-                                aria-label={`Open profile of ${comment.userName || 'traveller'}`}
-
-                                className="font-medium text-slate-600 hover:underline"
-
-                              >
-
-                                @{comment.userName || 'traveller'}
-
-                              </Link>
-
-                            ) : (
-
-                              `@${comment.userName || 'traveller'}`
-
-                            )}{' '}
-
-                            ·{' '}
-
-                            {new Date(comment.createdAt).toLocaleString()}
-
-                          </p>
-
-                        </li>
-
-                      )
-
-                    })}
-
-                  </ul>
-
-                  {hasMoreComments && commentsNextCursor ? (
-
-                    <div className="mt-4">
-
-                      <button
-
-                        type="button"
-
-                        onClick={() => void handleLoadMoreComments()}
-
-                        disabled={loadingMoreComments}
-
-                        aria-label={
-
-                          loadingMoreComments ? 'Loading more comments' : 'Load more comments'
-
-                        }
-
-                        className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-50"
-
-                      >
-
-                        {loadingMoreComments ? 'Loading…' : 'Load more comments'}
-
-                      </button>
-
-                    </div>
-
-                  ) : null}
-
-                </>
-
+                <p className="mt-4 text-sm text-slate-600">No comments yet.</p>
               )}
-
+              {hasMoreComments ? (
+                <button
+                  type="button"
+                  onClick={() => void handleLoadMoreComments()}
+                  disabled={loadingMoreComments}
+                  className="mt-3 text-sm font-medium text-slate-700 hover:underline disabled:opacity-50"
+                >
+                  {loadingMoreComments ? 'Loading…' : 'Load more comments'}
+                </button>
+              ) : null}
             </div>
-
           </section>
 
+          <AddLocationModal
+            open={showAddLocationModal}
+            onClose={() => setShowAddLocationModal(false)}
+            locationMode={locationMode}
+            setLocationMode={setLocationMode}
+            locationSearch={locationSearch}
+            setLocationSearch={setLocationSearch}
+            showLocationSuggestions={showLocationSuggestions}
+            setShowLocationSuggestions={setShowLocationSuggestions}
+            locationSuggestions={locationSuggestions}
+            selectedExistingLocation={selectedExistingLocation}
+            setSelectedExistingLocation={setSelectedExistingLocation}
+            existingLocationDescription={existingLocationDescription}
+            setExistingLocationDescription={setExistingLocationDescription}
+            existingLocationStartDate={existingLocationStartDate}
+            setExistingLocationStartDate={setExistingLocationStartDate}
+            existingLocationEndDate={existingLocationEndDate}
+            setExistingLocationEndDate={setExistingLocationEndDate}
+            savingLocation={savingLocation}
+            onAddExisting={() => void handleAddExistingLocation()}
+            newLocationName={newLocationName}
+            setNewLocationName={setNewLocationName}
+            showGeocodeSuggestions={showGeocodeSuggestions}
+            setShowGeocodeSuggestions={setShowGeocodeSuggestions}
+            geocodeSuggestions={geocodeSuggestions}
+            selectedGeocode={selectedGeocode}
+            setSelectedGeocode={setSelectedGeocode}
+            newLocationDescription={newLocationDescription}
+            setNewLocationDescription={setNewLocationDescription}
+            newLocationStartDate={newLocationStartDate}
+            setNewLocationStartDate={setNewLocationStartDate}
+            newLocationEndDate={newLocationEndDate}
+            setNewLocationEndDate={setNewLocationEndDate}
+            onCreateAndAdd={() => void handleCreateAndAddLocation()}
+          />
 
+          <AddAccommodationModal
+            open={showAddAccommodationModal}
+            onClose={() => setShowAddAccommodationModal(false)}
+            accommodationMode={accommodationMode}
+            setAccommodationMode={setAccommodationMode}
+            accommodationSearch={accommodationSearch}
+            setAccommodationSearch={setAccommodationSearch}
+            showAccommodationSuggestions={showAccommodationSuggestions}
+            setShowAccommodationSuggestions={setShowAccommodationSuggestions}
+            accommodationSuggestions={accommodationSuggestions}
+            selectedExistingAccommodation={selectedExistingAccommodation}
+            setSelectedExistingAccommodation={setSelectedExistingAccommodation}
+            savingAccommodation={savingAccommodation}
+            onAddExisting={() => void handleAddExistingAccommodation()}
+            newAccommodationName={newAccommodationName}
+            setNewAccommodationName={setNewAccommodationName}
+            newAccommodationType={newAccommodationType}
+            setNewAccommodationType={setNewAccommodationType}
+            newAccommodationAddress={newAccommodationAddress}
+            setNewAccommodationAddress={setNewAccommodationAddress}
+            onCreateAndAdd={() => void handleCreateAndAddAccommodation()}
+          />
 
-          <p className="mt-8">
+          <EditLocationVisitModal
+            entry={
+              editingTripLocationId != null
+                ? (tripLocations.find((loc) => loc.id === editingTripLocationId) ?? null)
+                : null
+            }
+            onClose={closeTripLocationEdit}
+            onSaved={handleLocationVisitSaved}
+          />
 
-            <Link to="/" aria-label="Back to all trips" className="text-sm font-medium text-slate-700 hover:underline">
-
-              ← Back to all trips
-
-            </Link>
-
-          </p>
+          <AddTransportModal
+            open={showAddTransportModal}
+            onClose={() => setShowAddTransportModal(false)}
+            transportMode={transportMode}
+            setTransportMode={setTransportMode}
+            transportSearch={transportSearch}
+            setTransportSearch={setTransportSearch}
+            showTransportSuggestions={showTransportSuggestions}
+            setShowTransportSuggestions={setShowTransportSuggestions}
+            transportSuggestions={transportSuggestions}
+            selectedExistingTransport={selectedExistingTransport}
+            setSelectedExistingTransport={setSelectedExistingTransport}
+            savingTransport={savingTransport}
+            onAddExisting={() => void handleAddExistingTransport()}
+            newTransportType={newTransportType}
+            setNewTransportType={setNewTransportType}
+            onCreateAndAdd={() => void handleCreateAndAddTransport()}
+          />
 
         </>
 
@@ -3965,10 +2543,3 @@ export function TripDetailPage() {
   )
 
 }
-
-
-
-
-
-
-

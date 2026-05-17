@@ -2,51 +2,12 @@ import { useEffect, useState } from 'react'
 import { fetchFeedLocationImageUrls, listTrips, searchTrips } from '../api/trips'
 import { ApiError } from '../api/client'
 import { PaginationControls } from '../components/PaginationControls'
-import { TripFeedCard, type TripFeedCardProps } from '../components/TripFeedCard'
+import { TripFeedCard } from '../components/TripFeedCard'
 import { useAuth } from '../context/AuthContext'
 import type { PaginatedResponse, TripListItemResponse, TripSearchResult } from '../types/api'
+import { tripFeedPropsFromBrowse, tripFeedPropsFromSearch } from '../utils/tripFeed'
 
 const PAGE_SIZE = 10
-
-function tripFeedPropsFromBrowse(
-  t: TripListItemResponse,
-  showLocationImages: boolean,
-  feedImagesByTripId: Record<number, string[]>,
-): TripFeedCardProps {
-  return {
-    id: t.id,
-    title: t.title,
-    shortDescription: t.shortDescription?.trim() || undefined,
-    destination: t.destination,
-    startDate: t.startDate,
-    authorLabel: t.authorName,
-    locations: t.locations,
-    accommodationNames: t.accommodationNames,
-    transportTypes: t.transportTypes,
-    showLocationImages,
-    locationImageUrls: feedImagesByTripId[t.id],
-  }
-}
-
-function tripFeedPropsFromSearch(
-  t: TripSearchResult,
-  showLocationImages: boolean,
-  feedImagesByTripId: Record<number, string[]>,
-): TripFeedCardProps {
-  return {
-    id: t.id,
-    title: t.title,
-    shortDescription: t.shortDescription?.trim() || undefined,
-    destination: t.destination,
-    startDate: t.startDate,
-    authorLabel: t.author,
-    locations: t.locations,
-    accommodationNames: t.accommodationNames,
-    transportTypes: t.transportTypes,
-    showLocationImages,
-    locationImageUrls: feedImagesByTripId[t.id],
-  }
-}
 
 export function HomePage() {
   const [browsePage, setBrowsePage] = useState<PaginatedResponse<TripListItemResponse> | null>(
@@ -206,13 +167,13 @@ export function HomePage() {
               ? searchItems.map((t) => (
                   <TripFeedCard
                     key={t.id}
-                    {...tripFeedPropsFromSearch(t, user != null, feedImagesByTripId)}
+                    {...tripFeedPropsFromSearch(t, user != null, feedImagesByTripId, user?.id)}
                   />
                 ))
               : browseItems.map((t) => (
                   <TripFeedCard
                     key={t.id}
-                    {...tripFeedPropsFromBrowse(t, user != null, feedImagesByTripId)}
+                    {...tripFeedPropsFromBrowse(t, user != null, feedImagesByTripId, user?.id)}
                   />
                 ))}
           </ul>
