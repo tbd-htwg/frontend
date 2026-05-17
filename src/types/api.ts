@@ -207,3 +207,11 @@ export type TripExternalInfoResponse = {
   weather?: ExternalWeatherData
   tours: ExternalTourResponse[]
 }
+
+export type GeocodingSuggestion = {
+  city: string
+  displayName: string
+  lat: number
+  lon: number
+  countryCode: string
+}

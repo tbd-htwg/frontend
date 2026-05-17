@@ -2,6 +2,7 @@ import type {
   HalEntity,
   SignedImageUploadRequest,
   SignedImageUploadResponse,
+  TripExternalInfoResponse,
   TripLocationImageResponse,
   TripLocationPatchRequest,
   TripLocationResponse,
@@ -25,6 +26,17 @@ type TripLocationEntityBody = {
     formattedAddress?: string
   }
   trip?: { id?: number }
+}
+
+type TripLocationCreatedBody = {
+  id: number
+  tripId: number
+  locationId: number
+  locationName: string
+  formattedAddress?: string
+  description: string
+  startDate?: string
+  endDate?: string
 }
 
 function toTripLocationFromHal(entity: HalEntity<TripLocationEntityBody>): TripLocationResponse {
@@ -53,17 +65,20 @@ function toTripLocationFromHal(entity: HalEntity<TripLocationEntityBody>): TripL
   }
 }
 
-function toTripLocationFromCreate(body: TripLocationEntityBody): TripLocationResponse {
+function toTripLocationFromCreate(body: TripLocationCreatedBody): TripLocationResponse {
+  if (!Number.isFinite(body.id) || body.id <= 0) {
+    throw new Error('Server did not return a valid trip location id.')
+  }
   return {
-    id: body.id ?? 0,
-    tripId: body.trip?.id ?? 0,
-    locationId: body.location?.id ?? 0,
+    id: body.id,
+    tripId: body.tripId,
+    locationId: body.locationId,
     description: body.description ?? '',
     images: [],
     startDate: body.startDate,
     endDate: body.endDate,
-    locationName: body.location?.city ?? '',
-    address: body.location?.formattedAddress,
+    locationName: body.locationName ?? '',
+    formattedAddress: body.formattedAddress,
   }
 }
 
@@ -74,8 +89,11 @@ export async function addTripLocation(input: {
   startDate: string
   endDate: string
   formattedAddress?: string
+  countryCode?: string
+  latitude?: number
+  longitude?: number
 }): Promise<TripLocationResponse> {
-  const body = await requestJson<TripLocationEntityBody & { id: number }>('/trip-locations', {
+  const body = await requestJson<TripLocationCreatedBody>('/trip-locations', {
     method: 'POST',
     body: JSON.stringify({
       tripId: input.tripId,
@@ -84,9 +102,18 @@ export async function addTripLocation(input: {
       startDate: input.startDate,
       endDate: input.endDate,
       formattedAddress: input.formattedAddress,
+      countryCode: input.countryCode,
+      latitude: input.latitude,
+      longitude: input.longitude,
     }),
   })
   return toTripLocationFromCreate(body)
+}
+
+export async function getTripLocationExternalInfo(
+  tripLocationId: number,
+): Promise<TripExternalInfoResponse> {
+  return requestJson<TripExternalInfoResponse>(`/trip-locations/${tripLocationId}/details`)
 }
 
 export function deleteTripLocation(id: number): Promise<void> {

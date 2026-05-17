@@ -38,12 +38,8 @@ export async function isTripLikedByCurrentUser(tripId: number): Promise<boolean>
  */
 export async function likeTrip(userId: number, tripId: number): Promise<void> {
   if (await isTripLikedByCurrentUser(tripId)) return
-  await requestVoid(`/users/${userId}/likedTrips`, {
+  await requestVoid(`/trips/${tripId}/like`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'text/uri-list',
-    },
-    body: `/trips/${tripId}`,
   })
 }
 
