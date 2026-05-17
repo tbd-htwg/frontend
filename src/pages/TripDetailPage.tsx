@@ -2355,26 +2355,33 @@ export function TripDetailPage() {
                     {totalCommentCount === 1 ? '1 comment' : `${totalCommentCount} comments`}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => void handleToggleLike()}
-                  disabled={!user || liking}
-                  aria-label={
-                    liking
-                      ? 'Saving like status'
-                      : likedByMe
-                        ? 'Unlike this trip'
-                        : 'Like this trip'
-                  }
-                  className="inline-flex shrink-0 items-center gap-2 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-800 disabled:opacity-50"
-                >
-                  <FontAwesomeIcon
-                    icon={faHeart}
-                    className={likedByMe ? 'text-red-600' : ''}
-                    aria-hidden="true"
-                  />
-                  {likeCount} {likeCount === 1 ? 'like' : 'likes'}
-                </button>
+                {user ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleToggleLike()}
+                    disabled={liking}
+                    aria-label={
+                      liking
+                        ? 'Saving like status'
+                        : likedByMe
+                          ? 'Unlike this trip'
+                          : 'Like this trip'
+                    }
+                    className="inline-flex shrink-0 items-center gap-2 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-800 disabled:opacity-50"
+                  >
+                    <FontAwesomeIcon
+                      icon={faHeart}
+                      className={likedByMe ? 'text-red-600' : ''}
+                      aria-hidden="true"
+                    />
+                    {likeCount} {likeCount === 1 ? 'like' : 'likes'}
+                  </button>
+                ) : (
+                  <p className="inline-flex shrink-0 items-center gap-2 text-sm text-slate-700">
+                    <FontAwesomeIcon icon={faHeart} aria-hidden="true" />
+                    {likeCount} {likeCount === 1 ? 'like' : 'likes'}
+                  </p>
+                )}
               </div>
 
               {user ? (

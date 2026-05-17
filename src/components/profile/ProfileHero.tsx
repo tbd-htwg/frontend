@@ -1,9 +1,10 @@
+import type { IconDefinition } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
-  faCircleInfo,
   faEnvelope,
   faTrash,
   faUpload,
+  faUserAstronaut,
 } from '@fortawesome/free-solid-svg-icons'
 
 type ProfileHeroProps = {
@@ -34,13 +35,33 @@ export function ProfileHero({
   onRemoveImage,
 }: ProfileHeroProps) {
   const emailText = email?.trim() ?? ''
-  const showEmail = emailText.length > 0
   const bioText = description.trim() || 'No profile description yet.'
   const imageBusy = uploadingImage || removingProfileImage
 
+  const profileFields: {
+    id: string
+    label: string
+    value: string
+    icon: IconDefinition
+  }[] = []
+  if (emailText.length > 0) {
+    profileFields.push({
+      id: 'email',
+      label: 'Email',
+      value: emailText,
+      icon: faEnvelope,
+    })
+  }
+  profileFields.push({
+    id: 'bio',
+    label: 'Bio',
+    value: bioText,
+    icon: faUserAstronaut,
+  })
+
   return (
-    <section className="mt-6 flex flex-col items-center text-center">
-      <div className="group relative mx-auto h-40 w-40 shrink-0">
+    <section className="mt-6 flex flex-col items-center gap-6 sm:flex-row sm:items-start sm:gap-8">
+      <div className="group relative mx-auto h-40 w-40 shrink-0 sm:mx-0">
         {imageUrl ? (
           <img
             src={imageUrl}
@@ -88,26 +109,21 @@ export function ProfileHero({
         ) : null}
       </div>
 
-      <div className="mt-6 w-full max-w-md space-y-3 text-left">
-        {showEmail ? (
-          <div className="flex items-center gap-2">
+      <ul className="m-0 w-full min-w-0 list-none space-y-3 text-left text-slate-700 sm:flex-1">
+        {profileFields.map((field) => (
+          <li key={field.id} className="flex items-center gap-2 break-words">
             <FontAwesomeIcon
-              icon={faEnvelope}
-              className="shrink-0 text-slate-500"
+              icon={field.icon}
+              className="shrink-0"
               aria-hidden="true"
             />
-            <p className="m-0 min-w-0 text-slate-700">{emailText}</p>
-          </div>
-        ) : null}
-        <div className="flex items-center gap-2">
-          <FontAwesomeIcon
-            icon={faCircleInfo}
-            className="shrink-0 text-slate-500"
-            aria-hidden="true"
-          />
-          <p className="m-0 min-w-0 break-words text-slate-700">{bioText}</p>
-        </div>
-      </div>
+            <span className="min-w-0">
+              <span className="sr-only">{field.label}: </span>
+              {field.value}
+            </span>
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }
