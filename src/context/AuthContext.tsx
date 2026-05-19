@@ -7,14 +7,16 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { authDevLogin, authGoogle, authMe, type LoginResponse } from '../api/auth'
+import { authDevLogin, authFirebase, authMe, type LoginResponse } from '../api/auth'
 import { SESSION_STORAGE_KEY } from '../auth/sessionStorageKey'
 import type { UserResponse } from '../types/api'
 
 type AuthContextValue = {
   user: UserResponse | null
   accessToken: string | null
-  /** Sign in with Google (pass GIS credential JWT). */
+  /** Exchange a Firebase ID token for an app session (Google, email/password, etc.). */
+  loginWithFirebaseToken: (credential: string) => Promise<void>
+  /** @deprecated Use {@link loginWithFirebaseToken}. */
   loginWithGoogle: (credential: string) => Promise<void>
   /** Local Spring profile only: sign in without Google. */
   loginDev: (email: string, name?: string) => Promise<void>
@@ -88,10 +90,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [accessToken])
 
-  const loginWithGoogle = useCallback(async (credential: string) => {
-    const r = await authGoogle(credential)
+  const loginWithFirebaseToken = useCallback(async (credential: string) => {
+    const r = await authFirebase(credential)
     applyLoginResponse(setAccessToken, setUser, r)
   }, [])
+
+  const loginWithGoogle = loginWithFirebaseToken
 
   const loginDev = useCallback(async (email: string, name?: string) => {
     const r = await authDevLogin(email, name)
@@ -111,12 +115,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       accessToken,
+      loginWithFirebaseToken,
       loginWithGoogle,
       loginDev,
       logout,
       updateSessionUser,
     }),
-    [user, accessToken, loginWithGoogle, loginDev, logout, updateSessionUser],
+    [user, accessToken, loginWithFirebaseToken, loginWithGoogle, loginDev, logout, updateSessionUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

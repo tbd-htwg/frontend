@@ -7,11 +7,17 @@ export type LoginResponse = {
   user: UserResponse
 }
 
-export async function authGoogle(credential: string): Promise<LoginResponse> {
-  return requestJson<LoginResponse>('/auth/google', {
+/** Exchange a Firebase ID token (any Identity Platform provider) for an app JWT. */
+export async function authFirebase(credential: string): Promise<LoginResponse> {
+  return requestJson<LoginResponse>('/auth/firebase', {
     method: 'POST',
     body: JSON.stringify({ credential }),
   })
+}
+
+/** @deprecated Prefer {@link authFirebase}. */
+export async function authGoogle(credential: string): Promise<LoginResponse> {
+  return authFirebase(credential)
 }
 
 export async function authDevLogin(email: string, name?: string): Promise<LoginResponse> {

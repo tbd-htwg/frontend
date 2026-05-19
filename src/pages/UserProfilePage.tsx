@@ -1,37 +1,34 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faPenToSquare, faUser } from '@fortawesome/free-solid-svg-icons'
+import { faPenToSquare } from '@fortawesome/free-solid-svg-icons'
+import { ProfileHero } from '../components/profile/ProfileHero'
 import { ApiError } from '../api/client'
 import { PaginationControls } from '../components/PaginationControls'
-import { findTripsByUserId } from '../api/trips'
+import { TripFeedCard } from '../components/TripFeedCard'
+import { fetchFeedLocationImageUrls, findTripsByUserId } from '../api/trips'
 import { getUserById } from '../api/users'
 import { useAuth } from '../context/AuthContext'
+import { useProfileModal } from '../context/ProfileModalContext'
 import type { PaginatedResponse, TripListItemResponse, UserDetailsResponse } from '../types/api'
+import { tripFeedPropsFromBrowse } from '../utils/tripFeed'
 
 const PAGE_SIZE = 10
 
-function formatDate(iso: string) {
-  try {
-    return new Date(iso + 'T12:00:00').toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    })
-  } catch {
-    return iso
-  }
-}
+const editProfileButtonClass =
+  'inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-50'
 
 export function UserProfilePage() {
   const { id } = useParams()
   const { user } = useAuth()
+  const { openEditProfile, profileSaveRevision, lastProfileUpdate } = useProfileModal()
   const userId = id ? Number(id) : NaN
   const [profile, setProfile] = useState<UserDetailsResponse | null>(null)
   const [tripPage, setTripPage] = useState<PaginatedResponse<TripListItemResponse> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
+  const [feedImagesByTripId, setFeedImagesByTripId] = useState<Record<number, string[]>>({})
 
   useEffect(() => {
     if (!Number.isFinite(userId)) {
@@ -71,11 +68,37 @@ export function UserProfilePage() {
     setCurrentPage(1)
   }, [profile?.id])
 
+  useEffect(() => {
+    if (!lastProfileUpdate || !profile || lastProfileUpdate.id !== profile.id) return
+    setProfile((prev) => (prev ? { ...prev, ...lastProfileUpdate } : lastProfileUpdate))
+  }, [profileSaveRevision, lastProfileUpdate, profile?.id])
+
+  useEffect(() => {
+    if (!user) {
+      setFeedImagesByTripId({})
+      return
+    }
+    const items = tripPage?.items ?? []
+    if (items.length === 0) {
+      setFeedImagesByTripId({})
+      return
+    }
+    const ids = items.map((t) => t.id)
+    let cancelled = false
+    fetchFeedLocationImageUrls(ids).then((map) => {
+      if (!cancelled) setFeedImagesByTripId(map)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [user, tripPage])
+
   if (!Number.isFinite(userId)) return <p className="text-red-800">Invalid user.</p>
 
   const totalTrips = tripPage?.totalItems ?? 0
   const totalPages = tripPage?.totalPages ?? 1
   const visibleTrips = tripPage?.items ?? []
+  const viewingOwnProfile = user?.id === profile?.id
 
   return (
     <div>
@@ -87,51 +110,38 @@ export function UserProfilePage() {
       )}
       {!loading && !error && profile && (
         <>
-          <h1 className="text-2xl font-semibold text-slate-900">{profile.name}</h1>
-          <div className="mt-3 flex items-center gap-3 text-sm rounded-md border border-slate-300 bg-slate-100 p-3">
-            <FontAwesomeIcon
-              icon={faUser}
-              className="shrink-0 text-slate-600"
-              aria-hidden="true"
-            />
-            <div className="text-sm text-slate-700">
-              <p>{profile.email}</p>
-              <p>{profile.description || 'No profile description yet.'}</p>
-            </div>
-          </div>
-          <div className="mt-4">
-            {user && profile.imageUrl ? (
-              <img
-                src={profile.imageUrl}
-                alt={`${profile.name}'s profile`}
-                className="h-40 w-40 rounded-full border border-slate-300 object-cover"
-                loading="lazy"
-              />
-            ) : (
-              <div className="flex h-40 w-40 items-center justify-center rounded-full border border-dashed border-slate-400 px-3 text-center text-sm text-slate-500">
-                {user ? 'No profile image' : 'Log in to view profile pictures'}
-              </div>
-            )}
-          </div>
-          {user?.id === profile.id && (
-            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-600">
-              <FontAwesomeIcon
-                icon={faUser}
-                className="shrink-0 text-slate-600"
-                aria-hidden="true"
-              />
-              <p>This is your profile.</p>
-              <Link
-                to="/profile"
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <h1 className="text-2xl font-semibold text-slate-900">{profile.name}</h1>
+            {viewingOwnProfile ? (
+              <button
+                type="button"
+                onClick={() => openEditProfile()}
                 aria-label="Edit your profile"
-                className="inline-flex items-center gap-1 rounded-md border border-slate-300 px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50"
+                className={editProfileButtonClass}
               >
                 <FontAwesomeIcon icon={faPenToSquare} aria-hidden="true" />
-                Edit details
-              </Link>
-            </div>
-          )}
-          <section className="mt-8">
+                Edit profile
+              </button>
+            ) : null}
+          </div>
+
+          <ProfileHero
+            email={profile.email}
+            description={profile.description}
+            imageUrl={user ? profile.imageUrl : null}
+            imageAlt={`${profile.name}'s profile`}
+            showPlaceholderWhenNoImage
+            loggedOutImagePlaceholder={
+              user ? 'No profile image' : 'Log in to view profile pictures'
+            }
+          />
+
+          <hr
+            className="my-8 w-full border-0 border-t border-slate-300"
+            aria-hidden="true"
+          />
+
+          <section>
             <h2 className="text-lg font-medium text-slate-900">Trips by {profile.name}</h2>
             {totalTrips === 0 ? (
               <p className="mt-3 text-slate-600">No trips yet.</p>
@@ -145,33 +155,21 @@ export function UserProfilePage() {
                   itemLabel="trips"
                   onPageChange={setCurrentPage}
                 />
-                <ul className="mt-4 divide-y divide-slate-300 rounded-lg border border-slate-300 bg-white shadow-sm">
-                  {visibleTrips.map((trip) => (
-                    <li
-                      key={trip.id}
-                      className="flex items-center justify-between gap-3 px-4 py-3"
-                    >
-                      <div>
-                        <Link
-                          to={`/trips/${trip.id}`}
-                          aria-label={`Open trip ${trip.title}`}
-                          className="font-medium hover:underline"
-                        >
-                          {trip.title}
-                        </Link>
-                        <p className="text-sm text-slate-600">{formatDate(trip.startDate)}</p>
-                      </div>
-                      {user?.id === profile.id && (
-                        <Link
-                          to={`/trips/${trip.id}/edit`}
-                          aria-label={`Edit trip ${trip.title}`}
-                          className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:underline"
-                        >
-                          <FontAwesomeIcon icon={faPenToSquare} aria-hidden="true" />
-                          Edit
-                        </Link>
+                <ul className="mt-6 space-y-4">
+                  {visibleTrips.map((t) => (
+                    <TripFeedCard
+                      key={t.id}
+                      {...tripFeedPropsFromBrowse(
+                        t,
+                        user != null,
+                        feedImagesByTripId,
+                        user?.id,
+                        {
+                          isOwned: viewingOwnProfile,
+                          omitAuthorLabel: true,
+                        },
                       )}
-                    </li>
+                    />
                   ))}
                 </ul>
               </>

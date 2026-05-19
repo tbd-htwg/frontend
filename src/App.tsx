@@ -6,9 +6,9 @@ import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { TripDetailPage } from './pages/TripDetailPage'
-import { TripEditPage } from './pages/TripEditPage'
 import { ImpressumPage } from './pages/ImpressumPage'
-import { TripNewPage } from './pages/TripNewPage'
+import { TripEditRedirect } from './pages/TripEditRedirect'
+import { TripNewRedirect } from './pages/TripNewRedirect'
 import { UserProfilePage } from './pages/UserProfilePage'
 
 export function App() {
@@ -32,7 +32,7 @@ export function App() {
               path="trips/new"
               element={
                 <ProtectedRoute>
-                  <TripNewPage />
+                  <TripNewRedirect />
                 </ProtectedRoute>
               }
             />
@@ -40,7 +40,7 @@ export function App() {
               path="trips/:id/edit"
               element={
                 <ProtectedRoute>
-                  <TripEditPage />
+                  <TripEditRedirect />
                 </ProtectedRoute>
               }
             />

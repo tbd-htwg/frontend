@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons'
+import { OwnedTripBadge } from './OwnedTripBadge'
 
 /** First `max` items joined by comma; if more, append ", and N more". */
 export function formatTruncatedList(items: string[], max = 3): string | null {
@@ -120,6 +121,8 @@ export type TripFeedCardProps = {
   /** When true (logged-in), gallery may render if URLs are present. */
   showLocationImages?: boolean
   locationImageUrls?: string[]
+  /** Decorative indicator when the signed-in user owns this trip. */
+  isOwned?: boolean
 }
 
 export function TripFeedCard(props: TripFeedCardProps) {
@@ -142,13 +145,16 @@ export function TripFeedCard(props: TripFeedCardProps) {
   return (
     <li className="rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
       <div className="min-w-0">
-        <Link
-          to={`/trips/${props.id}`}
-          aria-label={`Open trip ${props.title}`}
-          className="text-lg font-medium text-slate-900 hover:underline"
-        >
-          {props.title}
-        </Link>
+        <div className="flex min-w-0 items-center gap-2">
+          <Link
+            to={`/trips/${props.id}`}
+            aria-label={`Open trip ${props.title}`}
+            className="text-lg font-medium text-slate-900 hover:underline"
+          >
+            {props.title}
+          </Link>
+          {props.isOwned ? <OwnedTripBadge /> : null}
+        </div>
         {metaLine ? <p className="mt-1 text-sm text-slate-600">{metaLine}</p> : null}
         {props.shortDescription ? (
           <p className="mt-2 line-clamp-2 text-sm text-slate-600">{props.shortDescription}</p>

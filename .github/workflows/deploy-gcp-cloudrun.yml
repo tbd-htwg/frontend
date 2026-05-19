@@ -2,14 +2,14 @@ name: Deploy Frontend to Cloud Storage and CDN
 
 on:
   workflow_dispatch:
-    inputs:
-      environment:
-        type: environment
-        description: Select the environment to deploy to
-        required: true
-        default: 'develop'
-  push:
-    branches: ["main", "staging", "develop"]
+#     inputs:
+#       environment:
+#         type: environment
+#         description: Select the environment to deploy to
+#         required: true
+#         default: 'develop'
+#   push:
+#     branches: ["main", "staging", "develop"]
 
 ############################################################################
 # WORKFLOW PERMISSIONS AND GLOBAL VARIABLES

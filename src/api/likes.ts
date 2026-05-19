@@ -36,14 +36,10 @@ export async function isTripLikedByCurrentUser(tripId: number): Promise<boolean>
 /**
  * Append one like without replacing the whole collection (avoids GET+PUT of all likes).
  */
-export async function likeTrip(userId: number, tripId: number): Promise<void> {
+export async function likeTrip(_userId: number, tripId: number): Promise<void> {
   if (await isTripLikedByCurrentUser(tripId)) return
-  await requestVoid(`/users/${userId}/likedTrips`, {
+  await requestVoid(`/trips/${tripId}/like`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'text/uri-list',
-    },
-    body: `/trips/${tripId}`,
   })
 }
 

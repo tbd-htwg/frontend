@@ -13,11 +13,11 @@ Concise context for AI assistants and contributors working in this directory. Fo
 - Entry: [`src/main.tsx`](src/main.tsx), routing in [`src/App.tsx`](src/App.tsx).
 - API calls: [`src/api/client.ts`](src/api/client.ts) plus feature modules under [`src/api/`](src/api/) (`auth`, `trips`, `users`, `comments`, `likes`, HAL helpers, etc.).
 - Auth state: [`src/context/AuthContext.tsx`](src/context/AuthContext.tsx); session key in [`src/auth/sessionStorageKey.ts`](src/auth/sessionStorageKey.ts).
-- Firebase client config is loaded from [`index.html`](index.html) (Identity Platform / Firebase Auth).
+- Firebase / Identity Platform: [`src/lib/firebaseApp.ts`](src/lib/firebaseApp.ts); env `VITE_FIREBASE_*` in [`.env.example`](.env.example). Must match backend `TRIPPLANNING_AUTH_FIREBASE_PROJECT_ID`.
 
 ## Backend coupling
 
-- In development, Vite proxies **`/api/v2`** and **`/api/search`** to **`http://localhost:8080`** — see [`vite.config.ts`](vite.config.ts). Prefer same-origin requests (no `VITE_API_BASE_URL`) so the browser hits the dev server and the proxy forwards to the API.
+- In development, Vite proxies **`/api/v2`** and **`/api/search`** — see [`vite.config.ts`](vite.config.ts). Use **`npm run dev:minikube`** (`localhost:8080`) or **`npm run dev:k8s`** (`https://api.k8s.tbd-htwg.de`). Prefer same-origin requests (no `VITE_API_BASE_URL`) so the browser hits the dev server and the proxy forwards to the API.
 - Production often serves the static app behind Caddy or similar; the API may be on another host — then set **`VITE_API_BASE_URL`** if the app cannot use same-origin `/api/v2`.
 
 Copy [`.env.example`](.env.example) to `.env` when you need overrides.
