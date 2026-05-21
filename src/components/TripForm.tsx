@@ -1,8 +1,11 @@
 import { useState, type FormEvent } from 'react'
+import { PlaceSearchDropdown } from './PlaceSearchDropdown'
+import { usePlaceSearch } from '../hooks/usePlaceSearch'
+import type { PlaceSuggestion } from '../types/api'
 
 export type TripFormValues = {
   title: string
-  destination: string
+  destinationGooglePlaceId: string
   startDate: string
   shortDescription: string
   longDescription: string
@@ -10,7 +13,7 @@ export type TripFormValues = {
 
 const emptyValues: TripFormValues = {
   title: '',
-  destination: '',
+  destinationGooglePlaceId: '',
   startDate: '',
   shortDescription: '',
   longDescription: '',
@@ -18,6 +21,8 @@ const emptyValues: TripFormValues = {
 
 type TripFormProps = {
   initialValues?: Partial<TripFormValues>
+  /** Prefills the search field when editing (server-derived place name, not submitted). */
+  initialDestinationLabel?: string
   submitLabel: string
   onSubmit: (values: TripFormValues) => Promise<void>
   onCancel?: () => void
@@ -25,6 +30,7 @@ type TripFormProps = {
 
 export function TripForm({
   initialValues,
+  initialDestinationLabel = '',
   submitLabel,
   onSubmit,
   onCancel,
@@ -33,8 +39,19 @@ export function TripForm({
     ...emptyValues,
     ...initialValues,
   }))
+  const [destinationQuery, setDestinationQuery] = useState(initialDestinationLabel)
+  const [selectedDestination, setSelectedDestination] = useState<PlaceSuggestion | null>(
+    null,
+  )
+  const [showDestinationSuggestions, setShowDestinationSuggestions] = useState(false)
+  const destinationSearch = usePlaceSearch(destinationQuery, showDestinationSuggestions)
+
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  const destinationPlaceId =
+    selectedDestination?.placeId ?? values.destinationGooglePlaceId?.trim()
+  const destinationOk = Boolean(destinationPlaceId)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -43,9 +60,16 @@ export function TripForm({
       setError('Short description must be at most 80 characters.')
       return
     }
+    if (!destinationOk) {
+      setError('Choose a destination from the Google place suggestions.')
+      return
+    }
     setSubmitting(true)
     try {
-      await onSubmit(values)
+      await onSubmit({
+        ...values,
+        destinationGooglePlaceId: destinationPlaceId,
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.')
     } finally {
@@ -82,15 +106,51 @@ export function TripForm({
         >
           Destination
         </label>
-        <input
-          id="destination"
-          required
-          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
-          value={values.destination}
-          onChange={(e) =>
-            setValues((v) => ({ ...v, destination: e.target.value }))
-          }
-        />
+        <div className="relative mt-1">
+          <input
+            id="destination"
+            required
+            placeholder="Search destination (Google)"
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+            value={destinationQuery}
+            onFocus={() => setShowDestinationSuggestions(true)}
+            onBlur={() => setTimeout(() => setShowDestinationSuggestions(false), 150)}
+            onChange={(e) => {
+              setDestinationQuery(e.target.value)
+              setSelectedDestination(null)
+              setShowDestinationSuggestions(true)
+            }}
+          />
+          <PlaceSearchDropdown
+            open={showDestinationSuggestions}
+            query={destinationQuery}
+            suggestions={destinationSearch.suggestions}
+            searchError={destinationSearch.searchError}
+            searching={destinationSearch.searching}
+            listboxLabel="Destination search results"
+            onSelect={(hit) => {
+              setSelectedDestination(hit)
+              setDestinationQuery(hit.placeName)
+              setValues((v) => ({
+                ...v,
+                destinationGooglePlaceId: hit.placeId,
+              }))
+              setShowDestinationSuggestions(false)
+            }}
+          />
+        </div>
+        {destinationOk ? (
+          <p className="mt-1 text-xs text-slate-600">
+            {selectedDestination?.formattedAddress ??
+              (initialDestinationLabel
+                ? `${initialDestinationLabel} (saved Google place)`
+                : 'Google place selected.')}
+          </p>
+        ) : (
+          <p className="mt-1 text-xs text-slate-500">
+            Pick a suggestion — only the Google place id is stored.
+          </p>
+        )}
       </div>
       <div>
         <label
@@ -161,7 +221,7 @@ export function TripForm({
       <div className="flex gap-3 pt-2">
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || !destinationOk}
           aria-label={submitting ? 'Saving trip' : submitLabel}
           className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
         >

@@ -9,7 +9,7 @@ import {
 
 const RETRACT_DELAY_MS = 1000
 /** Matches opacity / max-width in index.css (.app-brand__retract). */
-const RETRACT_DURATION_MS = 700
+const RETRACT_DURATION_MS = 450
 
 type TitleSegment = {
   text: string

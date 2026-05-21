@@ -6,18 +6,34 @@ type AccommodationEntityBody = {
   type?: string
   name?: string
   address?: string
+  googlePlaceId?: string
+  checkInDate?: string
+  checkOutDate?: string
+  cost?: number
+  currency?: string
 }
+
+type AccommodationCreatedBody = AccommodationEntityBody & { id: number }
 
 type AccommodationCollection = HalCollection<HalEntity<AccommodationEntityBody>>
 
 function toAccommodation(
-  entity: HalEntity<AccommodationEntityBody>,
+  entity: HalEntity<AccommodationEntityBody> | AccommodationCreatedBody,
 ): AccommodationResponse {
+  const id =
+    'id' in entity && typeof (entity as AccommodationCreatedBody).id === 'number'
+      ? (entity as AccommodationCreatedBody).id
+      : idFromEntity(entity as HalEntity<AccommodationEntityBody>)
   return {
-    id: idFromEntity(entity),
+    id,
     type: entity.type ?? '',
     name: entity.name ?? '',
     address: entity.address ?? '',
+    googlePlaceId: entity.googlePlaceId,
+    checkInDate: entity.checkInDate,
+    checkOutDate: entity.checkOutDate,
+    cost: entity.cost,
+    currency: entity.currency,
   }
 }
 
@@ -32,57 +48,47 @@ export async function listAccommodations(): Promise<AccommodationResponse[]> {
   return rawItems.map(toAccommodation)
 }
 
-/**
- * Audit category A fix: the backing repository method is now paginated
- * (`Page<AccomEntity>`), so we request a bounded page instead of the full
- * unbounded list. An empty `name` matches every row, which lets us prefill
- * suggestion dropdowns the moment the user focuses the search field — the
- * `sort=id,desc` ordering surfaces the most recently created accommodations
- * first (IDENTITY ids are monotonically increasing, so id order == insertion
- * order).
- */
-const ACCOMMODATION_SUGGESTION_PAGE_SIZE = 10
-
-export async function searchAccommodationsByNameContaining(
-  name: string,
-  size: number = ACCOMMODATION_SUGGESTION_PAGE_SIZE,
-): Promise<AccommodationResponse[]> {
-  const q = name.trim()
-  const params = new URLSearchParams({
-    name: q,
-    size: String(size),
-    sort: 'id,desc',
-  })
-  try {
-    const model = await requestJson<AccommodationCollection>(
-      `/accommodations/search/findByNameContainingIgnoreCase?${params.toString()}`,
-      { method: 'GET' },
-    )
-    const rawItems = [
-      ...embeddedItems(model, 'accomEntities'),
-      ...embeddedItems(model, 'accommodations'),
-    ]
-    return rawItems.map(toAccommodation)
-  } catch (e) {
-    if (e instanceof ApiError && e.status === 404) return []
-    throw e
-  }
-}
-
 export async function createAccommodation(input: {
-  type: string
-  name: string
-  address: string
+  googlePlaceId: string
+  checkInDate: string
+  checkOutDate: string
+  cost: number
+  currency: string
 }): Promise<AccommodationResponse> {
-  const entity = await requestJson<HalEntity<AccommodationEntityBody>>('/accommodations', {
+  const body = await requestJson<AccommodationCreatedBody>('/accommodations', {
     method: 'POST',
     body: JSON.stringify({
-      type: input.type,
-      name: input.name,
-      address: input.address,
+      googlePlaceId: input.googlePlaceId,
+      checkInDate: input.checkInDate,
+      checkOutDate: input.checkOutDate,
+      cost: input.cost,
+      currency: input.currency.toUpperCase(),
     }),
   })
-  return toAccommodation(entity)
+  return toAccommodation(body)
+}
+
+export async function updateAccommodation(
+  id: number,
+  input: {
+    googlePlaceId: string
+    checkInDate: string
+    checkOutDate: string
+    cost: number
+    currency: string
+  },
+): Promise<AccommodationResponse> {
+  const body = await requestJson<AccommodationCreatedBody>(`/accommodations/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      googlePlaceId: input.googlePlaceId,
+      checkInDate: input.checkInDate,
+      checkOutDate: input.checkOutDate,
+      cost: input.cost,
+      currency: input.currency.toUpperCase(),
+    }),
+  })
+  return toAccommodation(body)
 }
 
 export async function listTripAccommodationsByTripId(
@@ -101,18 +107,17 @@ export async function listTripAccommodationsByTripId(
   return rawItems.map(toAccommodation)
 }
 
-/**
- * Audit category B fix: append one accommodation with POST instead of
- * replacing the whole association with PUT + text/uri-list.
- */
 export async function addTripAccommodation(input: {
   tripId: number
   accommodation: AccommodationResponse
+  skipLinkCheck?: boolean
 }): Promise<void> {
-  const alreadyLinked = await getExists(
-    `/trips/${input.tripId}/accommodations/${input.accommodation.id}`,
-  )
-  if (alreadyLinked) return
+  if (!input.skipLinkCheck) {
+    const alreadyLinked = await getExists(
+      `/trips/${input.tripId}/accommodations/${input.accommodation.id}`,
+    )
+    if (alreadyLinked) return
+  }
   await requestVoid(`/trips/${input.tripId}/accommodations`, {
     method: 'POST',
     headers: {
@@ -122,10 +127,6 @@ export async function addTripAccommodation(input: {
   })
 }
 
-/**
- * Audit category B fix: remove a single accommodation with DELETE on the item
- * URI.
- */
 export async function deleteTripAccommodation(
   tripId: number,
   accommodationId: number,

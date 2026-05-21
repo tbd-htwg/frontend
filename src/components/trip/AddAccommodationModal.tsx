@@ -1,137 +1,139 @@
-import type { AccommodationResponse } from '../../types/api'
-import { Modal, modalDropdownClassName } from '../Modal'
+import type { PlaceSuggestion } from '../../types/api'
+import type { PlaceSearchError } from '../../utils/placeSearchErrors'
+import { CURRENCY_OPTIONS } from '../../constants/currencies'
+import { Modal } from '../Modal'
+import { PlaceSearchDropdown } from '../PlaceSearchDropdown'
 
 export type AddAccommodationModalProps = {
   open: boolean
   onClose: () => void
-  accommodationMode: 'existing' | 'new'
-  setAccommodationMode: (fn: (prev: 'existing' | 'new') => 'existing' | 'new') => void
-  accommodationSearch: string
-  setAccommodationSearch: (v: string) => void
-  showAccommodationSuggestions: boolean
-  setShowAccommodationSuggestions: (v: boolean) => void
-  accommodationSuggestions: AccommodationResponse[]
-  selectedExistingAccommodation: AccommodationResponse | null
-  setSelectedExistingAccommodation: (a: AccommodationResponse | null) => void
+  placeSearch: string
+  setPlaceSearch: (v: string) => void
+  showPlaceSuggestions: boolean
+  setShowPlaceSuggestions: (v: boolean) => void
+  placeSuggestions: PlaceSuggestion[]
+  placeSearchError: PlaceSearchError | null
+  placeSearching: boolean
+  selectedPlace: PlaceSuggestion | null
+  setSelectedPlace: (p: PlaceSuggestion | null) => void
+  checkInDate: string
+  setCheckInDate: (v: string) => void
+  checkOutDate: string
+  setCheckOutDate: (v: string) => void
+  cost: string
+  setCost: (v: string) => void
+  currency: string
+  setCurrency: (v: string) => void
   savingAccommodation: boolean
-  onAddExisting: () => void
-  newAccommodationName: string
-  setNewAccommodationName: (v: string) => void
-  newAccommodationType: string
-  setNewAccommodationType: (v: string) => void
-  newAccommodationAddress: string
-  setNewAccommodationAddress: (v: string) => void
-  onCreateAndAdd: () => void
+  onAdd: () => void
 }
 
 export function AddAccommodationModal(props: AddAccommodationModalProps) {
   const p = props
   if (!p.open) return null
 
+  const canAdd =
+    p.selectedPlace &&
+    p.checkInDate &&
+    p.checkOutDate &&
+    p.cost.trim() &&
+    Number.parseFloat(p.cost) >= 0 &&
+    p.currency
+
   return (
     <Modal open={p.open} title="Add accommodation" onClose={p.onClose} maxWidth="lg">
-      <p className="text-sm text-slate-600">Choose an existing accommodation or create a new one.</p>
-      <div className="my-4 flex justify-center">
+      <p className="text-sm text-slate-600">
+        Search for a place on Google, then add stay details for this trip.
+      </p>
+      <div className="mt-4 space-y-3">
+        <div className="relative">
+          <input
+            placeholder="Search property (Google)"
+            value={p.placeSearch}
+            onFocus={() => p.setShowPlaceSuggestions(true)}
+            onBlur={() => setTimeout(() => p.setShowPlaceSuggestions(false), 150)}
+            onChange={(e) => {
+              p.setPlaceSearch(e.target.value)
+              p.setSelectedPlace(null)
+              p.setShowPlaceSuggestions(true)
+            }}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          />
+          <PlaceSearchDropdown
+            open={p.showPlaceSuggestions}
+            query={p.placeSearch}
+            suggestions={p.placeSuggestions}
+            searchError={p.placeSearchError}
+            searching={p.placeSearching}
+            onSelect={(hit) => {
+              p.setSelectedPlace(hit)
+              p.setPlaceSearch(hit.placeName)
+              p.setShowPlaceSuggestions(false)
+            }}
+          />
+        </div>
+        {p.selectedPlace ? (
+          <p className="text-xs text-slate-600">{p.selectedPlace.formattedAddress}</p>
+        ) : (
+          <p className="text-xs text-slate-500">Pick a suggestion so we can store the Google place id.</p>
+        )}
+        <div className="grid gap-2 sm:grid-cols-2">
+          <label className="text-xs text-slate-700">
+            Check-in
+            <input
+              type="date"
+              value={p.checkInDate}
+              onChange={(e) => p.setCheckInDate(e.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            />
+          </label>
+          <label className="text-xs text-slate-700">
+            Check-out
+            <input
+              type="date"
+              value={p.checkOutDate}
+              onChange={(e) => p.setCheckOutDate(e.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            />
+          </label>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <label className="text-xs text-slate-700">
+            Cost
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              value={p.cost}
+              onChange={(e) => p.setCost(e.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            />
+          </label>
+          <label className="text-xs text-slate-700">
+            Currency
+            <select
+              value={p.currency}
+              onChange={(e) => p.setCurrency(e.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            >
+              {CURRENCY_OPTIONS.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
         <button
           type="button"
-          onClick={() => p.setAccommodationMode((prev) => (prev === 'existing' ? 'new' : 'existing'))}
-          className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          onClick={() => void p.onAdd()}
+          disabled={p.savingAccommodation || !canAdd}
+          className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
         >
-          {p.accommodationMode === 'existing'
-            ? 'Switch to create new accommodation'
-            : 'Switch to add existing accommodation'}
+          {p.savingAccommodation ? 'Saving…' : 'Add'}
         </button>
       </div>
-      {p.accommodationMode === 'existing' ? (
-        <div className="space-y-2 overflow-visible">
-          <div className="grid gap-2 overflow-visible sm:grid-cols-[1fr_auto]">
-            <div className="relative">
-              <input
-                placeholder="Search accommodation"
-                aria-label="Search existing accommodations"
-                value={p.accommodationSearch}
-                onFocus={() => p.setShowAccommodationSuggestions(true)}
-                onBlur={() => setTimeout(() => p.setShowAccommodationSuggestions(false), 100)}
-                onChange={(e) => {
-                  p.setAccommodationSearch(e.target.value)
-                  p.setShowAccommodationSuggestions(true)
-                }}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-              />
-              {p.showAccommodationSuggestions && p.accommodationSuggestions.length > 0 && (
-                <ul className={modalDropdownClassName} role="listbox" aria-label="Accommodation search results">
-                  {p.accommodationSuggestions.map((item) => (
-                    <li key={item.id} role="option">
-                      <button
-                        type="button"
-                        className="w-full px-3 py-2 text-left text-sm hover:bg-slate-100"
-                        onMouseDown={() => {
-                          p.setSelectedExistingAccommodation(item)
-                          p.setAccommodationSearch(`${item.name} (${item.type})`)
-                          p.setShowAccommodationSuggestions(false)
-                        }}
-                      >
-                        {item.name} ({item.type}) - {item.address}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => void p.onAddExisting()}
-              disabled={p.savingAccommodation || !p.selectedExistingAccommodation}
-              className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
-            >
-              {p.savingAccommodation ? 'Adding…' : 'Add'}
-            </button>
-          </div>
-          {p.accommodationSearch.trim() &&
-            !p.selectedExistingAccommodation &&
-            p.accommodationSuggestions.length === 0 && (
-              <p className="text-xs text-slate-600">
-                No matching existing accommodation. Use “Create new accommodation”.
-              </p>
-            )}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <div className="grid gap-2 sm:grid-cols-3">
-            <input
-              placeholder="Accommodation name"
-              value={p.newAccommodationName}
-              onChange={(e) => p.setNewAccommodationName(e.target.value)}
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-            />
-            <input
-              placeholder="Type (hotel, hostel, ...)"
-              value={p.newAccommodationType}
-              onChange={(e) => p.setNewAccommodationType(e.target.value)}
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-            />
-            <input
-              placeholder="Address"
-              value={p.newAccommodationAddress}
-              onChange={(e) => p.setNewAccommodationAddress(e.target.value)}
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => void p.onCreateAndAdd()}
-            disabled={
-              p.savingAccommodation ||
-              !p.newAccommodationName.trim() ||
-              !p.newAccommodationType.trim() ||
-              !p.newAccommodationAddress.trim()
-            }
-            className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50"
-          >
-            {p.savingAccommodation ? 'Saving…' : 'Create and add'}
-          </button>
-        </div>
-      )}
     </Modal>
   )
 }

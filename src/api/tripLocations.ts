@@ -15,25 +15,23 @@ type TripLocationEntityBody = {
   description?: string
   images?: TripLocationImageResponse[]
   signedImageUrls?: string[]
+  placeName?: string
+  cityName?: string
   locationName?: string
+  googlePlaceId?: string
   formattedAddress?: string
   address?: string
   startDate?: string
   endDate?: string
-  location?: {
-    id?: number
-    city?: string
-    formattedAddress?: string
-  }
   trip?: { id?: number }
 }
 
 type TripLocationCreatedBody = {
   id: number
   tripId: number
-  locationId: number
-  locationName: string
-  formattedAddress?: string
+  googlePlaceId: string
+  placeName: string
+  cityName: string
   description: string
   startDate?: string
   endDate?: string
@@ -45,10 +43,13 @@ function toTripLocationFromHal(entity: HalEntity<TripLocationEntityBody>): TripL
       (image): image is TripLocationImageResponse =>
         Number.isFinite(image.id) && typeof image.signedReadUrl === 'string' && image.signedReadUrl.length > 0,
     ) ?? []
+  const placeName = entity.placeName ?? entity.locationName ?? ''
+  const cityName = entity.cityName ?? ''
   return {
     id: idFromEntity(entity),
     tripId: idFromHref(entity._links?.trip?.href),
-    locationId: idFromHref(entity._links?.location?.href),
+    locationId: idFromEntity(entity),
+    googlePlaceId: entity.googlePlaceId,
     description: entity.description ?? '',
     images:
       projectedImages.length > 0
@@ -59,7 +60,9 @@ function toTripLocationFromHal(entity: HalEntity<TripLocationEntityBody>): TripL
           })),
     startDate: entity.startDate,
     endDate: entity.endDate,
-    locationName: entity.locationName ?? '',
+    placeName,
+    cityName,
+    locationName: placeName,
     formattedAddress: entity.formattedAddress ?? entity.address,
     address: entity.address,
   }
@@ -72,39 +75,33 @@ function toTripLocationFromCreate(body: TripLocationCreatedBody): TripLocationRe
   return {
     id: body.id,
     tripId: body.tripId,
-    locationId: body.locationId,
+    locationId: body.id,
+    googlePlaceId: body.googlePlaceId,
     description: body.description ?? '',
     images: [],
     startDate: body.startDate,
     endDate: body.endDate,
-    locationName: body.locationName ?? '',
-    formattedAddress: body.formattedAddress,
+    placeName: body.placeName,
+    cityName: body.cityName,
+    locationName: body.placeName,
   }
 }
 
 export async function addTripLocation(input: {
   tripId: number
-  city: string
+  googlePlaceId: string
   description: string
   startDate: string
   endDate: string
-  formattedAddress?: string
-  countryCode?: string
-  latitude?: number
-  longitude?: number
 }): Promise<TripLocationResponse> {
   const body = await requestJson<TripLocationCreatedBody>('/trip-locations', {
     method: 'POST',
     body: JSON.stringify({
       tripId: input.tripId,
-      city: input.city.trim(),
+      googlePlaceId: input.googlePlaceId,
       description: input.description,
       startDate: input.startDate,
       endDate: input.endDate,
-      formattedAddress: input.formattedAddress,
-      countryCode: input.countryCode,
-      latitude: input.latitude,
-      longitude: input.longitude,
     }),
   })
   return toTripLocationFromCreate(body)

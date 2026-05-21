@@ -57,7 +57,7 @@ export type TripListItemResponse = {
   authorProfileImageUrl?: string
   locations?: string[]
   accommodationNames?: string[]
-  transportTypes?: string[]
+  transportRoutes?: string[]
   /** Signed URLs for all trip-location images; populated only when authenticated. */
   locationImageUrls?: string[]
   /** Present when returned from Spring Data REST (HAL `user` link). */
@@ -74,7 +74,7 @@ export type TripSearchResult = {
   startDate?: string
   locations: string[]
   accommodationNames?: string[]
-  transportTypes?: string[]
+  transportRoutes?: string[]
   /** Signed URLs for trip-location images when authenticated. */
   locationImageUrls?: string[]
   /** Author user id when returned by the search API. */
@@ -83,6 +83,7 @@ export type TripSearchResult = {
 
 export type TripDetailsResponse = TripListItemResponse & {
   longDescription: string
+  destinationGooglePlaceId?: string
   tripLocations: TripLocationResponse[]
   transports: TransportResponse[]
   accommodations: AccommodationResponse[]
@@ -91,7 +92,8 @@ export type TripDetailsResponse = TripListItemResponse & {
 export type TripCreateRequest = {
   userId: number
   title: string
-  destination: string
+  /** Google Places id; server resolves the display label. */
+  destinationGooglePlaceId: string
   startDate: string
   shortDescription: string
   longDescription: string
@@ -118,11 +120,20 @@ export type TripLocationResponse = {
   id: number
   tripId: number
   locationId: number
+  googlePlaceId?: string
   description: string
   images: TripLocationImageResponse[]
+  /** Primary label (POI / place name). */
+  placeName?: string
+  /** Secondary label (city / locality). */
+  cityName?: string
+  /** @deprecated Use placeName; kept for HAL projections. */
   locationName: string
   formattedAddress?: string
   address?: string
+  latitude?: number
+  longitude?: number
+  countryCode?: string
   startDate?: string
   endDate?: string
 }
@@ -154,7 +165,14 @@ export type SignedImageUploadResponse = {
 
 export type TransportResponse = {
   id: number
-  type: string
+  startGooglePlaceId?: string
+  endGooglePlaceId?: string
+  startAddress?: string
+  endAddress?: string
+  startLatitude?: number
+  startLongitude?: number
+  endLatitude?: number
+  endLongitude?: number
 }
 
 export type AccommodationResponse = {
@@ -162,6 +180,15 @@ export type AccommodationResponse = {
   type: string
   name: string
   address: string
+  googlePlaceId?: string
+  cityName?: string
+  latitude?: number
+  longitude?: number
+  countryCode?: string
+  checkInDate?: string
+  checkOutDate?: string
+  cost?: number
+  currency?: string
 }
 
 export type CommentResponse = {
@@ -179,6 +206,8 @@ export type ExternalTourResponse = {
   title: string
   price: string
   url: string
+  /** Legacy field from older API builds; prefer {@link url}. */
+  productUrl?: string
 }
 
 export type ExternalDailyForecast = {
@@ -193,25 +222,60 @@ export type ExternalWeatherData = {
   currentTemp: number
   currentWeatherCode: number
   currentDescription: string
+  /** ISO-8601 observation time at the place (Open-Meteo local time). */
+  observedAt?: string
   dailyForecasts: ExternalDailyForecast[]
 }
 
 export type ExternalTravelWarning = {
-  country: string
+  countryCode: string
+  countryName: string
   status: string
-  message: string
+  summary: string
+  infoUrl: string
 }
 
-export type TripExternalInfoResponse = {
+/** Trip stop widgets: weather + travel warning only. */
+export type StopExternalInfoResponse = {
   warning?: ExternalTravelWarning
   weather?: ExternalWeatherData
-  tours: ExternalTourResponse[]
 }
 
-export type GeocodingSuggestion = {
-  city: string
-  displayName: string
+/** Accommodation widgets: Viator split by price similarity. */
+export type AccommodationExternalInfoResponse = {
+  similarPriceTours: ExternalTourResponse[]
+  otherTours: ExternalTourResponse[]
+}
+
+export type TransportDistanceLegResponse = {
+  mode: string
+  distanceMeters: number
+  durationSeconds: number
+  distanceText: string
+  durationText: string
+}
+
+export type TransportDistanceResponse = {
+  legs: TransportDistanceLegResponse[]
+}
+
+/** @deprecated Use {@link StopExternalInfoResponse} for trip stops. */
+export type TripExternalInfoResponse = StopExternalInfoResponse & {
+  tours?: ExternalTourResponse[]
+}
+
+/** Google Places text-search hit from GET /external/details/search */
+export type PlaceSuggestion = {
+  placeId: string
+  placeName: string
+  formattedAddress: string
   lat: number
   lon: number
+}
+
+/** @deprecated Use PlaceSuggestion */
+export type GeocodingSuggestion = PlaceSuggestion & {
+  city: string
+  displayName: string
   countryCode: string
 }
