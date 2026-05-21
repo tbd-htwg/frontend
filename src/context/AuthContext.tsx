@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import { authDevLogin, authFirebase, authMe, type LoginResponse } from '../api/auth'
+import { ApiError, setApiAccessToken } from '../api/client'
 import { SESSION_STORAGE_KEY } from '../auth/sessionStorageKey'
 import type { UserResponse } from '../types/api'
 
@@ -26,35 +27,42 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-function loadStoredSession(): LoginResponse | null {
+function parseStoredUser(raw: unknown): UserResponse | null {
+  if (!raw || typeof raw !== 'object') return null
+  const u = raw as UserResponse
+  if (
+    typeof u.id !== 'number' ||
+    typeof u.email !== 'string' ||
+    typeof u.name !== 'string' ||
+    typeof u.imageUrl !== 'string' ||
+    typeof u.description !== 'string'
+  ) {
+    return null
+  }
+  return u
+}
+
+function loadStoredSession(): { accessToken: string; user: UserResponse | null } | null {
   try {
     const raw = sessionStorage.getItem(SESSION_STORAGE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as { accessToken?: unknown; user?: unknown }
-    if (typeof parsed.accessToken !== 'string' || !parsed.user || typeof parsed.user !== 'object') {
-      return null
-    }
-    const u = parsed.user as UserResponse
-    if (
-      typeof u.id !== 'number' ||
-      typeof u.email !== 'string' ||
-      typeof u.name !== 'string' ||
-      typeof u.imageUrl !== 'string' ||
-      typeof u.description !== 'string'
-    ) {
-      return null
-    }
-    return { tokenType: 'Bearer', accessToken: parsed.accessToken, user: u }
+    if (typeof parsed.accessToken !== 'string') return null
+    return { accessToken: parsed.accessToken, user: parseStoredUser(parsed.user) }
   } catch {
     return null
   }
 }
 
 function persistSession(accessToken: string | null, user: UserResponse | null) {
-  if (accessToken && user) {
+  if (!accessToken) {
+    sessionStorage.removeItem(SESSION_STORAGE_KEY)
+    return
+  }
+  if (user) {
     sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({ accessToken, user }))
   } else {
-    sessionStorage.removeItem(SESSION_STORAGE_KEY)
+    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({ accessToken }))
   }
 }
 
@@ -66,7 +74,11 @@ function applyLoginResponse(setAccessToken: (t: string) => void, setUser: (u: Us
 export function AuthProvider({ children }: { children: ReactNode }) {
   const initial = loadStoredSession()
   const [accessToken, setAccessToken] = useState<string | null>(initial?.accessToken ?? null)
-  const [user, setUser] = useState<UserResponse | null>(initial?.user ?? null)
+  const [user, setUser] = useState<UserResponse | null>(null)
+
+  useEffect(() => {
+    setApiAccessToken(accessToken)
+  }, [accessToken])
 
   useEffect(() => {
     persistSession(accessToken, user)
@@ -74,13 +86,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!accessToken) return
+    if (user) return
     let cancelled = false
     authMe()
       .then((u) => {
-        if (!cancelled) setUser(u)
-      })
-      .catch(() => {
         if (!cancelled) {
+          setUser(u)
+        }
+      })
+      .catch((err) => {
+        if (!cancelled && err instanceof ApiError && err.status === 401) {
           setAccessToken(null)
           setUser(null)
         }
@@ -88,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [accessToken])
+  }, [accessToken, user])
 
   const loginWithFirebaseToken = useCallback(async (credential: string) => {
     const r = await authFirebase(credential)

@@ -17,8 +17,8 @@ body {
   overflow: hidden;
   vertical-align: bottom;
   transition:
-    opacity 0.7s ease,
-    max-width 0.7s ease;
+    opacity 0.45s ease,
+    max-width 0.45s ease;
 }
 
 .app-brand--expanded .app-brand__retract {

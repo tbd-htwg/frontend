@@ -35,19 +35,25 @@ type TripFeedItemDto = {
   author: TripFeedAuthorDto
   locations: string[]
   accommodationNames: string[]
-  transportTypes: string[]
+  transportRoutes: string[]
 }
 
 type TripFeedDetailStopDto = {
   id: number
-  locationId: number
-  locationName: string
+  googlePlaceId?: string
+  placeName?: string
+  cityName?: string
+  locationId?: number
+  locationName?: string
   description: string
   startDate?: string
   endDate?: string
   imageUrls: string[]
   formattedAddress?: string
   address?: string
+  latitude?: number
+  longitude?: number
+  countryCode?: string
 }
 
 type TripFeedAccommodationDto = AccommodationResponse
@@ -58,6 +64,7 @@ type TripFeedDetailDto = {
   id: number
   title: string
   destination: string
+  destinationGooglePlaceId?: string
   startDate: string
   shortDescription: string
   longDescription: string
@@ -90,7 +97,7 @@ function toTripSummary(item: TripFeedItemDto): TripListItemResponse {
       : {}),
     locations: item.locations ?? [],
     accommodationNames: item.accommodationNames ?? [],
-    transportTypes: item.transportTypes ?? [],
+    transportRoutes: item.transportRoutes ?? [],
   }
 }
 
@@ -110,17 +117,25 @@ function toTripPage(
 }
 
 function toTripLocation(stop: TripFeedDetailStopDto, tripId: number): TripLocationResponse {
+  const placeName = stop.placeName ?? stop.locationName ?? 'Unknown location'
+  const cityName = stop.cityName ?? ''
   return {
     id: stop.id,
     tripId,
-    locationId: stop.locationId,
+    locationId: stop.locationId ?? stop.id,
+    googlePlaceId: stop.googlePlaceId,
     description: stop.description ?? '',
     images: (stop.imageUrls ?? []).map((url, index) => ({
       id: -1 - index,
       signedReadUrl: url,
     })),
-    locationName: stop.locationName || 'Unknown location',
+    placeName,
+    cityName,
+    locationName: placeName,
     formattedAddress: stop.formattedAddress ?? stop.address,
+    latitude: stop.latitude,
+    longitude: stop.longitude,
+    countryCode: stop.countryCode,
     startDate: stop.startDate,
     endDate: stop.endDate,
   }
@@ -131,6 +146,9 @@ function toTripDetails(detail: TripFeedDetailDto): TripDetailsResponse {
     id: detail.id,
     title: detail.title ?? '',
     destination: detail.destination ?? '',
+    ...(detail.destinationGooglePlaceId
+      ? { destinationGooglePlaceId: detail.destinationGooglePlaceId }
+      : {}),
     startDate: detail.startDate ?? '',
     shortDescription: detail.shortDescription ?? '',
     longDescription: detail.longDescription ?? '',
@@ -150,7 +168,7 @@ function toTripRequest(body: TripCreateRequest | TripPutRequest | TripPatchReque
   return {
     user: body.userId ? hrefForResource(`/users/${body.userId}`) : undefined,
     title: body.title,
-    destination: body.destination,
+    destinationGooglePlaceId: body.destinationGooglePlaceId,
     startDate: body.startDate,
     shortDescription: body.shortDescription,
     longDescription: body.longDescription,
@@ -285,6 +303,7 @@ type TripEntityBody = {
   id?: number
   title?: string
   destination?: string
+  destinationGooglePlaceId?: string
   startDate?: string
   shortDescription?: string
   longDescription?: string
@@ -344,7 +363,13 @@ function summarizeTripEntity(
   return {
     id: idFromHalEntity(entity),
     title: entity.title ?? body.title ?? '',
-    destination: entity.destination ?? body.destination ?? '',
+    destination: entity.destination ?? '',
+    ...(entity.destinationGooglePlaceId ?? body.destinationGooglePlaceId
+      ? {
+          destinationGooglePlaceId:
+            entity.destinationGooglePlaceId ?? body.destinationGooglePlaceId,
+        }
+      : {}),
     startDate: entity.startDate ?? body.startDate ?? '',
     shortDescription: entity.shortDescription ?? body.shortDescription ?? '',
     longDescription: entity.longDescription ?? body.longDescription ?? '',

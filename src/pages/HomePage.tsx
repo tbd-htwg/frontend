@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { fetchFeedLocationImageUrls, listTrips, searchTrips } from '../api/trips'
 import { ApiError } from '../api/client'
 import { PaginationControls } from '../components/PaginationControls'
@@ -21,6 +22,7 @@ export function HomePage() {
   const [error, setError] = useState<string | null>(null)
   const [feedImagesByTripId, setFeedImagesByTripId] = useState<Record<number, string[]>>({})
   const { user } = useAuth()
+  const location = useLocation()
 
   useEffect(() => {
     const q = query.trim()
@@ -39,7 +41,6 @@ export function HomePage() {
   useEffect(() => {
     const q = query.trim()
     if (q && q !== debouncedQuery) {
-      setLoading(true)
       return
     }
 
@@ -56,11 +57,11 @@ export function HomePage() {
         })
         .catch((err) => {
           if (!cancelled) {
-            setError(
+            const msg =
               err instanceof ApiError
                 ? err.message
-                : 'Could not search trips. Is the API running?',
-            )
+                : 'Could not search trips. Is the API running?'
+            setError(msg)
           }
         })
         .finally(() => {
@@ -77,11 +78,11 @@ export function HomePage() {
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(
+          const msg =
             err instanceof ApiError
               ? err.message
-              : 'Could not load trips. Is the API running?',
-          )
+              : 'Could not load trips. Is the API running?'
+          setError(msg)
         }
       })
       .finally(() => {
@@ -90,7 +91,7 @@ export function HomePage() {
     return () => {
       cancelled = true
     }
-  }, [currentPage, query, debouncedQuery])
+  }, [currentPage, query, debouncedQuery, location.key])
 
   const showSearch = Boolean(debouncedQuery.trim())
 
@@ -107,9 +108,13 @@ export function HomePage() {
     }
     const ids = items.map((t) => t.id)
     let cancelled = false
-    fetchFeedLocationImageUrls(ids).then((map) => {
-      if (!cancelled) setFeedImagesByTripId(map)
-    })
+    fetchFeedLocationImageUrls(ids)
+      .then((map) => {
+        if (!cancelled) setFeedImagesByTripId(map)
+      })
+      .catch(() => {
+        if (!cancelled) setFeedImagesByTripId({})
+      })
     return () => {
       cancelled = true
     }

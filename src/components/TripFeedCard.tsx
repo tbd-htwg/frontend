@@ -117,7 +117,7 @@ export type TripFeedCardProps = {
   authorLabel?: string
   locations?: string[]
   accommodationNames?: string[]
-  transportTypes?: string[]
+  transportRoutes?: string[]
   /** When true (logged-in), gallery may render if URLs are present. */
   showLocationImages?: boolean
   locationImageUrls?: string[]
@@ -135,7 +135,7 @@ export function TripFeedCard(props: TripFeedCardProps) {
 
   const locLine = formatTruncatedList(props.locations ?? [])
   const accomLine = formatTruncatedList(props.accommodationNames ?? [])
-  const transLine = formatTruncatedList(props.transportTypes ?? [])
+  const transLine = formatTruncatedList(props.transportRoutes ?? [])
 
   const galleryUrls =
     props.showLocationImages && props.locationImageUrls?.length

@@ -13,6 +13,7 @@ export function TripFormModal() {
   const navigate = useNavigate()
 
   const [initial, setInitial] = useState<TripFormValues | null>(null)
+  const [initialDestinationLabel, setInitialDestinationLabel] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [allowed, setAllowed] = useState(true)
@@ -25,6 +26,7 @@ export function TripFormModal() {
   useEffect(() => {
     if (!open || isCreate) {
       setInitial(null)
+      setInitialDestinationLabel('')
       setError(null)
       setLoading(false)
       setAllowed(true)
@@ -41,6 +43,7 @@ export function TripFormModal() {
     setLoading(true)
     setError(null)
     setInitial(null)
+    setInitialDestinationLabel('')
     setAllowed(false)
 
     getTrip(tripId)
@@ -50,9 +53,10 @@ export function TripFormModal() {
         const own = Number.isFinite(ownerId) && ownerId === user.id
         setAllowed(own)
         if (own) {
+          setInitialDestinationLabel(t.destination ?? '')
           setInitial({
             title: t.title,
-            destination: t.destination,
+            destinationGooglePlaceId: t.destinationGooglePlaceId ?? '',
             startDate: t.startDate,
             shortDescription: t.shortDescription,
             longDescription: t.longDescription,
@@ -80,7 +84,7 @@ export function TripFormModal() {
     const created = await createTrip({
       userId: user.id,
       title: values.title.trim(),
-      destination: values.destination.trim(),
+      destinationGooglePlaceId: values.destinationGooglePlaceId.trim(),
       startDate: values.startDate,
       shortDescription: values.shortDescription.trim(),
       longDescription: values.longDescription.trim(),
@@ -94,7 +98,7 @@ export function TripFormModal() {
     const updated = await replaceTrip(tripId, {
       userId: user.id,
       title: values.title.trim(),
-      destination: values.destination.trim(),
+      destinationGooglePlaceId: values.destinationGooglePlaceId.trim(),
       startDate: values.startDate,
       shortDescription: values.shortDescription.trim(),
       longDescription: values.longDescription.trim(),
@@ -140,6 +144,7 @@ export function TripFormModal() {
         <TripForm
           key={tripId}
           initialValues={initial}
+          initialDestinationLabel={initialDestinationLabel}
           submitLabel="Save changes"
           onSubmit={handleEdit}
           onCancel={closeTripModal}

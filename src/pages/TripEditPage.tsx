@@ -12,6 +12,7 @@ export function TripEditPage() {
   const tripId = id ? Number(id) : NaN
 
   const [initial, setInitial] = useState<TripFormValues | null>(null)
+  const [initialDestinationLabel, setInitialDestinationLabel] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [allowed, setAllowed] = useState(false)
@@ -34,9 +35,10 @@ export function TripEditPage() {
         const own = Number.isFinite(ownerId) && ownerId === user.id
         setAllowed(own)
         if (own) {
+          setInitialDestinationLabel(t.destination ?? '')
           setInitial({
             title: t.title,
-            destination: t.destination,
+            destinationGooglePlaceId: t.destinationGooglePlaceId ?? '',
             startDate: t.startDate,
             shortDescription: t.shortDescription,
             longDescription: t.longDescription,
@@ -87,7 +89,7 @@ export function TripEditPage() {
     await replaceTrip(tripId, {
       userId: user.id,
       title: values.title.trim(),
-      destination: values.destination.trim(),
+      destinationGooglePlaceId: values.destinationGooglePlaceId.trim(),
       startDate: values.startDate,
       shortDescription: values.shortDescription.trim(),
       longDescription: values.longDescription.trim(),
@@ -109,6 +111,7 @@ export function TripEditPage() {
           <TripForm
             key={tripId}
             initialValues={initial}
+            initialDestinationLabel={initialDestinationLabel}
             submitLabel="Save changes"
             onSubmit={handleSubmit}
             onCancel={() => navigate(`/trips/${tripId}`)}

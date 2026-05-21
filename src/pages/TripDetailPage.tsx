@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
@@ -32,15 +32,11 @@ import {
 
   deleteTripAccommodation,
 
-  searchAccommodationsByNameContaining,
-
 } from '../api/accommodations'
 
-import { getTripCommunity, loadMoreTripComments } from '../api/community'
+import { loadMoreTripComments } from '../api/community'
 
 import { createComment, deleteComment } from '../api/comments'
-
-import { searchLocationsByCityContaining } from '../api/locations'
 
 import { isTripLikedByCurrentUser, likeTrip, unlikeTrip } from '../api/likes'
 
@@ -52,8 +48,6 @@ import {
 
   deleteTripTransport,
 
-  searchTransportsByTypeContaining,
-
 } from '../api/transports'
 
 import {
@@ -64,27 +58,32 @@ import {
 
   deleteTripLocationImageById,
 
-  getTripLocationExternalInfo,
-
   uploadTripLocationImage,
 
 } from '../api/tripLocations'
 
-import { countTripLikes, deleteTrip, getTrip } from '../api/trips'
-
-import { ApiError } from '../api/client'
+import { countTripLikes, deleteTrip } from '../api/trips'
 
 import { useAuth } from '../context/AuthContext'
 
-import { useDebouncedValue } from '../hooks/useDebouncedValue'
-
-import { searchGeocodeSuggestions } from '../api/externalInfo'
+import { usePlaceSearch } from '../hooks/usePlaceSearch'
+import { useAccommodationExternalInfo } from '../hooks/useAccommodationExternalInfo'
+import { useStopExternalInfo } from '../hooks/useStopExternalInfo'
+import { useTransportDistance } from '../hooks/useTransportDistance'
+import { useTripCommunity } from '../hooks/useTripCommunity'
+import { useTripDetailCore } from '../hooks/useTripDetailCore'
+import { placeSearchErrorFromUnknown } from '../utils/placeSearchErrors'
+import { transportWithPlaceCoords } from '../utils/transportGeo'
+import { AccommodationActivityInfo } from '../components/ViatorTourEntry'
 import { LocationTravelInfo } from '../components/LocationTravelInfo'
+import { TransportDistanceInfo } from '../components/TransportDistanceInfo'
 import { TripSectionHeader } from '../components/TripSectionHeader'
 import { AddLocationModal } from '../components/trip/AddLocationModal'
 import { AddAccommodationModal } from '../components/trip/AddAccommodationModal'
 import { AddTransportModal } from '../components/trip/AddTransportModal'
+import { EditAccommodationModal } from '../components/trip/EditAccommodationModal'
 import { EditLocationVisitModal } from '../components/trip/EditLocationVisitModal'
+import { EditTransportModal } from '../components/trip/EditTransportModal'
 import { useTripModal } from '../context/TripModalContext'
 
 import type {
@@ -93,19 +92,15 @@ import type {
 
   CommentResponse,
 
-  GeocodingSuggestion,
-
-  LocationResponse,
+  PlaceSuggestion,
 
   TransportResponse,
 
-  TripDetailsResponse,
-
   TripLocationResponse,
 
-  TripExternalInfoResponse
-
 } from '../types/api'
+
+import { transportRouteLabel } from '../utils/transportRoute'
 
 
 
@@ -163,21 +158,36 @@ function formatTripLocationDateTime(iso?: string): string {
 
 
 
-function mergeById<T extends { id: number }>(...lists: T[][]): T[] {
-
-  const m = new Map<number, T>()
-
-  for (const list of lists) {
-
-    for (const x of list) m.set(x.id, x)
-
-  }
-
-  return [...m.values()]
-
+function formatMoney(cost?: number, currency?: string): string {
+  if (cost == null || !currency) return ''
+  return `${cost.toFixed(2)} ${currency}`
 }
 
+function TripDetailPageSkeleton() {
+  return (
+    <div className="animate-pulse space-y-6" aria-busy="true" aria-label="Loading trip">
+      <div className="h-8 w-2/3 max-w-md rounded bg-slate-200" />
+      <div className="h-4 w-1/2 max-w-sm rounded bg-slate-200" />
+      <div className="h-20 rounded bg-slate-100" />
+      <div className="h-4 w-full rounded bg-slate-100" />
+      <div className="h-32 rounded bg-slate-100" />
+      <div className="h-24 rounded bg-slate-100" />
+    </div>
+  )
+}
 
+function CommunitySectionSkeleton() {
+  return (
+    <div className="animate-pulse space-y-4" aria-busy="true" aria-label="Loading community">
+      <div className="flex justify-between gap-4">
+        <div className="h-10 flex-1 rounded bg-slate-100" />
+        <div className="h-9 w-24 rounded bg-slate-200" />
+      </div>
+      <div className="h-16 rounded bg-slate-100" />
+      <div className="h-12 rounded bg-slate-100" />
+    </div>
+  )
+}
 
 export function TripDetailPage() {
 
@@ -190,13 +200,44 @@ export function TripDetailPage() {
 
   const tripId = id ? Number(id) : NaN
 
+  const {
+    trip,
+    setTrip,
+    tripLocations,
+    setTripLocations,
+    tripTransports,
+    setTripTransports,
+    tripAccommodations,
+    setTripAccommodations,
+    status: tripStatus,
+    error: tripError,
+    tripIdValid,
+    tripLoading,
+  } = useTripDetailCore(tripId)
 
+  const {
+    communityLoading,
+    communityFailed,
+    communityReady,
+    error: communityError,
+    likeCount,
+    setLikeCount,
+    likedByMe,
+    setLikedByMe,
+    comments,
+    setComments,
+    commentsNextCursor,
+    setCommentsNextCursor,
+    hasMoreComments,
+    setHasMoreComments,
+    totalCommentCount,
+    setTotalCommentCount,
+  } = useTripCommunity(tripId, tripIdValid)
 
-  const [trip, setTrip] = useState<TripDetailsResponse | null>(null)
-
-  const [loading, setLoading] = useState(true)
-
-  const [error, setError] = useState<string | null>(null)
+  const { getEntry: getStopExternalEntry, fetchStopInfo } = useStopExternalInfo(tripLocations)
+  const { getEntry: getAccommodationExternalEntry } =
+    useAccommodationExternalInfo(tripAccommodations)
+  const { getEntry: getTransportDistanceEntry } = useTransportDistance(tripTransports)
 
   const [isOwner, setIsOwner] = useState(false)
 
@@ -210,21 +251,9 @@ export function TripDetailPage() {
 
   const [deleting, setDeleting] = useState(false)
 
-  const [likeCount, setLikeCount] = useState(0)
-
-  const [likedByMe, setLikedByMe] = useState(false)
-
   const [liking, setLiking] = useState(false)
 
-  const [comments, setComments] = useState<CommentResponse[]>([])
-
-  const [commentsNextCursor, setCommentsNextCursor] = useState<string | null>(null)
-
-  const [hasMoreComments, setHasMoreComments] = useState(false)
-
   const [loadingMoreComments, setLoadingMoreComments] = useState(false)
-
-  const [totalCommentCount, setTotalCommentCount] = useState(0)
 
   const [commentText, setCommentText] = useState('')
 
@@ -232,64 +261,35 @@ export function TripDetailPage() {
 
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null)
 
-  const [tripLocations, setTripLocations] = useState<TripLocationResponse[]>([])
+  const [transportStartSearch, setTransportStartSearch] = useState('')
 
-  /** Locations created in this session (add-new flow); search fills suggestions via API. */
+  const [transportEndSearch, setTransportEndSearch] = useState('')
 
+  const [showTransportStartSuggestions, setShowTransportStartSuggestions] = useState(false)
 
-  const [tripTransports, setTripTransports] = useState<TransportResponse[]>([])
+  const [showTransportEndSuggestions, setShowTransportEndSuggestions] = useState(false)
 
-  /** Transports created in this session; search fills suggestions via API. */
+  const [selectedTransportStart, setSelectedTransportStart] = useState<PlaceSuggestion | null>(null)
 
-  const [sessionTransports, setSessionTransports] = useState<TransportResponse[]>([])
-
-  const [transportSearch, setTransportSearch] = useState('')
-
-  const [selectedExistingTransport, setSelectedExistingTransport] =
-
-    useState<TransportResponse | null>(null)
-
-  const [showTransportSuggestions, setShowTransportSuggestions] = useState(false)
-
-  const [transportMode, setTransportMode] = useState<'existing' | 'new'>('existing')
-
-  const [newTransportType, setNewTransportType] = useState('')
+  const [selectedTransportEnd, setSelectedTransportEnd] = useState<PlaceSuggestion | null>(null)
 
   const [savingTransport, setSavingTransport] = useState(false)
 
   const [removingTransportId, setRemovingTransportId] = useState<number | null>(null)
 
-  const [tripAccommodations, setTripAccommodations] = useState<AccommodationResponse[]>([])
+  const [accomPlaceSearch, setAccomPlaceSearch] = useState('')
 
-  /** Accommodations created in this session; search fills suggestions via API. */
+  const [showAccomPlaceSuggestions, setShowAccomPlaceSuggestions] = useState(false)
 
-  const [sessionAccommodations, setSessionAccommodations] = useState<AccommodationResponse[]>([])
+  const [selectedAccomPlace, setSelectedAccomPlace] = useState<PlaceSuggestion | null>(null)
 
-  const [accommodationApiHits, setAccommodationApiHits] = useState<AccommodationResponse[]>([])
+  const [accomCheckInDate, setAccomCheckInDate] = useState('')
 
-  const [locationApiHits, setLocationApiHits] = useState<LocationResponse[]>([])
+  const [accomCheckOutDate, setAccomCheckOutDate] = useState('')
 
-  const [transportApiHits, setTransportApiHits] = useState<TransportResponse[]>([])
+  const [accomCost, setAccomCost] = useState('')
 
-  const [accommodationSearch, setAccommodationSearch] = useState('')
-
-  const [selectedExistingAccommodation, setSelectedExistingAccommodation] =
-
-    useState<AccommodationResponse | null>(null)
-
-  const [showAccommodationSuggestions, setShowAccommodationSuggestions] =
-
-    useState(false)
-
-  const [accommodationMode, setAccommodationMode] =
-
-    useState<'existing' | 'new'>('existing')
-
-  const [newAccommodationName, setNewAccommodationName] = useState('')
-
-  const [newAccommodationType, setNewAccommodationType] = useState('')
-
-  const [newAccommodationAddress, setNewAccommodationAddress] = useState('')
+  const [accomCurrency, setAccomCurrency] = useState('EUR')
 
   const [savingAccommodation, setSavingAccommodation] = useState(false)
 
@@ -299,31 +299,13 @@ export function TripDetailPage() {
 
   )
 
-  const [locationSearch, setLocationSearch] = useState('')
-
-  const [selectedExistingLocation, setSelectedExistingLocation] =
-
-    useState<LocationResponse | null>(null)
-
-  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false)
-
-  const [locationMode, setLocationMode] = useState<'existing' | 'new'>('existing')
-
   const [newLocationName, setNewLocationName] = useState('')
 
-  const [selectedGeocode, setSelectedGeocode] = useState<GeocodingSuggestion | null>(null)
-
-  const [geocodeSuggestions, setGeocodeSuggestions] = useState<GeocodingSuggestion[]>([])
+  const [selectedGeocode, setSelectedGeocode] = useState<PlaceSuggestion | null>(null)
 
   const [showGeocodeSuggestions, setShowGeocodeSuggestions] = useState(false)
 
-  const [existingLocationDescription, setExistingLocationDescription] = useState('')
-
   const [newLocationDescription, setNewLocationDescription] = useState('')
-
-  const [existingLocationStartDate, setExistingLocationStartDate] = useState('')
-
-  const [existingLocationEndDate, setExistingLocationEndDate] = useState('')
 
   const [newLocationStartDate, setNewLocationStartDate] = useState('')
 
@@ -339,395 +321,29 @@ export function TripDetailPage() {
 
   const [editingTripLocationId, setEditingTripLocationId] = useState<number | null>(null)
 
+  const [editingAccommodationId, setEditingAccommodationId] = useState<number | null>(null)
 
-
-  const debouncedAccommodationSearch = useDebouncedValue(accommodationSearch, 300)
-
-  const debouncedLocationSearch = useDebouncedValue(locationSearch, 300)
-
-  const debouncedNewLocationName = useDebouncedValue(newLocationName, 1500)
-
-  const debouncedTransportSearch = useDebouncedValue(transportSearch, 300)
+  const [editingTransportId, setEditingTransportId] = useState<number | null>(null)
 
 
 
-  const [locationExternalInfo, setLocationExternalInfo] = useState<Record<number, TripExternalInfoResponse>>({})
-
-  const [locationExternalInfoLoaded, setLocationExternalInfoLoaded] = useState(false)
-
-
-
-  // Fetch suggestions when the user focuses the search field (even with an
-
-  // empty query, which the paginated backend endpoint interprets as "give me
-
-  // the newest page") and when the debounced query changes while the popover
-
-  // is open. Gating on `showXxxSuggestions` keeps non-owners and collapsed
-
-  // panels from triggering any network traffic at all.
+  const locationPlaceSearch = usePlaceSearch(newLocationName, showGeocodeSuggestions)
+  const accomPlaceSearchState = usePlaceSearch(accomPlaceSearch, showAccomPlaceSuggestions)
+  const transportStartPlaceSearch = usePlaceSearch(
+    transportStartSearch,
+    showTransportStartSuggestions,
+  )
+  const transportEndPlaceSearch = usePlaceSearch(transportEndSearch, showTransportEndSuggestions)
 
   useEffect(() => {
 
-    if (!showAccommodationSuggestions) return
-
-    const q = debouncedAccommodationSearch.trim()
-
-    let cancelled = false
-
-    searchAccommodationsByNameContaining(q)
-
-      .then((hits) => {
-
-        if (!cancelled) setAccommodationApiHits(hits)
-
-      })
-
-      .catch(() => {
-
-        if (!cancelled) setAccommodationApiHits([])
-
-      })
-
-    return () => {
-
-      cancelled = true
-
+    if (!showTripManagement) {
+      setEditingTripLocationId(null)
+      setEditingAccommodationId(null)
+      setEditingTransportId(null)
     }
-
-  }, [debouncedAccommodationSearch, showAccommodationSuggestions])
-
-
-
-  useEffect(() => {
-
-    if (!showLocationSuggestions) return
-
-    const q = debouncedLocationSearch.trim()
-
-    let cancelled = false
-
-    searchLocationsByCityContaining(q)
-
-      .then((hits) => {
-
-        if (!cancelled) setLocationApiHits(hits)
-
-      })
-
-      .catch(() => {
-
-        if (!cancelled) setLocationApiHits([])
-
-      })
-
-    return () => {
-
-      cancelled = true
-
-    }
-
-  }, [debouncedLocationSearch, showLocationSuggestions])
-
-
-
-  useEffect(() => {
-
-    if (!showGeocodeSuggestions || locationMode !== 'new') {
-
-      setGeocodeSuggestions([])
-
-      return
-
-    }
-
-    const q = debouncedNewLocationName.trim()
-
-    if (q.length < 2) {
-
-      setGeocodeSuggestions([])
-
-      return
-
-    }
-
-    let cancelled = false
-
-    searchGeocodeSuggestions(q)
-
-      .then((hits) => {
-
-        if (!cancelled) setGeocodeSuggestions(hits)
-
-      })
-
-      .catch(() => {
-
-        if (!cancelled) setGeocodeSuggestions([])
-
-      })
-
-    return () => {
-
-      cancelled = true
-
-    }
-
-  }, [debouncedNewLocationName, showGeocodeSuggestions, locationMode])
-
-
-
-  useEffect(() => {
-
-    if (!showTransportSuggestions) return
-
-    const q = debouncedTransportSearch.trim()
-
-    let cancelled = false
-
-    searchTransportsByTypeContaining(q)
-
-      .then((hits) => {
-
-        if (!cancelled) setTransportApiHits(hits)
-
-      })
-
-      .catch(() => {
-
-        if (!cancelled) setTransportApiHits([])
-
-      })
-
-    return () => {
-
-      cancelled = true
-
-    }
-
-  }, [debouncedTransportSearch, showTransportSuggestions])
-
-
-
-  const locationSuggestions = useMemo(() => {
-
-    const q = locationSearch.trim().toLowerCase()
-
-    if (!q) return locationApiHits
-
-    return locationApiHits.filter((l) => l.city.toLowerCase().includes(q))
-
-  }, [locationApiHits, locationSearch])
-
-
-
-  const transportSuggestions = useMemo(() => {
-
-    const q = transportSearch.trim().toLowerCase()
-
-    const local = q
-
-      ? sessionTransports.filter((t) => t.type.toLowerCase().includes(q))
-
-      : []
-
-    return mergeById(transportApiHits, local)
-
-  }, [transportApiHits, sessionTransports, transportSearch])
-
-
-
-  const accommodationSuggestions = useMemo(() => {
-
-    const q = accommodationSearch.trim().toLowerCase()
-
-    const local = q
-
-      ? sessionAccommodations.filter((a) =>
-
-          `${a.name} ${a.type} ${a.address}`.toLowerCase().includes(q),
-
-        )
-
-      : []
-
-    return mergeById(accommodationApiHits, local)
-
-  }, [accommodationApiHits, sessionAccommodations, accommodationSearch])
-
-
-
-  useEffect(() => {
-
-    const q = accommodationSearch.trim().toLowerCase()
-
-    if (!q) {
-
-      setSelectedExistingAccommodation(null)
-
-      return
-
-    }
-
-    const canonicalLabel = (a: AccommodationResponse) =>
-
-      `${a.name} (${a.type})`.toLowerCase()
-
-    const match = accommodationSuggestions.find((a) => canonicalLabel(a) === q)
-
-    if (match) {
-
-      setSelectedExistingAccommodation(match)
-
-      return
-
-    }
-
-    setSelectedExistingAccommodation((prev) => {
-
-      if (prev && canonicalLabel(prev) === q) {
-
-        return prev
-
-      }
-
-      return null
-
-    })
-
-  }, [accommodationSearch, accommodationSuggestions])
-
-
-
-  useEffect(() => {
-
-    const q = locationSearch.trim().toLowerCase()
-
-    if (!q) {
-
-      setSelectedExistingLocation(null)
-
-      return
-
-    }
-
-    const match = locationSuggestions.find((l) => l.city.toLowerCase() === q)
-
-    setSelectedExistingLocation(match ?? null)
-
-  }, [locationSearch, locationSuggestions])
-
-
-
-  useEffect(() => {
-
-    if (!showTripManagement) setEditingTripLocationId(null)
 
   }, [showTripManagement])
-
-
-
-  useEffect(() => {
-
-    const q = transportSearch.trim().toLowerCase()
-
-    if (!q) {
-
-      setSelectedExistingTransport(null)
-
-      return
-
-    }
-
-    const match = transportSuggestions.find((t) => t.type.toLowerCase() === q)
-
-    setSelectedExistingTransport(match ?? null)
-
-  }, [transportSearch, transportSuggestions])
-
-
-
-  useEffect(() => {
-
-    if (!Number.isFinite(tripId)) {
-
-      setError('Invalid trip id.')
-
-      setLoading(false)
-
-      return
-
-    }
-
-    let cancelled = false
-
-    setLoading(true)
-
-    setError(null)
-
-
-
-    const load = async () => {
-
-      try {
-
-        const [t, community] = await Promise.all([getTrip(tripId), getTripCommunity(tripId)])
-
-        if (cancelled) return
-
-        setTrip(t)
-
-        setComments(community.comments)
-
-        setCommentsNextCursor(community.commentsNextCursor ?? null)
-
-        setHasMoreComments(community.hasMoreComments)
-
-        setTotalCommentCount(community.totalCommentCount)
-
-        setTripLocations(t.tripLocations ?? [])
-
-        setTripTransports(t.transports ?? [])
-
-        setTripAccommodations(t.accommodations ?? [])
-
-        setLikeCount(community.likeCount)
-
-        setLikedByMe(community.likedByCurrentUser ?? false)
-
-      } catch (err) {
-
-        if (!cancelled) {
-
-          setError(
-
-            err instanceof ApiError
-
-              ? err.message
-
-              : 'Could not load this trip.',
-
-          )
-
-        }
-
-      } finally {
-
-        if (!cancelled) setLoading(false)
-
-      }
-
-    }
-
-    void load()
-
-    return () => {
-
-      cancelled = true
-
-    }
-
-  }, [tripId])
 
 
 
@@ -801,13 +417,13 @@ export function TripDetailPage() {
 
     if (!trip?.startDate) return
 
-    setExistingLocationStartDate((prev) => prev || trip.startDate)
-
-    setExistingLocationEndDate((prev) => prev || trip.startDate)
-
     setNewLocationStartDate((prev) => prev || trip.startDate)
 
     setNewLocationEndDate((prev) => prev || trip.startDate)
+
+    setAccomCheckInDate((prev) => prev || trip.startDate)
+
+    setAccomCheckOutDate((prev) => prev || trip.startDate)
 
   }, [trip?.startDate])
 
@@ -829,84 +445,6 @@ export function TripDetailPage() {
 
 
 
-
-
-
-  useEffect(() => {
-
-    if (!tripLocations.length) {
-
-      setLocationExternalInfo({})
-
-      setLocationExternalInfoLoaded(true)
-
-      return
-
-    }
-
-
-
-    let cancelled = false
-
-    setLocationExternalInfoLoaded(false)
-
-
-
-    const fetchMissingLocationInfo = async () => {
-
-      const stops = tripLocations.filter((loc) => Number.isFinite(loc.id) && loc.id > 0)
-
-      await Promise.all(
-
-        stops.map(async (location) => {
-
-          if (cancelled) return
-
-          try {
-
-            const data = await getTripLocationExternalInfo(location.id)
-
-            if (!cancelled) {
-
-              setLocationExternalInfo((prev) =>
-
-                prev[location.id] ? prev : { ...prev, [location.id]: data },
-
-              )
-
-            }
-
-          } catch (err) {
-
-            console.error(`Failed to fetch external info for location ${location.locationName}:`, err)
-
-          }
-
-        }),
-
-      )
-
-      if (!cancelled) {
-
-        setLocationExternalInfoLoaded(true)
-
-      }
-
-    }
-
-
-
-    void fetchMissingLocationInfo()
-
-
-
-    return () => {
-
-      cancelled = true
-
-    }
-
-  }, [tripLocations])
 
 
 
@@ -1108,114 +646,6 @@ export function TripDetailPage() {
 
 
 
-  async function handleAddExistingLocation() {
-
-    if (
-
-      !trip ||
-
-      !existingLocationDescription.trim() ||
-
-      !existingLocationStartDate ||
-
-      !existingLocationEndDate
-
-    ) {
-
-      return
-
-    }
-
-    if (existingLocationEndDate < existingLocationStartDate) {
-
-      alert('End date must be on or after start date.')
-
-      return
-
-    }
-
-    setSavingLocation(true)
-
-    try {
-
-      const selectedLocation = selectedExistingLocation
-
-      if (!selectedLocation) {
-
-        throw new Error('Choose an existing location first.')
-
-      }
-
-      const created = await addTripLocation({
-
-        tripId: trip.id,
-
-        city: selectedLocation.city,
-
-        description: existingLocationDescription.trim(),
-
-        startDate: `${existingLocationStartDate}T00:00:00`,
-
-        endDate: `${existingLocationEndDate}T23:59:59`,
-
-        formattedAddress: selectedLocation.formattedAddress,
-
-        countryCode: selectedLocation.countryCode,
-
-        latitude: selectedLocation.latitude,
-
-        longitude: selectedLocation.longitude,
-
-      })
-
-      setTripLocations((prev) => [...prev, created])
-
-      setExistingLocationDescription('')
-
-      if (trip.startDate) {
-
-        setExistingLocationStartDate(trip.startDate)
-
-        setExistingLocationEndDate(trip.startDate)
-
-      } else {
-
-        setExistingLocationStartDate('')
-
-        setExistingLocationEndDate('')
-
-      }
-
-      setLocationSearch('')
-
-      setSelectedExistingLocation(null)
-
-      setShowAddLocationModal(false)
-
-      getTripLocationExternalInfo(created.id)
-
-        .then((data) => {
-
-          setLocationExternalInfo((prev) => ({ ...prev, [created.id]: data }))
-
-        })
-
-        .catch((err) => console.error('Failed to fetch external info for location:', err))
-
-    } catch (err) {
-
-      alert(err instanceof Error ? err.message : 'Could not add existing location.')
-
-    } finally {
-
-      setSavingLocation(false)
-
-    }
-
-  }
-
-
-
   async function handleCreateAndAddLocation() {
 
     if (
@@ -1246,7 +676,7 @@ export function TripDetailPage() {
 
     if (!selectedGeocode) {
 
-      alert('Choose a city from the suggestions so we can set coordinates.')
+      alert('Choose a place from the suggestions.')
 
       return
 
@@ -1260,21 +690,13 @@ export function TripDetailPage() {
 
         tripId: trip.id,
 
-        city: selectedGeocode.city,
+        googlePlaceId: selectedGeocode.placeId,
 
         description: newLocationDescription.trim(),
 
         startDate: `${newLocationStartDate}T00:00:00`,
 
         endDate: `${newLocationEndDate}T23:59:59`,
-
-        formattedAddress: selectedGeocode.displayName,
-
-        countryCode: selectedGeocode.countryCode,
-
-        latitude: selectedGeocode.lat,
-
-        longitude: selectedGeocode.lon,
 
       })
 
@@ -1283,8 +705,6 @@ export function TripDetailPage() {
       setNewLocationName('')
 
       setSelectedGeocode(null)
-
-      setGeocodeSuggestions([])
 
       setNewLocationDescription('')
 
@@ -1302,24 +722,21 @@ export function TripDetailPage() {
 
       }
 
-      setLocationMode('existing')
-
       setShowAddLocationModal(false)
 
-      getTripLocationExternalInfo(created.id)
-
-        .then((data) => {
-
-          setLocationExternalInfo((prev) => ({ ...prev, [created.id]: data }))
-
-        })
-
-        .catch((err) => console.error('Failed to fetch external info for location:', err))
+      void fetchStopInfo(
+        created.id,
+        created.googlePlaceId ?? selectedGeocode.placeId,
+        {
+          lat: created.latitude,
+          lon: created.longitude,
+          countryCode: created.countryCode,
+          cityName: created.cityName,
+        },
+      )
 
     } catch (err) {
-
-      alert(err instanceof Error ? err.message : 'Could not create and add location.')
-
+      alert(placeSearchErrorFromUnknown(err).message)
     } finally {
 
       setSavingLocation(false)
@@ -1460,45 +877,49 @@ export function TripDetailPage() {
 
 
 
-  async function handleAddExistingTransport() {
+  function openAccommodationEdit(entry: AccommodationResponse) {
 
-    if (!trip || !selectedExistingTransport) return
+    setEditingAccommodationId(entry.id)
 
-    setSavingTransport(true)
+  }
 
-    try {
 
-      await addTripTransport({
 
-        tripId: trip.id,
+  function closeAccommodationEdit() {
 
-        transport: selectedExistingTransport,
+    setEditingAccommodationId(null)
 
-      })
+  }
 
-      setTripTransports((prev) => {
 
-        if (prev.some((item) => item.id === selectedExistingTransport.id)) return prev
 
-        return [...prev, selectedExistingTransport]
+  function handleAccommodationSaved(updated: AccommodationResponse) {
 
-      })
+    setTripAccommodations((prev) => prev.map((e) => (e.id === updated.id ? updated : e)))
 
-      setTransportSearch('')
+  }
 
-      setSelectedExistingTransport(null)
 
-      setShowAddTransportModal(false)
 
-    } catch (err) {
+  function openTransportEdit(entry: TransportResponse) {
 
-      alert(err instanceof Error ? err.message : 'Could not add transport.')
+    setEditingTransportId(entry.id)
 
-    } finally {
+  }
 
-      setSavingTransport(false)
 
-    }
+
+  function closeTransportEdit() {
+
+    setEditingTransportId(null)
+
+  }
+
+
+
+  function handleTransportSaved(updated: TransportResponse) {
+
+    setTripTransports((prev) => prev.map((e) => (e.id === updated.id ? updated : e)))
 
   }
 
@@ -1506,15 +927,19 @@ export function TripDetailPage() {
 
   async function handleCreateAndAddTransport() {
 
-    if (!trip || !newTransportType.trim()) return
+    if (!trip || !selectedTransportStart || !selectedTransportEnd) return
 
     setSavingTransport(true)
 
     try {
 
-      const createdTransport = await createTransport(newTransportType.trim())
+      const createdTransport = await createTransport({
 
-      setSessionTransports((prev) => [...prev, createdTransport])
+        startGooglePlaceId: selectedTransportStart.placeId,
+
+        endGooglePlaceId: selectedTransportEnd.placeId,
+
+      })
 
       await addTripTransport({
 
@@ -1522,19 +947,28 @@ export function TripDetailPage() {
 
         transport: createdTransport,
 
+        skipLinkCheck: true,
+
       })
 
-      setTripTransports((prev) => [...prev, createdTransport])
+      setTripTransports((prev) => [
+        ...prev,
+        transportWithPlaceCoords(createdTransport, selectedTransportStart, selectedTransportEnd),
+      ])
 
-      setNewTransportType('')
+      setTransportStartSearch('')
 
-      setTransportMode('existing')
+      setTransportEndSearch('')
+
+      setSelectedTransportStart(null)
+
+      setSelectedTransportEnd(null)
 
       setShowAddTransportModal(false)
 
     } catch (err) {
 
-      alert(err instanceof Error ? err.message : 'Could not create and add transport.')
+      alert(placeSearchErrorFromUnknown(err).message)
 
     } finally {
 
@@ -1574,63 +1008,25 @@ export function TripDetailPage() {
 
 
 
-  async function handleAddExistingAccommodation() {
+  async function handleCreateAndAddAccommodation() {
 
-    if (!trip || !selectedExistingAccommodation) return
+    if (!trip || !selectedAccomPlace || !accomCheckInDate || !accomCheckOutDate) {
+      return
+    }
 
-    setSavingAccommodation(true)
+    if (accomCheckOutDate < accomCheckInDate) {
 
-    try {
+      alert('Check-out must be on or after check-in.')
 
-      await addTripAccommodation({
-
-        tripId: trip.id,
-
-        accommodation: selectedExistingAccommodation,
-
-      })
-
-      setTripAccommodations((prev) => {
-
-        if (prev.some((item) => item.id === selectedExistingAccommodation.id)) return prev
-
-        return [...prev, selectedExistingAccommodation]
-
-      })
-
-      setAccommodationSearch('')
-
-      setSelectedExistingAccommodation(null)
-
-      setShowAddAccommodationModal(false)
-
-    } catch (err) {
-
-      alert(err instanceof Error ? err.message : 'Could not add accommodation.')
-
-    } finally {
-
-      setSavingAccommodation(false)
+      return
 
     }
 
-  }
+    const cost = Number.parseFloat(accomCost)
 
+    if (!Number.isFinite(cost) || cost < 0) {
 
-
-  async function handleCreateAndAddAccommodation() {
-
-    if (
-
-      !trip ||
-
-      !newAccommodationName.trim() ||
-
-      !newAccommodationType.trim() ||
-
-      !newAccommodationAddress.trim()
-
-    ) {
+      alert('Enter a valid cost.')
 
       return
 
@@ -1641,16 +1037,17 @@ export function TripDetailPage() {
     try {
 
       const createdAccommodation = await createAccommodation({
+        googlePlaceId: selectedAccomPlace.placeId,
 
-        name: newAccommodationName.trim(),
+        checkInDate: accomCheckInDate,
 
-        type: newAccommodationType.trim(),
+        checkOutDate: accomCheckOutDate,
 
-        address: newAccommodationAddress.trim(),
+        cost,
+
+        currency: accomCurrency,
 
       })
-
-      setSessionAccommodations((prev) => [...prev, createdAccommodation])
 
       await addTripAccommodation({
 
@@ -1658,23 +1055,27 @@ export function TripDetailPage() {
 
         accommodation: createdAccommodation,
 
+        skipLinkCheck: true,
+
       })
 
       setTripAccommodations((prev) => [...prev, createdAccommodation])
 
-      setNewAccommodationName('')
+      setAccomPlaceSearch('')
 
-      setNewAccommodationType('')
+      setSelectedAccomPlace(null)
 
-      setNewAccommodationAddress('')
+      setAccomCheckInDate('')
 
-      setAccommodationMode('existing')
+      setAccomCheckOutDate('')
+
+      setAccomCost('')
 
       setShowAddAccommodationModal(false)
 
     } catch (err) {
 
-      alert(err instanceof Error ? err.message : 'Could not create and add accommodation.')
+      alert(placeSearchErrorFromUnknown(err).message)
 
     } finally {
 
@@ -1726,13 +1127,13 @@ export function TripDetailPage() {
 
     <div>
 
-      {loading && <p className="text-slate-500">Loading…</p>}
+      {tripLoading && !trip && <TripDetailPageSkeleton />}
 
-      {error && (
+      {tripStatus === 'error' && !trip && tripError && (
 
         <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
 
-          {error}
+          {tripError}
 
         </p>
 
@@ -1740,7 +1141,7 @@ export function TripDetailPage() {
 
 
 
-      {!loading && !error && trip && (
+      {trip && (
 
         <>
 
@@ -1919,9 +1320,15 @@ export function TripDetailPage() {
 
                           <FontAwesomeIcon icon={faImage} aria-label="Location image placeholder" />
 
-                          {entry.locationName}
+                          {entry.placeName ?? entry.locationName}
 
                         </div>
+
+                        {entry.cityName ? (
+
+                          <p className="text-xs text-slate-500">{entry.cityName}</p>
+
+                        ) : null}
 
                         {entry.formattedAddress || entry.address ? (
 
@@ -2156,11 +1563,9 @@ export function TripDetailPage() {
                     </div>
 
                     <LocationTravelInfo
-
-                      info={locationExternalInfo[entry.id]}
-
-                      loading={!locationExternalInfoLoaded && !locationExternalInfo[entry.id]}
-
+                      info={getStopExternalEntry(entry.id)?.info}
+                      loading={getStopExternalEntry(entry.id)?.status === 'loading'}
+                      error={getStopExternalEntry(entry.id)?.errorMessage}
                     />
 
                   </li>
@@ -2223,33 +1628,95 @@ export function TripDetailPage() {
 
                         <p className="text-sm text-slate-600">{entry.address}</p>
 
+                        {entry.checkInDate && entry.checkOutDate ? (
+
+                          <p className="text-xs text-slate-500">
+
+                            {formatDate(entry.checkInDate)} — {formatDate(entry.checkOutDate)}
+
+                          </p>
+
+                        ) : null}
+
+                        {formatMoney(entry.cost, entry.currency) ? (
+
+                          <p className="text-sm font-medium text-slate-800">
+
+                            {formatMoney(entry.cost, entry.currency)}
+
+                          </p>
+
+                        ) : null}
+
                       </div>
 
                       {isOwner && showTripManagement && (
 
-                        <button
+                        <div className="flex shrink-0 flex-wrap items-start gap-2">
 
-                          type="button"
+                          <button
 
-                          onClick={() => void handleRemoveAccommodation(entry.id)}
+                            type="button"
 
-                          disabled={removingAccommodationId === entry.id}
+                            onClick={() => openAccommodationEdit(entry)}
 
-                          aria-label={`Remove accommodation ${entry.name}`}
+                            disabled={
 
-                          className="inline-flex items-center gap-2 rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-800 hover:bg-red-50 disabled:opacity-50"
+                              editingAccommodationId === entry.id ||
 
-                        >
+                              removingAccommodationId === entry.id
 
-                          <FontAwesomeIcon icon={faTrash} aria-hidden="true" />
+                            }
 
-                          {removingAccommodationId === entry.id ? 'Removing…' : 'Remove'}
+                            aria-label={`Edit accommodation ${entry.name}`}
 
-                        </button>
+                            className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+
+                          >
+
+                            <FontAwesomeIcon icon={faPenToSquare} aria-hidden="true" />
+
+                            Edit
+
+                          </button>
+
+                          <button
+
+                            type="button"
+
+                            onClick={() => void handleRemoveAccommodation(entry.id)}
+
+                            disabled={
+
+                              removingAccommodationId === entry.id ||
+
+                              editingAccommodationId === entry.id
+
+                            }
+
+                            aria-label={`Remove accommodation ${entry.name}`}
+
+                            className="inline-flex items-center gap-2 rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-800 hover:bg-red-50 disabled:opacity-50"
+
+                          >
+
+                            <FontAwesomeIcon icon={faTrash} aria-hidden="true" />
+
+                            {removingAccommodationId === entry.id ? 'Removing…' : 'Remove'}
+
+                          </button>
+
+                        </div>
 
                       )}
 
                     </div>
+
+                    <AccommodationActivityInfo
+                      info={getAccommodationExternalEntry(entry.id)?.info}
+                      loading={getAccommodationExternalEntry(entry.id)?.status === 'loading'}
+                      error={getAccommodationExternalEntry(entry.id)?.errorMessage}
+                    />
 
                   </li>
 
@@ -2280,7 +1747,7 @@ export function TripDetailPage() {
 
             ) : (
 
-              <div className="mt-3 flex flex-wrap gap-2">
+              <ul className="mt-3 space-y-3">
 
                 {tripTransports.map((entry) => {
 
@@ -2288,13 +1755,19 @@ export function TripDetailPage() {
 
                   return (
 
-                    <span
+                    <li
 
                       key={entry.id}
 
-                      className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-800"
+                      className="rounded-md border border-slate-300 bg-white p-3"
 
                     >
+
+                      <div className="flex items-start justify-between gap-3">
+
+                        <div className="min-w-0">
+
+                      <p className="inline-flex items-center gap-2 text-sm font-medium text-slate-900">
 
                       <FontAwesomeIcon
 
@@ -2306,37 +1779,79 @@ export function TripDetailPage() {
 
                       />
 
-                      <span className="truncate">{entry.type}</span>
+                      <span>{transportRouteLabel(entry)}</span>
+
+                      </p>
+
+                        </div>
 
                       {isOwner && showTripManagement && (
 
-                        <button
+                        <div className="flex shrink-0 flex-wrap items-start gap-2">
 
-                          type="button"
+                          <button
 
-                          onClick={() => void handleRemoveTransport(entry.id)}
+                            type="button"
 
-                          disabled={removing}
+                            onClick={() => openTransportEdit(entry)}
 
-                          aria-label={removing ? `Removing transport ${entry.type}` : `Remove transport ${entry.type}`}
+                            disabled={removing || editingTransportId === entry.id}
 
-                          className="inline-flex h-5 w-5 items-center justify-center rounded-full text-slate-600 hover:bg-slate-200 hover:text-slate-900 disabled:opacity-50"
+                            aria-label={`Edit transport ${transportRouteLabel(entry)}`}
 
-                        >
+                            className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-50"
 
-                          ×
+                          >
 
-                        </button>
+                            <FontAwesomeIcon icon={faPenToSquare} aria-hidden="true" />
+
+                            Edit
+
+                          </button>
+
+                          <button
+
+                            type="button"
+
+                            onClick={() => void handleRemoveTransport(entry.id)}
+
+                            disabled={removing || editingTransportId === entry.id}
+
+                            aria-label={
+                              removing
+                                ? `Removing transport ${transportRouteLabel(entry)}`
+                                : `Remove transport ${transportRouteLabel(entry)}`
+                            }
+
+                            className="inline-flex items-center gap-2 rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-800 hover:bg-red-50 disabled:opacity-50"
+
+                          >
+
+                            <FontAwesomeIcon icon={faTrash} aria-hidden="true" />
+
+                            {removing ? 'Removing…' : 'Remove'}
+
+                          </button>
+
+                        </div>
 
                       )}
 
-                    </span>
+                      </div>
+
+                      <TransportDistanceInfo
+                        legs={getTransportDistanceEntry(entry.id)?.legs}
+                        loading={getTransportDistanceEntry(entry.id)?.status === 'loading'}
+                        error={getTransportDistanceEntry(entry.id)?.errorMessage}
+                      />
+
+                    </li>
 
                   )
 
                 })}
 
-              </div>
+              </ul>
 
             )}
 
@@ -2347,19 +1862,33 @@ export function TripDetailPage() {
           <section className="mt-8">
             <h2 className="text-lg font-medium text-slate-900">Community</h2>
 
+            {communityFailed && communityError && (
+              <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                {communityError} Likes and comments may be unavailable.
+              </p>
+            )}
+
             <div className="mt-4 rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
+              {communityLoading && !communityReady ? (
+                <CommunitySectionSkeleton />
+              ) : (
+              <>
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <h3 className="text-sm font-medium text-slate-800">Comments</h3>
                   <p className="mt-0.5 text-xs text-slate-500">
-                    {totalCommentCount === 1 ? '1 comment' : `${totalCommentCount} comments`}
+                    {communityFailed
+                      ? 'Comments unavailable'
+                      : totalCommentCount === 1
+                        ? '1 comment'
+                        : `${totalCommentCount} comments`}
                   </p>
                 </div>
                 {user ? (
                   <button
                     type="button"
                     onClick={() => void handleToggleLike()}
-                    disabled={liking}
+                    disabled={liking || communityFailed}
                     aria-label={
                       liking
                         ? 'Saving like status'
@@ -2384,7 +1913,7 @@ export function TripDetailPage() {
                 )}
               </div>
 
-              {user ? (
+              {user && !communityFailed ? (
                 <form
                   className="mt-4 flex flex-col gap-2 sm:flex-row"
                   onSubmit={(e) => {
@@ -2408,10 +1937,10 @@ export function TripDetailPage() {
                     {commenting ? 'Posting…' : 'Post'}
                   </button>
                 </form>
-              ) : (
+              ) : user ? null : (
                 <p className="mt-4 text-sm text-slate-600">Log in to comment.</p>
               )}
-              {comments.length > 0 ? (
+              {!communityFailed && comments.length > 0 ? (
                 <ul className="mt-4 space-y-2">
                   {comments.map((comment) => (
                     <li key={comment.id} className="rounded-md border border-slate-200 p-2">
@@ -2437,10 +1966,10 @@ export function TripDetailPage() {
                     </li>
                   ))}
                 </ul>
-              ) : (
+              ) : !communityFailed ? (
                 <p className="mt-4 text-sm text-slate-600">No comments yet.</p>
-              )}
-              {hasMoreComments ? (
+              ) : null}
+              {!communityFailed && hasMoreComments ? (
                 <button
                   type="button"
                   onClick={() => void handleLoadMoreComments()}
@@ -2450,34 +1979,21 @@ export function TripDetailPage() {
                   {loadingMoreComments ? 'Loading…' : 'Load more comments'}
                 </button>
               ) : null}
+              </>
+              )}
             </div>
           </section>
 
           <AddLocationModal
             open={showAddLocationModal}
             onClose={() => setShowAddLocationModal(false)}
-            locationMode={locationMode}
-            setLocationMode={setLocationMode}
-            locationSearch={locationSearch}
-            setLocationSearch={setLocationSearch}
-            showLocationSuggestions={showLocationSuggestions}
-            setShowLocationSuggestions={setShowLocationSuggestions}
-            locationSuggestions={locationSuggestions}
-            selectedExistingLocation={selectedExistingLocation}
-            setSelectedExistingLocation={setSelectedExistingLocation}
-            existingLocationDescription={existingLocationDescription}
-            setExistingLocationDescription={setExistingLocationDescription}
-            existingLocationStartDate={existingLocationStartDate}
-            setExistingLocationStartDate={setExistingLocationStartDate}
-            existingLocationEndDate={existingLocationEndDate}
-            setExistingLocationEndDate={setExistingLocationEndDate}
-            savingLocation={savingLocation}
-            onAddExisting={() => void handleAddExistingLocation()}
             newLocationName={newLocationName}
             setNewLocationName={setNewLocationName}
             showGeocodeSuggestions={showGeocodeSuggestions}
             setShowGeocodeSuggestions={setShowGeocodeSuggestions}
-            geocodeSuggestions={geocodeSuggestions}
+            geocodeSuggestions={locationPlaceSearch.suggestions}
+            geocodeSearchError={locationPlaceSearch.searchError}
+            geocodeSearching={locationPlaceSearch.searching}
             selectedGeocode={selectedGeocode}
             setSelectedGeocode={setSelectedGeocode}
             newLocationDescription={newLocationDescription}
@@ -2486,30 +2002,32 @@ export function TripDetailPage() {
             setNewLocationStartDate={setNewLocationStartDate}
             newLocationEndDate={newLocationEndDate}
             setNewLocationEndDate={setNewLocationEndDate}
+            savingLocation={savingLocation}
             onCreateAndAdd={() => void handleCreateAndAddLocation()}
           />
 
           <AddAccommodationModal
             open={showAddAccommodationModal}
             onClose={() => setShowAddAccommodationModal(false)}
-            accommodationMode={accommodationMode}
-            setAccommodationMode={setAccommodationMode}
-            accommodationSearch={accommodationSearch}
-            setAccommodationSearch={setAccommodationSearch}
-            showAccommodationSuggestions={showAccommodationSuggestions}
-            setShowAccommodationSuggestions={setShowAccommodationSuggestions}
-            accommodationSuggestions={accommodationSuggestions}
-            selectedExistingAccommodation={selectedExistingAccommodation}
-            setSelectedExistingAccommodation={setSelectedExistingAccommodation}
+            placeSearch={accomPlaceSearch}
+            setPlaceSearch={setAccomPlaceSearch}
+            showPlaceSuggestions={showAccomPlaceSuggestions}
+            setShowPlaceSuggestions={setShowAccomPlaceSuggestions}
+            placeSuggestions={accomPlaceSearchState.suggestions}
+            placeSearchError={accomPlaceSearchState.searchError}
+            placeSearching={accomPlaceSearchState.searching}
+            selectedPlace={selectedAccomPlace}
+            setSelectedPlace={setSelectedAccomPlace}
+            checkInDate={accomCheckInDate}
+            setCheckInDate={setAccomCheckInDate}
+            checkOutDate={accomCheckOutDate}
+            setCheckOutDate={setAccomCheckOutDate}
+            cost={accomCost}
+            setCost={setAccomCost}
+            currency={accomCurrency}
+            setCurrency={setAccomCurrency}
             savingAccommodation={savingAccommodation}
-            onAddExisting={() => void handleAddExistingAccommodation()}
-            newAccommodationName={newAccommodationName}
-            setNewAccommodationName={setNewAccommodationName}
-            newAccommodationType={newAccommodationType}
-            setNewAccommodationType={setNewAccommodationType}
-            newAccommodationAddress={newAccommodationAddress}
-            setNewAccommodationAddress={setNewAccommodationAddress}
-            onCreateAndAdd={() => void handleCreateAndAddAccommodation()}
+            onAdd={() => void handleCreateAndAddAccommodation()}
           />
 
           <EditLocationVisitModal
@@ -2522,23 +2040,49 @@ export function TripDetailPage() {
             onSaved={handleLocationVisitSaved}
           />
 
+          <EditAccommodationModal
+            entry={
+              editingAccommodationId != null
+                ? (tripAccommodations.find((a) => a.id === editingAccommodationId) ?? null)
+                : null
+            }
+            onClose={closeAccommodationEdit}
+            onSaved={handleAccommodationSaved}
+          />
+
+          <EditTransportModal
+            entry={
+              editingTransportId != null
+                ? (tripTransports.find((t) => t.id === editingTransportId) ?? null)
+                : null
+            }
+            onClose={closeTransportEdit}
+            onSaved={handleTransportSaved}
+          />
+
           <AddTransportModal
             open={showAddTransportModal}
             onClose={() => setShowAddTransportModal(false)}
-            transportMode={transportMode}
-            setTransportMode={setTransportMode}
-            transportSearch={transportSearch}
-            setTransportSearch={setTransportSearch}
-            showTransportSuggestions={showTransportSuggestions}
-            setShowTransportSuggestions={setShowTransportSuggestions}
-            transportSuggestions={transportSuggestions}
-            selectedExistingTransport={selectedExistingTransport}
-            setSelectedExistingTransport={setSelectedExistingTransport}
+            startPlaceSearch={transportStartSearch}
+            setStartPlaceSearch={setTransportStartSearch}
+            endPlaceSearch={transportEndSearch}
+            setEndPlaceSearch={setTransportEndSearch}
+            showStartSuggestions={showTransportStartSuggestions}
+            setShowStartSuggestions={setShowTransportStartSuggestions}
+            showEndSuggestions={showTransportEndSuggestions}
+            setShowEndSuggestions={setShowTransportEndSuggestions}
+            startSuggestions={transportStartPlaceSearch.suggestions}
+            endSuggestions={transportEndPlaceSearch.suggestions}
+            startSearchError={transportStartPlaceSearch.searchError}
+            endSearchError={transportEndPlaceSearch.searchError}
+            startSearching={transportStartPlaceSearch.searching}
+            endSearching={transportEndPlaceSearch.searching}
+            selectedStartPlace={selectedTransportStart}
+            setSelectedStartPlace={setSelectedTransportStart}
+            selectedEndPlace={selectedTransportEnd}
+            setSelectedEndPlace={setSelectedTransportEnd}
             savingTransport={savingTransport}
-            onAddExisting={() => void handleAddExistingTransport()}
-            newTransportType={newTransportType}
-            setNewTransportType={setNewTransportType}
-            onCreateAndAdd={() => void handleCreateAndAddTransport()}
+            onAdd={() => void handleCreateAndAddTransport()}
           />
 
         </>

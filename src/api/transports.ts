@@ -3,15 +3,37 @@ import { ApiError, getExists, requestJson, requestVoid } from './client'
 import { embeddedItems, idFromEntity } from './hal'
 
 type TransportEntityBody = {
-  type?: string
+  startGooglePlaceId?: string
+  endGooglePlaceId?: string
+  startAddress?: string
+  endAddress?: string
+  startLatitude?: number
+  startLongitude?: number
+  endLatitude?: number
+  endLongitude?: number
 }
+
+type TransportCreatedBody = TransportEntityBody & { id: number }
 
 type TransportCollection = HalCollection<HalEntity<TransportEntityBody>>
 
-function toTransport(entity: HalEntity<TransportEntityBody>): TransportResponse {
+function toTransport(
+  entity: HalEntity<TransportEntityBody> | TransportCreatedBody,
+): TransportResponse {
+  const id =
+    'id' in entity && typeof (entity as TransportCreatedBody).id === 'number'
+      ? (entity as TransportCreatedBody).id
+      : idFromEntity(entity as HalEntity<TransportEntityBody>)
   return {
-    id: idFromEntity(entity),
-    type: entity.type ?? '',
+    id,
+    startGooglePlaceId: entity.startGooglePlaceId,
+    endGooglePlaceId: entity.endGooglePlaceId,
+    startAddress: entity.startAddress,
+    endAddress: entity.endAddress,
+    startLatitude: entity.startLatitude,
+    startLongitude: entity.startLongitude,
+    endLatitude: entity.endLatitude,
+    endLongitude: entity.endLongitude,
   }
 }
 
@@ -20,42 +42,35 @@ export async function listTransports(): Promise<TransportResponse[]> {
   return embeddedItems(model, 'transports').map(toTransport)
 }
 
-/**
- * Audit category A fix: paginated. Empty `type` matches every row (LIKE '%%')
- * so this can be called on focus to prefill a suggestion dropdown;
- * `sort=id,desc` puts the newest transports first (IDENTITY ids preserve
- * insertion order).
- */
-const TRANSPORT_SUGGESTION_PAGE_SIZE = 10
-
-export async function searchTransportsByTypeContaining(
-  type: string,
-  size: number = TRANSPORT_SUGGESTION_PAGE_SIZE,
-): Promise<TransportResponse[]> {
-  const q = type.trim()
-  const params = new URLSearchParams({
-    type: q,
-    size: String(size),
-    sort: 'id,desc',
+export async function createTransport(input: {
+  startGooglePlaceId: string
+  endGooglePlaceId: string
+}): Promise<TransportResponse> {
+  const body = await requestJson<TransportCreatedBody>('/transports', {
+    method: 'POST',
+    body: JSON.stringify({
+      startGooglePlaceId: input.startGooglePlaceId,
+      endGooglePlaceId: input.endGooglePlaceId,
+    }),
   })
-  try {
-    const model = await requestJson<TransportCollection>(
-      `/transports/search/findByTypeContainingIgnoreCase?${params.toString()}`,
-      { method: 'GET' },
-    )
-    return embeddedItems(model, 'transports').map(toTransport)
-  } catch (e) {
-    if (e instanceof ApiError && e.status === 404) return []
-    throw e
-  }
+  return toTransport(body)
 }
 
-export async function createTransport(type: string): Promise<TransportResponse> {
-  const entity = await requestJson<HalEntity<TransportEntityBody>>('/transports', {
-    method: 'POST',
-    body: JSON.stringify({ type }),
+export async function updateTransport(
+  id: number,
+  input: {
+    startGooglePlaceId: string
+    endGooglePlaceId: string
+  },
+): Promise<TransportResponse> {
+  const body = await requestJson<TransportCreatedBody>(`/transports/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      startGooglePlaceId: input.startGooglePlaceId,
+      endGooglePlaceId: input.endGooglePlaceId,
+    }),
   })
-  return toTransport(entity)
+  return toTransport(body)
 }
 
 export async function listTripTransportsByTripId(
@@ -67,19 +82,18 @@ export async function listTripTransportsByTripId(
   return embeddedItems(model, 'transports').map(toTransport)
 }
 
-/**
- * Audit category B fix: append one transport with POST instead of replacing
- * the whole association with a PUT + text/uri-list (which required GET-ing the
- * full current list first and scaled poorly).
- */
 export async function addTripTransport(input: {
   tripId: number
   transport: TransportResponse
+  /** Skip HEAD pre-check when the transport was just created (avoids noisy 404 in devtools). */
+  skipLinkCheck?: boolean
 }): Promise<void> {
-  const alreadyLinked = await getExists(
-    `/trips/${input.tripId}/transports/${input.transport.id}`,
-  )
-  if (alreadyLinked) return
+  if (!input.skipLinkCheck) {
+    const alreadyLinked = await getExists(
+      `/trips/${input.tripId}/transports/${input.transport.id}`,
+    )
+    if (alreadyLinked) return
+  }
   await requestVoid(`/trips/${input.tripId}/transports`, {
     method: 'POST',
     headers: {
@@ -89,10 +103,6 @@ export async function addTripTransport(input: {
   })
 }
 
-/**
- * Audit category B fix: remove a single member with DELETE on the item URI
- * instead of PUT-replacing the full association.
- */
 export async function deleteTripTransport(tripId: number, transportId: number): Promise<void> {
   try {
     await requestVoid(`/trips/${tripId}/transports/${transportId}`, {

@@ -1,5 +1,17 @@
 import { SESSION_STORAGE_KEY } from '../auth/sessionStorageKey'
 
+/** In-memory token from AuthContext (avoids sessionStorage races during login / authMe). */
+let apiAccessToken: string | null = null
+
+export function setApiAccessToken(token: string | null): void {
+  apiAccessToken = token
+}
+
+function bearerToken(): string | undefined {
+  if (apiAccessToken) return apiAccessToken
+  return bearerFromSessionStorage()
+}
+
 function bearerFromSessionStorage(): string | undefined {
   if (typeof sessionStorage === 'undefined') return undefined
   try {
@@ -10,6 +22,41 @@ function bearerFromSessionStorage(): string | undefined {
   } catch {
     return undefined
   }
+}
+
+/** Strip query string and optional `/api/v2` prefix so path rules match `request()` inputs. */
+export function normalizeApiPath(path: string): string {
+  const pathname = (path.split('?')[0] ?? path).replace(/\/$/, '') || '/'
+  if (pathname === '/api/v2') return '/'
+  if (pathname.startsWith('/api/v2/')) return pathname.slice('/api/v2'.length) || '/'
+  return pathname
+}
+
+/**
+ * Public GET/HEAD routes that must work without a Bearer token (including stale tokens left in
+ * sessionStorage). Do not send Authorization on these paths.
+ */
+export function isAnonymousPublicRead(path: string, method = 'GET'): boolean {
+  const verb = method.toUpperCase()
+  if (verb !== 'GET' && verb !== 'HEAD') return false
+
+  const p = normalizeApiPath(path)
+  if (p.startsWith('/api/search')) return true
+  if (p.startsWith('/external/')) return true
+  if (p === '/trips/feed-location-images') return false
+  if (p.startsWith('/trips/feed')) return true
+  if (/^\/trips\/\d+\/detail$/.test(p)) return true
+  if (/^\/trips\/\d+\/community$/.test(p)) return true
+  if (/^\/trips\/\d+\/comments$/.test(p)) return true
+  if (p === '/trips/search/countLikes') return true
+  if (/^\/users\/\d+\/profile$/.test(p)) return true
+  if (/^\/users\/\d+\/likedTrips\/\d+$/.test(p)) return true
+  return false
+}
+
+/** Whether to attach the session Bearer token (mutations, auth, optional-auth image batches). */
+export function shouldAttachBearer(path: string, method = 'GET'): boolean {
+  return !isAnonymousPublicRead(path, method)
 }
 
 /**
@@ -83,11 +130,19 @@ async function request(path: string, init?: RequestInit): Promise<Response> {
   if (init?.body != null && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
-  const token = bearerFromSessionStorage()
+  const method = init?.method ?? 'GET'
+  const attach = shouldAttachBearer(path, method)
+  const token = attach ? bearerToken() : undefined
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`)
   }
-  const res = await fetch(resolveApiUrl(path), { ...init, headers })
+  const url = resolveApiUrl(path)
+  const res = await fetch(url, {
+    ...init,
+    headers,
+    cache: 'no-store',
+    credentials: 'omit',
+  })
   if (!res.ok) {
     const errText = await res.text()
     throw new ApiError(
@@ -105,9 +160,14 @@ async function request(path: string, init?: RequestInit): Promise<Response> {
  */
 export async function getExists(path: string): Promise<boolean> {
   const headers = new Headers()
-  const token = bearerFromSessionStorage()
+  const token = shouldAttachBearer(path, 'HEAD') ? bearerToken() : undefined
   if (token) headers.set('Authorization', `Bearer ${token}`)
-  const res = await fetch(resolveApiUrl(path), { method: 'HEAD', headers })
+  const res = await fetch(resolveApiUrl(path), {
+    method: 'HEAD',
+    headers,
+    cache: 'no-store',
+    credentials: 'omit',
+  })
   if (res.status === 404) return false
   if (res.ok) return true
   const errText = await res.text()
@@ -121,9 +181,14 @@ export async function getExists(path: string): Promise<boolean> {
 /** GET with Bearer token from session (no default Content-Type). */
 export async function authorizedGet(path: string): Promise<Response> {
   const headers = new Headers()
-  const token = bearerFromSessionStorage()
+  const token = bearerToken()
   if (token) headers.set('Authorization', `Bearer ${token}`)
-  return fetch(resolveApiUrl(path), { method: 'GET', headers })
+  return fetch(resolveApiUrl(path), {
+    method: 'GET',
+    headers,
+    cache: 'no-store',
+    credentials: 'omit',
+  })
 }
 
 export async function requestJson<T>(
