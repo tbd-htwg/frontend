@@ -29,7 +29,7 @@ export function ProfileFormModal() {
     setError(null)
     setInitial(null)
 
-    getUserById(user.id)
+    getUserById(user.id, true)
       .then((d) => {
         if (cancelled) return
         setInitial({

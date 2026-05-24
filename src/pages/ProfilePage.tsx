@@ -36,7 +36,7 @@ export function ProfilePage() {
     let cancelled = false
     setLoading(true)
     Promise.all([
-      getUserById(user.id),
+      getUserById(user.id, true),
       findTripsByUserId(user.id, currentPage, PAGE_SIZE),
     ])
       .then(([d, page]) => {
@@ -91,13 +91,14 @@ export function ProfilePage() {
     if (!user) return
     setUploadingImage(true)
     try {
-      await uploadUserProfileImage(user.id, file)
+      const signedReadUrl = await uploadUserProfileImage(user.id, file)
       const [updatedUser, freshTripPage] = await Promise.all([
-        getUserById(user.id),
+        getUserById(user.id, true),
         findTripsByUserId(user.id, currentPage, PAGE_SIZE),
       ])
-      updateSessionUser(updatedUser)
-      setDetails(updatedUser)
+      const withImage = { ...updatedUser, imageUrl: signedReadUrl || updatedUser.imageUrl }
+      updateSessionUser(withImage)
+      setDetails(withImage)
       setTripPage(freshTripPage)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not upload profile image.'
@@ -114,7 +115,7 @@ export function ProfilePage() {
     try {
       await deleteUserProfileImage(user.id)
       const [updatedUser, freshTripPage] = await Promise.all([
-        getUserById(user.id),
+        getUserById(user.id, true),
         findTripsByUserId(user.id, currentPage, PAGE_SIZE),
       ])
       updateSessionUser(updatedUser)
@@ -161,7 +162,7 @@ export function ProfilePage() {
       {!loading && !error && details && (
         <>
           <ProfileHero
-            email={details.email}
+            email={details.email || user.email}
             description={details.description}
             imageUrl={details.imageUrl}
             imageAlt={`${details.name}'s profile`}

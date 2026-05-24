@@ -213,7 +213,7 @@ export function TripDetailPage() {
     error: tripError,
     tripIdValid,
     tripLoading,
-  } = useTripDetailCore(tripId)
+  } = useTripDetailCore(tripId, user != null)
 
   const {
     communityLoading,

@@ -8,7 +8,7 @@ import type {
   UserPutRequest,
   UserResponse,
 } from '../types/api'
-import { ApiError, requestJson, requestVoid, uploadFileToSignedUrl } from './client'
+import { ApiError, requestJson, requestVoid, requestText, uploadFileToSignedUrl } from './client'
 import { embeddedItems, idFromEntity } from './hal'
 
 type UserEntityBody = {
@@ -66,22 +66,44 @@ export async function findUserByName(name: string): Promise<UserResponse | null>
   }
 }
 
-export async function getUserById(id: number): Promise<UserDetailsResponse> {
+export async function getUserById(
+  id: number,
+  /** Send Bearer on the profile request (own email + inline signed image when applicable). */
+  authenticated = false,
+): Promise<UserDetailsResponse> {
   const profile = await requestJson<{
     id?: number
     name?: string
     description?: string
     profileImageUrl?: string
     email?: string | null
-  }>(`/users/${id}/profile`, {
-    method: 'GET',
-  })
+  }>(
+    `/users/${id}/profile`,
+    { method: 'GET' },
+    authenticated ? { forceBearer: true } : undefined,
+  )
+  let imageUrl = profile.profileImageUrl ?? ''
+  if (authenticated && !imageUrl) {
+    imageUrl = (await fetchUserProfileImageUrl(id)) ?? imageUrl
+  }
   return {
     id: profile.id ?? id,
     email: profile.email ?? '',
     name: profile.name ?? '',
-    imageUrl: profile.profileImageUrl ?? '',
+    imageUrl,
     description: profile.description ?? '',
+  }
+}
+
+/** Authenticated second stage: signed read URL when the public profile response omits it. */
+export async function fetchUserProfileImageUrl(id: number): Promise<string | null> {
+  try {
+    const url = await requestText(`/users/${id}/image`, { method: 'GET' })
+    const trimmed = url.trim()
+    return trimmed.length > 0 ? trimmed : null
+  } catch (e) {
+    if (e instanceof ApiError && (e.status === 404 || e.status === 401)) return null
+    throw e
   }
 }
 

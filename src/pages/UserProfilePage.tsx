@@ -40,7 +40,7 @@ export function UserProfilePage() {
     setLoading(true)
     setError(null)
     Promise.all([
-      getUserById(userId),
+      getUserById(userId, user != null),
       findTripsByUserId(userId, currentPage, PAGE_SIZE),
     ])
       .then(([data, page]) => {
@@ -62,7 +62,7 @@ export function UserProfilePage() {
     return () => {
       cancelled = true
     }
-  }, [currentPage, userId])
+  }, [currentPage, userId, user])
 
   useEffect(() => {
     setCurrentPage(1)
@@ -126,7 +126,7 @@ export function UserProfilePage() {
           </div>
 
           <ProfileHero
-            email={profile.email}
+            email={viewingOwnProfile ? profile.email || user?.email : undefined}
             description={profile.description}
             imageUrl={user ? profile.imageUrl : null}
             imageAlt={`${profile.name}'s profile`}
