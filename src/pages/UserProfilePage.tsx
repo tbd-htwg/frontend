@@ -29,6 +29,7 @@ export function UserProfilePage() {
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [feedImagesByTripId, setFeedImagesByTripId] = useState<Record<number, string[]>>({})
+  const [feedImagesLoading, setFeedImagesLoading] = useState(false)
 
   useEffect(() => {
     if (!Number.isFinite(userId)) {
@@ -76,18 +77,28 @@ export function UserProfilePage() {
   useEffect(() => {
     if (!user) {
       setFeedImagesByTripId({})
+      setFeedImagesLoading(false)
       return
     }
     const items = tripPage?.items ?? []
     if (items.length === 0) {
       setFeedImagesByTripId({})
+      setFeedImagesLoading(false)
       return
     }
     const ids = items.map((t) => t.id)
     let cancelled = false
-    fetchFeedLocationImageUrls(ids).then((map) => {
-      if (!cancelled) setFeedImagesByTripId(map)
-    })
+    setFeedImagesLoading(true)
+    fetchFeedLocationImageUrls(ids)
+      .then((map) => {
+        if (!cancelled) setFeedImagesByTripId(map)
+      })
+      .catch(() => {
+        if (!cancelled) setFeedImagesByTripId({})
+      })
+      .finally(() => {
+        if (!cancelled) setFeedImagesLoading(false)
+      })
     return () => {
       cancelled = true
     }
@@ -155,7 +166,7 @@ export function UserProfilePage() {
                   itemLabel="trips"
                   onPageChange={setCurrentPage}
                 />
-                <ul className="mt-6 space-y-4">
+                <ul className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
                   {visibleTrips.map((t) => (
                     <TripFeedCard
                       key={t.id}
@@ -167,6 +178,7 @@ export function UserProfilePage() {
                         {
                           isOwned: viewingOwnProfile,
                           omitAuthorLabel: true,
+                          locationImagesLoading: feedImagesLoading,
                         },
                       )}
                     />

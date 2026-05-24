@@ -30,6 +30,7 @@ export function ProfilePage() {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [removingProfileImage, setRemovingProfileImage] = useState(false)
   const [feedImagesByTripId, setFeedImagesByTripId] = useState<Record<number, string[]>>({})
+  const [feedImagesLoading, setFeedImagesLoading] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -75,13 +76,22 @@ export function ProfilePage() {
     const items = tripPage?.items ?? []
     if (items.length === 0) {
       setFeedImagesByTripId({})
+      setFeedImagesLoading(false)
       return
     }
     const ids = items.map((t) => t.id)
     let cancelled = false
-    fetchFeedLocationImageUrls(ids).then((map) => {
-      if (!cancelled) setFeedImagesByTripId(map)
-    })
+    setFeedImagesLoading(true)
+    fetchFeedLocationImageUrls(ids)
+      .then((map) => {
+        if (!cancelled) setFeedImagesByTripId(map)
+      })
+      .catch(() => {
+        if (!cancelled) setFeedImagesByTripId({})
+      })
+      .finally(() => {
+        if (!cancelled) setFeedImagesLoading(false)
+      })
     return () => {
       cancelled = true
     }
@@ -205,13 +215,14 @@ export function ProfilePage() {
                   itemLabel="trips"
                   onPageChange={setCurrentPage}
                 />
-                <ul className="mt-6 space-y-4">
+                <ul className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
                   {visibleTrips.map((t) => (
                     <TripFeedCard
                       key={t.id}
                       {...tripFeedPropsFromBrowse(t, true, feedImagesByTripId, user.id, {
                         isOwned: true,
                         omitAuthorLabel: true,
+                        locationImagesLoading: feedImagesLoading,
                       })}
                     />
                   ))}

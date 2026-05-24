@@ -31,6 +31,7 @@ export function useTripDetailCore(tripId: number, authenticated = false) {
   const [tripAccommodations, setTripAccommodations] = useState<AccommodationResponse[]>([])
   const [status, setStatus] = useState<SliceStatus>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [locationImagesLoading, setLocationImagesLoading] = useState(false)
 
   const tripIdValid = Number.isFinite(tripId)
 
@@ -83,9 +84,13 @@ export function useTripDetailCore(tripId: number, authenticated = false) {
   // Trip detail is a public read (no Bearer) so signed image URLs are omitted inline; load them
   // in a second authenticated request, matching the feed's feed-location-images batch.
   useEffect(() => {
-    if (!tripIdValid || !authenticated || status !== 'success') return
+    if (!tripIdValid || !authenticated || status !== 'success') {
+      setLocationImagesLoading(false)
+      return
+    }
 
     let cancelled = false
+    setLocationImagesLoading(true)
     void fetchTripDetailLocationImages(tripId)
       .then((imageMap) => {
         if (cancelled) return
@@ -93,6 +98,9 @@ export function useTripDetailCore(tripId: number, authenticated = false) {
       })
       .catch(() => {
         // Keep trip metadata visible; missing images are handled in the UI.
+      })
+      .finally(() => {
+        if (!cancelled) setLocationImagesLoading(false)
       })
 
     return () => {
@@ -114,5 +122,6 @@ export function useTripDetailCore(tripId: number, authenticated = false) {
     tripIdValid,
     tripLoading: status === 'loading',
     tripReady: status === 'success' && trip != null,
+    locationImagesLoading,
   }
 }

@@ -6,6 +6,8 @@ export type TripFeedBrowseOptions = {
   isOwned?: boolean
   /** When true, authorLabel is omitted (e.g. profile trip lists). */
   omitAuthorLabel?: boolean
+  /** While signed image URLs are being fetched for the feed batch. */
+  locationImagesLoading?: boolean
 }
 
 export function tripFeedPropsFromBrowse(
@@ -30,6 +32,7 @@ export function tripFeedPropsFromBrowse(
     accommodationNames: t.accommodationNames,
     transportRoutes: t.transportRoutes,
     showLocationImages,
+    locationImagesLoading: options?.locationImagesLoading,
     locationImageUrls: feedImagesByTripId[t.id],
     isOwned,
   }
@@ -40,6 +43,7 @@ export function tripFeedPropsFromSearch(
   showLocationImages: boolean,
   feedImagesByTripId: Record<number, string[]>,
   currentUserId: number | undefined,
+  locationImagesLoading = false,
 ): TripFeedCardProps {
   return {
     id: t.id,
@@ -52,6 +56,7 @@ export function tripFeedPropsFromSearch(
     accommodationNames: t.accommodationNames,
     transportRoutes: t.transportRoutes,
     showLocationImages,
+    locationImagesLoading,
     locationImageUrls: feedImagesByTripId[t.id],
     isOwned: currentUserId != null && t.userId === currentUserId,
   }

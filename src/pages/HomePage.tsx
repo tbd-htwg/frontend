@@ -21,6 +21,7 @@ export function HomePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [feedImagesByTripId, setFeedImagesByTripId] = useState<Record<number, string[]>>({})
+  const [feedImagesLoading, setFeedImagesLoading] = useState(false)
   const { user } = useAuth()
   const location = useLocation()
 
@@ -98,22 +99,28 @@ export function HomePage() {
   useEffect(() => {
     if (!user) {
       setFeedImagesByTripId({})
+      setFeedImagesLoading(false)
       return
     }
     const page = showSearch ? searchPage : browsePage
     const items = page?.items ?? []
     if (items.length === 0) {
       setFeedImagesByTripId({})
+      setFeedImagesLoading(false)
       return
     }
     const ids = items.map((t) => t.id)
     let cancelled = false
+    setFeedImagesLoading(true)
     fetchFeedLocationImageUrls(ids)
       .then((map) => {
         if (!cancelled) setFeedImagesByTripId(map)
       })
       .catch(() => {
         if (!cancelled) setFeedImagesByTripId({})
+      })
+      .finally(() => {
+        if (!cancelled) setFeedImagesLoading(false)
       })
     return () => {
       cancelled = true
@@ -167,18 +174,26 @@ export function HomePage() {
             itemLabel="trips"
             onPageChange={setCurrentPage}
           />
-          <ul className="mt-6 space-y-4">
+          <ul className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
             {showSearch
               ? searchItems.map((t) => (
                   <TripFeedCard
                     key={t.id}
-                    {...tripFeedPropsFromSearch(t, user != null, feedImagesByTripId, user?.id)}
+                    {...tripFeedPropsFromSearch(
+                      t,
+                      user != null,
+                      feedImagesByTripId,
+                      user?.id,
+                      feedImagesLoading,
+                    )}
                   />
                 ))
               : browseItems.map((t) => (
                   <TripFeedCard
                     key={t.id}
-                    {...tripFeedPropsFromBrowse(t, user != null, feedImagesByTripId, user?.id)}
+                    {...tripFeedPropsFromBrowse(t, user != null, feedImagesByTripId, user?.id, {
+                      locationImagesLoading: feedImagesLoading,
+                    })}
                   />
                 ))}
           </ul>
