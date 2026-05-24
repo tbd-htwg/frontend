@@ -6,14 +6,21 @@ Concise context for AI assistants and contributors working in this directory. Fo
 
 ## What this is
 
-**React 19** single-page app (Vite 6, TypeScript, Tailwind CSS 4, React Router 7) for browsing and editing trips, user profiles, comments, and likes against the Spring Boot API.
+**React 19** single-page app (Vite 6, TypeScript, Tailwind CSS 4, React Router 7) for browsing and editing trips, user profiles, comments, and likes against the Spring Boot API. Trips, stops, accommodations, and transports use **Google Places** IDs from `/api/v2/external/details/search`.
 
 ## Stack
 
 - Entry: [`src/main.tsx`](src/main.tsx), routing in [`src/App.tsx`](src/App.tsx).
-- API calls: [`src/api/client.ts`](src/api/client.ts) plus feature modules under [`src/api/`](src/api/) (`auth`, `trips`, `users`, `comments`, `likes`, HAL helpers, etc.).
+- API calls: [`src/api/client.ts`](src/api/client.ts) plus feature modules under [`src/api/`](src/api/) (`auth`, `trips`, `users`, `comments`, `likes`, `externalInfo`, `accommodations`, `transports`, `tripLocations`, `community`, HAL helpers, etc.).
 - Auth state: [`src/context/AuthContext.tsx`](src/context/AuthContext.tsx); session key in [`src/auth/sessionStorageKey.ts`](src/auth/sessionStorageKey.ts).
 - Firebase / Identity Platform: [`src/lib/firebaseApp.ts`](src/lib/firebaseApp.ts); env `VITE_FIREBASE_*` in [`.env.example`](.env.example). Must match backend `TRIPPLANNING_AUTH_FIREBASE_PROJECT_ID`.
+
+## Places & external info
+
+- Place search: [`usePlaceSearch`](src/hooks/usePlaceSearch.ts) → [`searchPlaceSuggestions`](src/api/externalInfo.ts) → `GET /api/v2/external/details/search`.
+- Stop weather/warnings: [`useStopExternalInfo`](src/hooks/useStopExternalInfo.ts) → `GET /api/v2/external/stop-details`.
+- Accommodation tours: [`useAccommodationExternalInfo`](src/hooks/useAccommodationExternalInfo.ts) → `GET /api/v2/external/accommodation-details`.
+- Do **not** use [`src/api/locations.ts`](src/api/locations.ts) — `/api/v2/locations` was removed.
 
 ## Backend coupling
 
@@ -25,14 +32,14 @@ Copy [`.env.example`](.env.example) to `.env` when you need overrides.
 ## Auth
 
 - After login, the app stores **`accessToken`** and **`user`** in **`sessionStorage`** and sends `Authorization: Bearer <accessToken>` on mutating and protected GET requests.
-- **Google sign-in** uses Firebase; the backend verifies ID tokens and returns an application JWT.
+- **Google sign-in:** Firebase ID token → [`authFirebase`](src/api/auth.ts) → `POST /api/v2/auth/firebase` (deprecated alias on backend: `/auth/google`).
 - **Dev sign-in** (email/name) appears only in **Vite dev mode** and requires the backend **`local`** Spring profile (`POST /api/v2/auth/dev-login`).
 
 ## HAL, comments, and likes
 
 - Spring Data REST returns **HAL JSON**; helpers live under [`src/api/hal.ts`](src/api/hal.ts) and related modules.
 - **Comment** resources use **Firestore string document ids** in `_links.self` — not numeric SQL keys.
-- **Likes** use dedicated JSON endpoints (see `api/likes.ts`); backend enforces ownership where applicable.
+- **Likes** use dedicated JSON endpoints in [`src/api/likes.ts`](src/api/likes.ts); backend enforces ownership where applicable.
 
 ## API contract reference
 
