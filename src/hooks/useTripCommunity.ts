@@ -6,7 +6,7 @@ import { loadSlice, sliceErrorMessage } from '../api/loadSlice'
 import type { CommentResponse } from '../types/api'
 import type { SliceStatus } from './useTripDetailCore'
 
-export function useTripCommunity(tripId: number, enabled: boolean) {
+export function useTripCommunity(tripId: number, enabled: boolean, authenticated = false) {
   const [status, setStatus] = useState<SliceStatus>('idle')
   const [error, setError] = useState<string | null>(null)
   const [likeCount, setLikeCount] = useState(0)
@@ -28,7 +28,7 @@ export function useTripCommunity(tripId: number, enabled: boolean) {
     setError(null)
 
     void (async () => {
-      const result = await loadSlice(() => getTripCommunity(tripId))
+      const result = await loadSlice(() => getTripCommunity(tripId, authenticated))
       if (cancelled) return
 
       if (result.ok) {
@@ -54,7 +54,7 @@ export function useTripCommunity(tripId: number, enabled: boolean) {
     return () => {
       cancelled = true
     }
-  }, [tripId, enabled])
+  }, [tripId, enabled, authenticated])
 
   return {
     status,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
@@ -78,6 +78,7 @@ import { AccommodationActivityInfo } from '../components/ViatorTourEntry'
 import { LocationTravelInfo } from '../components/LocationTravelInfo'
 import { TransportDistanceInfo } from '../components/TransportDistanceInfo'
 import { TripSectionHeader } from '../components/TripSectionHeader'
+import { ImageLightbox } from '../components/ImageLightbox'
 import { AddLocationModal } from '../components/trip/AddLocationModal'
 import { AddAccommodationModal } from '../components/trip/AddAccommodationModal'
 import { AddTransportModal } from '../components/trip/AddTransportModal'
@@ -189,13 +190,26 @@ function CommunitySectionSkeleton() {
   )
 }
 
+function LocationImagesSkeleton() {
+  return (
+    <div
+      className="mt-2 flex max-w-full gap-2 overflow-x-auto pb-1"
+      aria-busy="true"
+      aria-label="Loading location photos"
+    >
+      <div className="h-40 w-56 shrink-0 animate-pulse rounded-md bg-slate-200" />
+      <div className="h-40 w-56 shrink-0 animate-pulse rounded-md bg-slate-200" />
+    </div>
+  )
+}
+
 export function TripDetailPage() {
 
   const { id } = useParams()
 
   const navigate = useNavigate()
 
-  const { user } = useAuth()
+  const { user, accessToken } = useAuth()
   const { openEditTrip, tripSaveRevision, lastTripBaseUpdate } = useTripModal()
 
   const tripId = id ? Number(id) : NaN
@@ -213,7 +227,8 @@ export function TripDetailPage() {
     error: tripError,
     tripIdValid,
     tripLoading,
-  } = useTripDetailCore(tripId)
+    locationImagesLoading,
+  } = useTripDetailCore(tripId, user != null)
 
   const {
     communityLoading,
@@ -232,7 +247,7 @@ export function TripDetailPage() {
     setHasMoreComments,
     totalCommentCount,
     setTotalCommentCount,
-  } = useTripCommunity(tripId, tripIdValid)
+  } = useTripCommunity(tripId, tripIdValid, accessToken != null)
 
   const { getEntry: getStopExternalEntry, fetchStopInfo } = useStopExternalInfo(tripLocations)
   const { getEntry: getAccommodationExternalEntry } =
@@ -258,6 +273,31 @@ export function TripDetailPage() {
   const [commentText, setCommentText] = useState('')
 
   const [commenting, setCommenting] = useState(false)
+
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+
+  const locationGalleryImages = useMemo(
+    () =>
+      tripLocations.flatMap((entry) => {
+        const caption = entry.placeName ?? entry.locationName
+        return (entry.images ?? []).map((image, index) => ({
+          url: image.signedReadUrl,
+          alt: `Location ${entry.locationName} image ${index + 1}`,
+          caption,
+        }))
+      }),
+    [tripLocations],
+  )
+
+  const locationGalleryOffsets = useMemo(() => {
+    const offsets = new Map<number, number>()
+    let cursor = 0
+    for (const entry of tripLocations) {
+      offsets.set(entry.id, cursor)
+      cursor += entry.images?.length ?? 0
+    }
+    return offsets
+  }, [tripLocations])
 
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null)
 
@@ -1386,6 +1426,10 @@ export function TripDetailPage() {
 
                           </p>
 
+                        ) : locationImagesLoading ? (
+
+                          <LocationImagesSkeleton />
+
                         ) : (entry.images?.length ?? 0) > 0 || (isOwner && showTripManagement) ? (
 
                           <div className="mt-2 flex max-w-full gap-2 overflow-x-auto pb-1">
@@ -1394,17 +1438,39 @@ export function TripDetailPage() {
 
                               <div key={`${entry.id}-${image.id}-${index}`} className="relative shrink-0">
 
-                                <img
+                                <button
 
-                                  src={image.signedReadUrl}
+                                  type="button"
 
-                                  alt={`Location ${entry.locationName} image ${index + 1}`}
+                                  onClick={() =>
 
-                                  className="h-40 w-56 rounded-md border border-slate-200 object-cover"
+                                    setLightboxIndex(
 
-                                  loading="lazy"
+                                      (locationGalleryOffsets.get(entry.id) ?? 0) + index,
 
-                                />
+                                    )
+
+                                  }
+
+                                  aria-label={`View location photo ${index + 1} full size`}
+
+                                  className="block overflow-hidden rounded-md border border-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+
+                                >
+
+                                  <img
+
+                                    src={image.signedReadUrl}
+
+                                    alt={`Location ${entry.locationName} image ${index + 1}`}
+
+                                    className="h-40 w-56 object-cover"
+
+                                    loading="lazy"
+
+                                  />
+
+                                </button>
 
                                 {isOwner && showTripManagement && image.id > 0 && (
 
@@ -2088,6 +2154,13 @@ export function TripDetailPage() {
         </>
 
       )}
+
+      <ImageLightbox
+        images={locationGalleryImages}
+        initialIndex={lightboxIndex ?? 0}
+        open={lightboxIndex !== null}
+        onClose={() => setLightboxIndex(null)}
+      />
 
     </div>
 

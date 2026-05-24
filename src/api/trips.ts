@@ -7,6 +7,7 @@ import type {
   TripDetailsResponse,
   TripListItemResponse,
   TripLocationResponse,
+  TripLocationImageResponse,
   TripPatchRequest,
   TripPutRequest,
   TripSearchResult,
@@ -252,22 +253,39 @@ export async function searchTrips(
 }
 
 /**
- * Trip detail now returns stop image URLs inline (`stops[].imageUrls`). The standalone
- * second-stage call is no longer required by the SPA, but the helper stays exported because
- * older callers and integration tests can still reach the underlying controller.
+ * Authenticated second-stage fetch for trip-detail stop images (id + signed URL). The public
+ * {@code GET /trips/{id}/detail} response omits signed URLs when no Bearer token is sent.
  */
-export async function fetchTripDetailLocationImageUrls(
+export async function fetchTripDetailLocationImages(
   tripId: number,
-): Promise<Record<number, string[]>> {
-  const raw = await requestJson<Record<string, string[]>>(
+): Promise<Record<number, TripLocationImageResponse[]>> {
+  const raw = await requestJson<Record<string, TripLocationImageResponse[]>>(
     `/trips/${tripId}/trip-location-image-urls`,
     { method: 'GET' },
   )
-  const out: Record<number, string[]> = {}
+  const out: Record<number, TripLocationImageResponse[]> = {}
   if (!raw) return out
   for (const [k, v] of Object.entries(raw)) {
     const id = Number(k)
-    if (Number.isFinite(id) && Array.isArray(v)) out[id] = v
+    if (!Number.isFinite(id) || !Array.isArray(v)) continue
+    out[id] = v.filter(
+      (image): image is TripLocationImageResponse =>
+        Number.isFinite(image.id) &&
+        typeof image.signedReadUrl === 'string' &&
+        image.signedReadUrl.length > 0,
+    )
+  }
+  return out
+}
+
+/** @deprecated Use {@link fetchTripDetailLocationImages}. */
+export async function fetchTripDetailLocationImageUrls(
+  tripId: number,
+): Promise<Record<number, string[]>> {
+  const imagesByStop = await fetchTripDetailLocationImages(tripId)
+  const out: Record<number, string[]> = {}
+  for (const [stopId, images] of Object.entries(imagesByStop)) {
+    out[Number(stopId)] = images.map((image) => image.signedReadUrl)
   }
   return out
 }

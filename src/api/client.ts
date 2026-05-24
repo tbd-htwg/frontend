@@ -125,13 +125,17 @@ export function resolveApiUrl(path: string): string {
   return `${base}${normalizedPath}`
 }
 
-async function request(path: string, init?: RequestInit): Promise<Response> {
+async function request(
+  path: string,
+  init?: RequestInit,
+  options?: { forceBearer?: boolean },
+): Promise<Response> {
   const headers = new Headers(init?.headers)
   if (init?.body != null && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
   const method = init?.method ?? 'GET'
-  const attach = shouldAttachBearer(path, method)
+  const attach = options?.forceBearer === true || shouldAttachBearer(path, method)
   const token = attach ? bearerToken() : undefined
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`)
@@ -194,6 +198,7 @@ export async function authorizedGet(path: string): Promise<Response> {
 export async function requestJson<T>(
   path: string,
   init?: RequestInit,
+  options?: { forceBearer?: boolean },
 ): Promise<T> {
   const res = await request(path, {
     ...init,
@@ -201,7 +206,7 @@ export async function requestJson<T>(
       ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
       ...init?.headers,
     },
-  })
+  }, options)
   if (res.status === 204) return undefined as T
   return parseJson<T>(res)
 }

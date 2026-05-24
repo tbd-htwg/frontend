@@ -30,13 +30,14 @@ export function ProfilePage() {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [removingProfileImage, setRemovingProfileImage] = useState(false)
   const [feedImagesByTripId, setFeedImagesByTripId] = useState<Record<number, string[]>>({})
+  const [feedImagesLoading, setFeedImagesLoading] = useState(false)
 
   useEffect(() => {
     if (!user) return
     let cancelled = false
     setLoading(true)
     Promise.all([
-      getUserById(user.id),
+      getUserById(user.id, true),
       findTripsByUserId(user.id, currentPage, PAGE_SIZE),
     ])
       .then(([d, page]) => {
@@ -75,13 +76,22 @@ export function ProfilePage() {
     const items = tripPage?.items ?? []
     if (items.length === 0) {
       setFeedImagesByTripId({})
+      setFeedImagesLoading(false)
       return
     }
     const ids = items.map((t) => t.id)
     let cancelled = false
-    fetchFeedLocationImageUrls(ids).then((map) => {
-      if (!cancelled) setFeedImagesByTripId(map)
-    })
+    setFeedImagesLoading(true)
+    fetchFeedLocationImageUrls(ids)
+      .then((map) => {
+        if (!cancelled) setFeedImagesByTripId(map)
+      })
+      .catch(() => {
+        if (!cancelled) setFeedImagesByTripId({})
+      })
+      .finally(() => {
+        if (!cancelled) setFeedImagesLoading(false)
+      })
     return () => {
       cancelled = true
     }
@@ -91,13 +101,14 @@ export function ProfilePage() {
     if (!user) return
     setUploadingImage(true)
     try {
-      await uploadUserProfileImage(user.id, file)
+      const signedReadUrl = await uploadUserProfileImage(user.id, file)
       const [updatedUser, freshTripPage] = await Promise.all([
-        getUserById(user.id),
+        getUserById(user.id, true),
         findTripsByUserId(user.id, currentPage, PAGE_SIZE),
       ])
-      updateSessionUser(updatedUser)
-      setDetails(updatedUser)
+      const withImage = { ...updatedUser, imageUrl: signedReadUrl || updatedUser.imageUrl }
+      updateSessionUser(withImage)
+      setDetails(withImage)
       setTripPage(freshTripPage)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not upload profile image.'
@@ -114,7 +125,7 @@ export function ProfilePage() {
     try {
       await deleteUserProfileImage(user.id)
       const [updatedUser, freshTripPage] = await Promise.all([
-        getUserById(user.id),
+        getUserById(user.id, true),
         findTripsByUserId(user.id, currentPage, PAGE_SIZE),
       ])
       updateSessionUser(updatedUser)
@@ -161,7 +172,7 @@ export function ProfilePage() {
       {!loading && !error && details && (
         <>
           <ProfileHero
-            email={details.email}
+            email={details.email || user.email}
             description={details.description}
             imageUrl={details.imageUrl}
             imageAlt={`${details.name}'s profile`}
@@ -204,13 +215,14 @@ export function ProfilePage() {
                   itemLabel="trips"
                   onPageChange={setCurrentPage}
                 />
-                <ul className="mt-6 space-y-4">
+                <ul className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
                   {visibleTrips.map((t) => (
                     <TripFeedCard
                       key={t.id}
                       {...tripFeedPropsFromBrowse(t, true, feedImagesByTripId, user.id, {
                         isOwned: true,
                         omitAuthorLabel: true,
+                        locationImagesLoading: feedImagesLoading,
                       })}
                     />
                   ))}

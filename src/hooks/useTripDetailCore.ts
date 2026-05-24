@@ -1,24 +1,37 @@
 import { useEffect, useState } from 'react'
 
-import { getTrip } from '../api/trips'
+import { fetchTripDetailLocationImages, getTrip } from '../api/trips'
 import { ApiError } from '../api/client'
 import { loadSlice, sliceErrorMessage } from '../api/loadSlice'
 import type {
   AccommodationResponse,
   TransportResponse,
   TripDetailsResponse,
+  TripLocationImageResponse,
   TripLocationResponse,
 } from '../types/api'
 
 export type SliceStatus = 'idle' | 'loading' | 'success' | 'error'
 
-export function useTripDetailCore(tripId: number) {
+function mergeLocationImages(
+  locations: TripLocationResponse[],
+  imageMap: Record<number, TripLocationImageResponse[]>,
+): TripLocationResponse[] {
+  return locations.map((entry) => {
+    const images = imageMap[entry.id]
+    if (!images || images.length === 0) return entry
+    return { ...entry, images }
+  })
+}
+
+export function useTripDetailCore(tripId: number, authenticated = false) {
   const [trip, setTrip] = useState<TripDetailsResponse | null>(null)
   const [tripLocations, setTripLocations] = useState<TripLocationResponse[]>([])
   const [tripTransports, setTripTransports] = useState<TransportResponse[]>([])
   const [tripAccommodations, setTripAccommodations] = useState<AccommodationResponse[]>([])
   const [status, setStatus] = useState<SliceStatus>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [locationImagesLoading, setLocationImagesLoading] = useState(false)
 
   const tripIdValid = Number.isFinite(tripId)
 
@@ -68,6 +81,33 @@ export function useTripDetailCore(tripId: number) {
     }
   }, [tripId, tripIdValid])
 
+  // Trip detail is a public read (no Bearer) so signed image URLs are omitted inline; load them
+  // in a second authenticated request, matching the feed's feed-location-images batch.
+  useEffect(() => {
+    if (!tripIdValid || !authenticated || status !== 'success') {
+      setLocationImagesLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setLocationImagesLoading(true)
+    void fetchTripDetailLocationImages(tripId)
+      .then((imageMap) => {
+        if (cancelled) return
+        setTripLocations((prev) => mergeLocationImages(prev, imageMap))
+      })
+      .catch(() => {
+        // Keep trip metadata visible; missing images are handled in the UI.
+      })
+      .finally(() => {
+        if (!cancelled) setLocationImagesLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [tripId, tripIdValid, authenticated, status])
+
   return {
     trip,
     setTrip,
@@ -82,5 +122,6 @@ export function useTripDetailCore(tripId: number) {
     tripIdValid,
     tripLoading: status === 'loading',
     tripReady: status === 'success' && trip != null,
+    locationImagesLoading,
   }
 }

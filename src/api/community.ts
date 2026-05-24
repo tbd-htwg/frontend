@@ -21,8 +21,16 @@ type TripCommentsPageResponse = {
  * Bundled community payload: like/comment counts, first page of comments with names, optional
  * like status for the signed-in user.
  */
-export async function getTripCommunity(tripId: number): Promise<TripCommunityResponse> {
-  return requestJson<TripCommunityResponse>(`/trips/${tripId}/community`, { method: 'GET' })
+export async function getTripCommunity(
+  tripId: number,
+  /** Send Bearer so the backend can populate {@link TripCommunityResponse.likedByCurrentUser}. */
+  authenticated = false,
+): Promise<TripCommunityResponse> {
+  return requestJson<TripCommunityResponse>(
+    `/trips/${tripId}/community`,
+    { method: 'GET' },
+    authenticated ? { forceBearer: true } : undefined,
+  )
 }
 
 export async function loadMoreTripComments(

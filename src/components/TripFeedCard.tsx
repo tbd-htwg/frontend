@@ -26,6 +26,16 @@ function formatDate(iso?: string) {
   }
 }
 
+function TripFeedImageSkeleton() {
+  return (
+    <div
+      className="mt-3 aspect-video w-full animate-pulse rounded-md bg-slate-200 ring-1 ring-slate-200"
+      aria-busy="true"
+      aria-label="Loading trip photos"
+    />
+  )
+}
+
 function TripFeedImageCarousel({ urls }: { urls: string[] }) {
   const [index, setIndex] = useState(0)
   const touchStartX = useRef<number | null>(null)
@@ -120,6 +130,8 @@ export type TripFeedCardProps = {
   transportRoutes?: string[]
   /** When true (logged-in), gallery may render if URLs are present. */
   showLocationImages?: boolean
+  /** While signed image URLs are being fetched for the feed batch. */
+  locationImagesLoading?: boolean
   locationImageUrls?: string[]
   /** Decorative indicator when the signed-in user owns this trip. */
   isOwned?: boolean
@@ -137,6 +149,7 @@ export function TripFeedCard(props: TripFeedCardProps) {
   const accomLine = formatTruncatedList(props.accommodationNames ?? [])
   const transLine = formatTruncatedList(props.transportRoutes ?? [])
 
+  const showGallerySkeleton = props.showLocationImages && props.locationImagesLoading
   const galleryUrls =
     props.showLocationImages && props.locationImageUrls?.length
       ? props.locationImageUrls
@@ -159,6 +172,7 @@ export function TripFeedCard(props: TripFeedCardProps) {
         {props.shortDescription ? (
           <p className="mt-2 line-clamp-2 text-sm text-slate-600">{props.shortDescription}</p>
         ) : null}
+        {showGallerySkeleton ? <TripFeedImageSkeleton /> : null}
         {galleryUrls ? <TripFeedImageCarousel urls={galleryUrls} /> : null}
         {(locLine || accomLine || transLine) ? (
           <dl className="mt-3 space-y-1.5 text-sm">
