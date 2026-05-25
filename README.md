@@ -61,7 +61,7 @@ The app calls **same-origin** paths **`/api/v2`** and **`/api/search`**. In dev,
 
 For a direct API URL without the proxy (e.g. production build), set **`VITE_API_BASE_URL`** to the API origin **without** a trailing slash.
 
-External travel info goes through the backend gateway at `/api/v2/external/**` (e.g. `stop-details`, `accommodation-details`, `transport/distance`), so the browser only needs the main API origin.
+External travel info goes through the backend gateway at `/api/v2/external/**` (e.g. `stop-details`, `accommodation-details`, `transport/route`), so the browser only needs the main API origin for route data. Set **`VITE_GOOGLE_MAPS_API_KEY`** (Maps JavaScript API, referrer-restricted) to draw routes on the map.
 
 ### Authentication
 

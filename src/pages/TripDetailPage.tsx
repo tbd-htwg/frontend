@@ -69,14 +69,14 @@ import { useAuth } from '../context/AuthContext'
 import { usePlaceSearch } from '../hooks/usePlaceSearch'
 import { useAccommodationExternalInfo } from '../hooks/useAccommodationExternalInfo'
 import { useStopExternalInfo } from '../hooks/useStopExternalInfo'
-import { useTransportDistance } from '../hooks/useTransportDistance'
+import { useTransportRoute } from '../hooks/useTransportRoute'
 import { useTripCommunity } from '../hooks/useTripCommunity'
 import { useTripDetailCore } from '../hooks/useTripDetailCore'
 import { placeSearchErrorFromUnknown } from '../utils/placeSearchErrors'
 import { transportWithPlaceCoords } from '../utils/transportGeo'
 import { AccommodationActivityInfo } from '../components/ViatorTourEntry'
 import { LocationTravelInfo } from '../components/LocationTravelInfo'
-import { TransportDistanceInfo } from '../components/TransportDistanceInfo'
+import { TransportRoutePanel } from '../components/TransportRoutePanel'
 import { TripSectionHeader } from '../components/TripSectionHeader'
 import { ImageLightbox } from '../components/ImageLightbox'
 import { AddLocationModal } from '../components/trip/AddLocationModal'
@@ -252,7 +252,8 @@ export function TripDetailPage() {
   const { getEntry: getStopExternalEntry, fetchStopInfo } = useStopExternalInfo(tripLocations)
   const { getEntry: getAccommodationExternalEntry } =
     useAccommodationExternalInfo(tripAccommodations)
-  const { getEntry: getTransportDistanceEntry } = useTransportDistance(tripTransports)
+  const { getEntry: getTransportRouteEntry, setMode: setTransportRouteMode } =
+    useTransportRoute(tripTransports)
 
   const [isOwner, setIsOwner] = useState(false)
 
@@ -1690,8 +1691,6 @@ export function TripDetailPage() {
 
                         </p>
 
-                        <p className="text-sm text-slate-700">{entry.type}</p>
-
                         <p className="text-sm text-slate-600">{entry.address}</p>
 
                         {entry.checkInDate && entry.checkOutDate ? (
@@ -1905,10 +1904,10 @@ export function TripDetailPage() {
 
                       </div>
 
-                      <TransportDistanceInfo
-                        legs={getTransportDistanceEntry(entry.id)?.legs}
-                        loading={getTransportDistanceEntry(entry.id)?.status === 'loading'}
-                        error={getTransportDistanceEntry(entry.id)?.errorMessage}
+                      <TransportRoutePanel
+                        transport={entry}
+                        entry={getTransportRouteEntry(entry.id)}
+                        onModeChange={(mode) => setTransportRouteMode(entry.id, mode)}
                       />
 
                     </li>

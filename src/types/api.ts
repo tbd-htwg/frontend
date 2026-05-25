@@ -247,16 +247,15 @@ export type AccommodationExternalInfoResponse = {
   otherTours: ExternalTourResponse[]
 }
 
-export type TransportDistanceLegResponse = {
-  mode: string
+export type TransportTravelMode = 'DRIVE' | 'WALK' | 'BICYCLE' | 'TRANSIT'
+
+export type TransportRouteResponse = {
+  mode: TransportTravelMode
   distanceMeters: number
   durationSeconds: number
   distanceText: string
   durationText: string
-}
-
-export type TransportDistanceResponse = {
-  legs: TransportDistanceLegResponse[]
+  encodedPolyline: string
 }
 
 /** @deprecated Use {@link StopExternalInfoResponse} for trip stops. */
