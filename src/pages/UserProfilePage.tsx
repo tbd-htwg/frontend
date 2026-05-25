@@ -6,11 +6,12 @@ import { ProfileHero } from '../components/profile/ProfileHero'
 import { ApiError } from '../api/client'
 import { PaginationControls } from '../components/PaginationControls'
 import { TripFeedCard } from '../components/TripFeedCard'
-import { fetchFeedLocationImageUrls, findTripsByUserId } from '../api/trips'
+import { findTripsByUserId } from '../api/trips'
 import { getUserById } from '../api/users'
 import { useAuth } from '../context/AuthContext'
 import { useProfileModal } from '../context/ProfileModalContext'
 import type { PaginatedResponse, TripListItemResponse, UserDetailsResponse } from '../types/api'
+import { loadFeedImagesPhased } from '../utils/feedImages'
 import { tripFeedPropsFromBrowse } from '../utils/tripFeed'
 
 const PAGE_SIZE = 10
@@ -29,7 +30,9 @@ export function UserProfilePage() {
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [feedImagesByTripId, setFeedImagesByTripId] = useState<Record<number, string[]>>({})
-  const [feedImagesLoading, setFeedImagesLoading] = useState(false)
+  const [feedImagesSettledTripIds, setFeedImagesSettledTripIds] = useState<Set<number>>(
+    () => new Set(),
+  )
 
   useEffect(() => {
     if (!Number.isFinite(userId)) {
@@ -77,31 +80,27 @@ export function UserProfilePage() {
   useEffect(() => {
     if (!user) {
       setFeedImagesByTripId({})
-      setFeedImagesLoading(false)
+      setFeedImagesSettledTripIds(new Set())
       return
     }
     const items = tripPage?.items ?? []
     if (items.length === 0) {
       setFeedImagesByTripId({})
-      setFeedImagesLoading(false)
+      setFeedImagesSettledTripIds(new Set())
       return
     }
     const ids = items.map((t) => t.id)
-    let cancelled = false
-    setFeedImagesLoading(true)
-    fetchFeedLocationImageUrls(ids)
-      .then((map) => {
-        if (!cancelled) setFeedImagesByTripId(map)
-      })
-      .catch(() => {
-        if (!cancelled) setFeedImagesByTripId({})
-      })
-      .finally(() => {
-        if (!cancelled) setFeedImagesLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
+    setFeedImagesByTripId({})
+    setFeedImagesSettledTripIds(new Set())
+    return loadFeedImagesPhased(ids, {
+      onFirstPhase: (map, settled) => {
+        setFeedImagesByTripId(map)
+        setFeedImagesSettledTripIds(new Set(settled))
+      },
+      onFullPhase: (map) => {
+        setFeedImagesByTripId(map)
+      },
+    })
   }, [user, tripPage])
 
   if (!Number.isFinite(userId)) return <p className="text-red-800">Invalid user.</p>
@@ -178,7 +177,7 @@ export function UserProfilePage() {
                         {
                           isOwned: viewingOwnProfile,
                           omitAuthorLabel: true,
-                          locationImagesLoading: feedImagesLoading,
+                          feedImagesSettledTripIds,
                         },
                       )}
                     />

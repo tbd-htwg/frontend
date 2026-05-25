@@ -8,6 +8,8 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_AUTH_DOMAIN?: string
   /** Must match trip-service TRIPPLANNING_AUTH_FIREBASE_PROJECT_ID. */
   readonly VITE_FIREBASE_PROJECT_ID?: string
+  /** Maps JavaScript API key (HTTP referrer–restricted; separate from server Routes/Places key). */
+  readonly VITE_GOOGLE_MAPS_API_KEY?: string
 }
 
 interface ImportMeta {

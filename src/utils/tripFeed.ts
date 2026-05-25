@@ -1,13 +1,14 @@
 import type { TripFeedCardProps } from '../components/TripFeedCard'
 import type { TripListItemResponse, TripSearchResult } from '../types/api'
+import { isFeedImageLoadingForTrip } from './feedImages'
 
 export type TripFeedBrowseOptions = {
   /** When set, overrides ownership derived from currentUserId. */
   isOwned?: boolean
   /** When true, authorLabel is omitted (e.g. profile trip lists). */
   omitAuthorLabel?: boolean
-  /** While signed image URLs are being fetched for the feed batch. */
-  locationImagesLoading?: boolean
+  /** Trip ids that finished the first-phase image fetch (per-card skeleton). */
+  feedImagesSettledTripIds?: ReadonlySet<number>
 }
 
 export function tripFeedPropsFromBrowse(
@@ -32,7 +33,11 @@ export function tripFeedPropsFromBrowse(
     accommodationNames: t.accommodationNames,
     transportRoutes: t.transportRoutes,
     showLocationImages,
-    locationImagesLoading: options?.locationImagesLoading,
+    locationImagesLoading: isFeedImageLoadingForTrip(
+      showLocationImages,
+      options?.feedImagesSettledTripIds ?? new Set(),
+      t.id,
+    ),
     locationImageUrls: feedImagesByTripId[t.id],
     isOwned,
   }
@@ -43,7 +48,7 @@ export function tripFeedPropsFromSearch(
   showLocationImages: boolean,
   feedImagesByTripId: Record<number, string[]>,
   currentUserId: number | undefined,
-  locationImagesLoading = false,
+  feedImagesSettledTripIds: ReadonlySet<number> = new Set(),
 ): TripFeedCardProps {
   return {
     id: t.id,
@@ -56,7 +61,11 @@ export function tripFeedPropsFromSearch(
     accommodationNames: t.accommodationNames,
     transportRoutes: t.transportRoutes,
     showLocationImages,
-    locationImagesLoading,
+    locationImagesLoading: isFeedImageLoadingForTrip(
+      showLocationImages,
+      feedImagesSettledTripIds,
+      t.id,
+    ),
     locationImageUrls: feedImagesByTripId[t.id],
     isOwned: currentUserId != null && t.userId === currentUserId,
   }

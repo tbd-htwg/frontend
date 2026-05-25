@@ -290,12 +290,22 @@ export async function fetchTripDetailLocationImageUrls(
   return out
 }
 
+export type FetchFeedLocationImagesOptions = {
+  /** First flattened carousel index per trip (0-based). */
+  startIndex?: number
+  /** Max signed URLs per trip from {@code startIndex}; omit for all remaining images. */
+  perTripLimit?: number
+}
+
 export async function fetchFeedLocationImageUrls(
   tripIds: number[],
+  options?: FetchFeedLocationImagesOptions,
 ): Promise<Record<number, string[]>> {
   if (tripIds.length === 0) return {}
   const params = new URLSearchParams()
   for (const id of tripIds) params.append('tripId', String(id))
+  if (options?.startIndex != null) params.set('startIndex', String(options.startIndex))
+  if (options?.perTripLimit != null) params.set('perTripLimit', String(options.perTripLimit))
   const raw = await requestJson<Record<string, string[]>>(`/trips/feed-location-images?${params}`, {
     method: 'GET',
   })
