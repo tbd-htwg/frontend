@@ -4,13 +4,14 @@ import { faPenToSquare, faPlus } from '@fortawesome/free-solid-svg-icons'
 import { ProfileHero } from '../components/profile/ProfileHero'
 import { useProfileModal } from '../context/ProfileModalContext'
 import { useTripModal } from '../context/TripModalContext'
-import { fetchFeedLocationImageUrls, findTripsByUserId } from '../api/trips'
+import { findTripsByUserId } from '../api/trips'
 import { deleteUserProfileImage, getUserById, uploadUserProfileImage } from '../api/users'
 import { ApiError } from '../api/client'
 import { PaginationControls } from '../components/PaginationControls'
 import { TripFeedCard } from '../components/TripFeedCard'
 import { useAuth } from '../context/AuthContext'
 import type { PaginatedResponse, TripListItemResponse, UserDetailsResponse } from '../types/api'
+import { loadFeedImagesPhased } from '../utils/feedImages'
 import { tripFeedPropsFromBrowse } from '../utils/tripFeed'
 
 const PAGE_SIZE = 10
@@ -30,7 +31,9 @@ export function ProfilePage() {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [removingProfileImage, setRemovingProfileImage] = useState(false)
   const [feedImagesByTripId, setFeedImagesByTripId] = useState<Record<number, string[]>>({})
-  const [feedImagesLoading, setFeedImagesLoading] = useState(false)
+  const [feedImagesSettledTripIds, setFeedImagesSettledTripIds] = useState<Set<number>>(
+    () => new Set(),
+  )
 
   useEffect(() => {
     if (!user) return
@@ -76,25 +79,21 @@ export function ProfilePage() {
     const items = tripPage?.items ?? []
     if (items.length === 0) {
       setFeedImagesByTripId({})
-      setFeedImagesLoading(false)
+      setFeedImagesSettledTripIds(new Set())
       return
     }
     const ids = items.map((t) => t.id)
-    let cancelled = false
-    setFeedImagesLoading(true)
-    fetchFeedLocationImageUrls(ids)
-      .then((map) => {
-        if (!cancelled) setFeedImagesByTripId(map)
-      })
-      .catch(() => {
-        if (!cancelled) setFeedImagesByTripId({})
-      })
-      .finally(() => {
-        if (!cancelled) setFeedImagesLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
+    setFeedImagesByTripId({})
+    setFeedImagesSettledTripIds(new Set())
+    return loadFeedImagesPhased(ids, {
+      onFirstPhase: (map, settled) => {
+        setFeedImagesByTripId(map)
+        setFeedImagesSettledTripIds(new Set(settled))
+      },
+      onFullPhase: (map) => {
+        setFeedImagesByTripId(map)
+      },
+    })
   }, [tripPage])
 
   async function handleProfileImageSelected(file: File) {
@@ -222,7 +221,7 @@ export function ProfilePage() {
                       {...tripFeedPropsFromBrowse(t, true, feedImagesByTripId, user.id, {
                         isOwned: true,
                         omitAuthorLabel: true,
-                        locationImagesLoading: feedImagesLoading,
+                        feedImagesSettledTripIds,
                       })}
                     />
                   ))}
