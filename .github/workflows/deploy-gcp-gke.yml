@@ -22,10 +22,11 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production' || (github.ref == 'refs/heads/staging' && 'staging' || 'develop')) }}
+    environment: gke-dev
     env:
       PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-      BACKEND_SERVICE: ${{ vars.GCP_BACKEND_SERVICE }}
+      FRONTEND_BUCKET: ${{ vars.GCP_FRONTEND_BUCKET }}
+      URL_MAP_NAME: ${{ vars.GCP_FRONTEND_URL_MAP }}
       WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
       DEPLOYER_SA_EMAIL: ${{ vars.GCP_FRONTEND_DEPLOYER_SA_EMAIL }}
 
@@ -69,16 +70,8 @@ jobs:
 
       - name: Upload files to Cloud Storage Bucket
         run: |
-          APP_PREFIX="${BACKEND_SERVICE%-backend}"
-          if [ "$APP_PREFIX" = "tripplanning" ]; then
-            BUCKET_NAME="${PROJECT_ID}-frontend-bucket"
-          else
-            BUCKET_NAME="${PROJECT_ID}-${APP_PREFIX}-frontend"
-          fi
-          gcloud storage rsync dist "gs://${BUCKET_NAME}" --recursive
+          gcloud storage rsync dist "gs://${FRONTEND_BUCKET}" --recursive
 
       - name: Invalidate Cloud CDN Cache
         run: |
-          APP_PREFIX="${BACKEND_SERVICE%-backend}"
-          URL_MAP_NAME="${APP_PREFIX}-lb"
           gcloud compute url-maps invalidate-cdn-cache "${URL_MAP_NAME}" --path="/*"
