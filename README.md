@@ -48,7 +48,7 @@ Do not use [`src/api/locations.ts`](src/api/locations.ts) — the removed `/api/
 | Command | API target | When to use |
 |---------|------------|-------------|
 | **`npm run dev:minikube`** | `http://localhost:8080` (Vite proxy) | [Minikube local stack](../backend/docs/gettingstarted/README.md): run `./scripts/local-dev.sh port-forward` first |
-| **`npm run dev:k8s`** | `https://api.k8s.tbd-htwg.de` (Vite proxy) | GKE / ms2 cloud API (DNS + TLS must work) |
+| **`npm run dev:k8s`** | `https://k8s.tbd-htwg.de` (Vite proxy) | GKE / ms2 cloud API via the frontend origin (DNS + TLS must work) |
 | **`npm run dev`** | `http://localhost:8080` (default proxy) | Same as minikube if you use plain `vite` |
 
 Vite prints the dev URL (usually **`http://localhost:5173`**).
