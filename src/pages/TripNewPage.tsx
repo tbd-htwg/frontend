@@ -14,6 +14,7 @@ export function TripNewPage() {
     const created = await createTrip({
       userId: user.id,
       title: values.title.trim(),
+      destination: values.destination?.trim(),
       destinationGooglePlaceId: values.destinationGooglePlaceId.trim(),
       startDate: values.startDate,
       shortDescription: values.shortDescription.trim(),

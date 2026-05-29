@@ -92,6 +92,8 @@ export type TripDetailsResponse = TripListItemResponse & {
 export type TripCreateRequest = {
   userId: number
   title: string
+  /** Display label fallback; server resolves/overwrites it from destinationGooglePlaceId. */
+  destination?: string
   /** Google Places id; server resolves the display label. */
   destinationGooglePlaceId: string
   startDate: string

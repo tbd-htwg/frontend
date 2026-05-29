@@ -169,6 +169,7 @@ function toTripRequest(body: TripCreateRequest | TripPutRequest | TripPatchReque
   return {
     user: body.userId ? hrefForResource(`/users/${body.userId}`) : undefined,
     title: body.title,
+    destination: body.destination,
     destinationGooglePlaceId: body.destinationGooglePlaceId,
     startDate: body.startDate,
     shortDescription: body.shortDescription,
