@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { getTransportRoute } from '../api/externalInfo'
+import { computeTransportRoute } from '../api/routesClient'
 import type { TransportRouteErrorKind } from '../utils/transportRouteErrors'
 import {
   transportRouteErrorKind,
@@ -85,7 +85,7 @@ export function useTransportRoute(transports: TransportResponse[]) {
         activeTransports.map(async (t) => {
           const mode = modes[t.id] ?? DEFAULT_MODE
           try {
-            const route = await getTransportRoute(
+            const route = await computeTransportRoute(
               t.startLatitude as number,
               t.startLongitude as number,
               t.endLatitude as number,
