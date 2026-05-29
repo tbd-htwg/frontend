@@ -12,7 +12,7 @@ import type {
   TripPutRequest,
   TripSearchResult,
 } from '../types/api'
-import { requestJson, requestVoid } from './client'
+import { ApiError, requestJson, requestVoid } from './client'
 import { hrefForResource } from './hal'
 
 /**
@@ -380,8 +380,20 @@ export async function patchTrip(
   return summarizeTripEntity(entity, body)
 }
 
-export function deleteTrip(id: number): Promise<void> {
-  return requestVoid(`/trips/${id}`, { method: 'DELETE' })
+export async function deleteTrip(id: number): Promise<void> {
+  try {
+    await requestVoid(`/trips/${id}`, { method: 'DELETE' })
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return
+    if (err instanceof ApiError && err.status === 500) {
+      try {
+        await requestJson<unknown>(`/trips/${id}/detail`, { method: 'GET' })
+      } catch (checkErr) {
+        if (checkErr instanceof ApiError && checkErr.status === 404) return
+      }
+    }
+    throw err
+  }
 }
 
 function summarizeTripEntity(
