@@ -95,6 +95,8 @@ jobs:
       - name: Upload files to Cloud Storage Bucket
         run: |
           gcloud storage rsync dist "gs://${FRONTEND_BUCKET}" --recursive
+          gcloud storage objects update "gs://${FRONTEND_BUCKET}/index.html" \
+            --cache-control="no-cache, max-age=0, must-revalidate"
 
       - name: Invalidate Cloud CDN Cache
         run: |
