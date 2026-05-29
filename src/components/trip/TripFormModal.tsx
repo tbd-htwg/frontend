@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { createTrip, getTrip, replaceTrip } from '../../api/trips'
+import { createTrip, getTrip, patchTrip } from '../../api/trips'
 import { ApiError } from '../../api/client'
 import { useTripModal } from '../../context/TripModalContext'
 import { useAuth } from '../../context/AuthContext'
@@ -84,6 +84,7 @@ export function TripFormModal() {
     const created = await createTrip({
       userId: user.id,
       title: values.title.trim(),
+      destination: values.destination?.trim(),
       destinationGooglePlaceId: values.destinationGooglePlaceId.trim(),
       startDate: values.startDate,
       shortDescription: values.shortDescription.trim(),
@@ -95,9 +96,10 @@ export function TripFormModal() {
 
   async function handleEdit(values: TripFormValues) {
     if (!user || !Number.isFinite(tripId)) return
-    const updated = await replaceTrip(tripId, {
+    const updated = await patchTrip(tripId, {
       userId: user.id,
       title: values.title.trim(),
+      destination: values.destination?.trim(),
       destinationGooglePlaceId: values.destinationGooglePlaceId.trim(),
       startDate: values.startDate,
       shortDescription: values.shortDescription.trim(),

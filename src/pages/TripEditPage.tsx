@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { getTrip, replaceTrip } from '../api/trips'
+import { getTrip, patchTrip } from '../api/trips'
 import { ApiError } from '../api/client'
 import { TripForm, type TripFormValues } from '../components/TripForm'
 import { useAuth } from '../context/AuthContext'
@@ -86,9 +86,10 @@ export function TripEditPage() {
 
   async function handleSubmit(values: TripFormValues) {
     if (!user) return
-    await replaceTrip(tripId, {
+    await patchTrip(tripId, {
       userId: user.id,
       title: values.title.trim(),
+      destination: values.destination?.trim(),
       destinationGooglePlaceId: values.destinationGooglePlaceId.trim(),
       startDate: values.startDate,
       shortDescription: values.shortDescription.trim(),

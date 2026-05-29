@@ -5,6 +5,7 @@ import type { PlaceSuggestion } from '../types/api'
 
 export type TripFormValues = {
   title: string
+  destination?: string
   destinationGooglePlaceId: string
   startDate: string
   shortDescription: string
@@ -68,6 +69,7 @@ export function TripForm({
     try {
       await onSubmit({
         ...values,
+        destination: selectedDestination?.placeName ?? initialDestinationLabel,
         destinationGooglePlaceId: destinationPlaceId,
       })
     } catch (err) {
