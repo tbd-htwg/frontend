@@ -61,7 +61,9 @@ The app calls **same-origin** paths **`/api/v2`** and **`/api/search`**. In dev,
 
 For a direct API URL without the proxy (e.g. production build), set **`VITE_API_BASE_URL`** to the API origin **without** a trailing slash.
 
-External travel info goes through the backend gateway at `/api/v2/external/**` (e.g. `stop-details`, `accommodation-details`, `transport/route`), so the browser only needs the main API origin for route data. Set **`VITE_GOOGLE_MAPS_API_KEY`** (Maps JavaScript API, referrer-restricted) to draw routes on the map.
+**GKE (`k8s.tbd-htwg.de`):** leave **`VITE_API_BASE_URL` empty**. The SPA and API share the same host; the HTTPS load balancer routes `/api/*` to api-router. Do **not** set `https://api.k8s.tbd-htwg.de` — that subdomain is for direct/tooling access only and causes browser CORS errors.
+
+Stop weather, travel warnings, and accommodation tours go through the backend at `/api/v2/external/**` (`stop-details`, `accommodation-details`). **Transport routes** are computed in the browser via Google **Routes API** using **`VITE_GOOGLE_MAPS_API_KEY`** (referrer-restricted; enable **Maps JavaScript API** + **Routes API** on that key). The map polyline uses the same key via `@vis.gl/react-google-maps`.
 
 ### Authentication
 

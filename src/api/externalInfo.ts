@@ -3,8 +3,6 @@ import type {
   AccommodationExternalInfoResponse,
   PlaceSuggestion,
   StopExternalInfoResponse,
-  TransportRouteResponse,
-  TransportTravelMode,
   TripExternalInfoResponse,
 } from '../types/api'
 
@@ -80,23 +78,6 @@ export async function getAccommodationExternalInfoBatch(
   return requestJson<Record<string, AccommodationExternalInfoResponse>>(
     `/external/accommodation-details/batch?${params.toString()}`,
   )
-}
-
-export async function getTransportRoute(
-  originLat: number,
-  originLon: number,
-  destLat: number,
-  destLon: number,
-  mode: TransportTravelMode,
-): Promise<TransportRouteResponse> {
-  const params = new URLSearchParams({
-    originLat: String(originLat),
-    originLon: String(originLon),
-    destLat: String(destLat),
-    destLon: String(destLon),
-    mode,
-  })
-  return requestJson<TransportRouteResponse>(`/external/transport/route?${params.toString()}`)
 }
 
 function buildGeoBatchParams(places: PlaceGeoHint[]): URLSearchParams {
