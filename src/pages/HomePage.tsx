@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { listTripsFeed, searchTrips } from "../api/trips";
 import { ApiError } from "../api/client";
 import { PaginationControls } from "../components/PaginationControls";
-import { FeedModeToggle } from "../components/FeedModeToggle";
+import { FeedModeToggle, type FeedMode } from "../components/FeedModeToggle";
 import { TripFeedCard } from "../components/TripFeedCard";
 import { useAuth } from "../context/AuthContext";
 import type {
@@ -27,7 +27,7 @@ export function HomePage() {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [feedMode, setFeedMode] = useState<"latest" | "recommended">("latest");
+  const [feedMode, setFeedMode] = useState<FeedMode>("latest");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [feedImagesByTripId, setFeedImagesByTripId] = useState<
@@ -100,10 +100,14 @@ export function HomePage() {
           if (
             err instanceof ApiError &&
             err.status === 401 &&
-            feedMode === "recommended"
+            (feedMode === "recommended" || feedMode === "liked")
           ) {
             setFeedMode("latest");
-            setError("Recommended feed requires login. Switched to Latest.");
+            setError(
+              feedMode === "liked"
+                ? "Liked feed requires login. Switched to Latest."
+                : "Recommended feed requires login. Switched to Latest.",
+            );
             setLoading(false);
             return;
           }
@@ -180,7 +184,7 @@ export function HomePage() {
             <FeedModeToggle
               feedMode={feedMode}
               onFeedModeChange={setFeedMode}
-              disabledRecommended={!user}
+              disabledPersonalised={!user}
             />
           </div>
         )}
@@ -215,7 +219,11 @@ export function HomePage() {
 
       {!loading && !error && visibleTrips.length === 0 && (
         <p className="mt-6 text-slate-600">
-          {showSearch ? "No trips match your search." : "No trips yet."}
+          {showSearch
+            ? "No trips match your search."
+            : feedMode === "liked"
+              ? "You have not liked any trips yet."
+              : "No trips yet."}
         </p>
       )}
 

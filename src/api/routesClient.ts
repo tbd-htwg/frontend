@@ -113,8 +113,14 @@ function buildRouteRequestBody(
 function mapRoutesHttpError(status: number, bodyText: string): ApiError {
   const lower = bodyText.toLowerCase()
   if (status === 403 || status === 401) {
+    if (lower.includes('api_key_http_referrer_blocked') || lower.includes('referer')) {
+      return new ApiError(
+        'VITE_GOOGLE_MAPS_API_KEY blocks this origin (HTTP referrer restriction). In Google Cloud Console → APIs & Services → Credentials, add http://localhost:5173/* and http://127.0.0.1:5173/* to the browser key, and enable Routes API + Maps JavaScript API.',
+        503,
+      )
+    }
     return new ApiError(
-      'GOOGLE_MAPS_API_KEY cannot access Routes API (check key restrictions and enable Routes API).',
+      'VITE_GOOGLE_MAPS_API_KEY cannot access Routes API (enable Routes API and Maps JavaScript API on the browser key; use a separate key from backend GOOGLE_MAPS_API_KEY).',
       503,
     )
   }
