@@ -25,6 +25,8 @@ export type PaginatedResponse<T> = {
   pageSize: number
   totalItems: number
   totalPages: number
+  /** Set by GET /trips/feed: latest, recommended, or latest-fallback. */
+  feedSource?: 'latest' | 'recommended' | 'latest-fallback'
 }
 
 export type UserResponse = {

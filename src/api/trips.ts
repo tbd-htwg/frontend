@@ -81,6 +81,7 @@ type TripFeedPageDto<T> = {
   size: number;
   totalItems: number;
   totalPages: number;
+  source?: "latest" | "recommended" | "latest-fallback";
 };
 
 function toTripSummary(item: TripFeedItemDto): TripListItemResponse {
@@ -116,6 +117,7 @@ function toTripPage(
     totalPages:
       payload.totalPages ??
       Math.max(1, Math.ceil(totalItems / Math.max(1, size))),
+    ...(payload.source ? { feedSource: payload.source } : {}),
   };
 }
 

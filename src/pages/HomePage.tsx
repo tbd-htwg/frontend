@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { listTripsFeed, searchTrips } from "../api/trips";
 import { ApiError } from "../api/client";
 import { PaginationControls } from "../components/PaginationControls";
+import { FeedModeToggle } from "../components/FeedModeToggle";
 import { TripFeedCard } from "../components/TripFeedCard";
 import { useAuth } from "../context/AuthContext";
 import type {
@@ -166,7 +167,7 @@ export function HomePage() {
       <p className="mt-1 text-slate-600">
         Trips from every traveller on the platform.
       </p>
-      <div className="mt-4 flex flex-wrap items-center gap-3">
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -174,45 +175,36 @@ export function HomePage() {
           aria-label="Search trips by text"
           className="w-full max-w-md rounded-md border border-slate-300 px-3 py-2 text-sm"
         />
-        {!debouncedQuery.trim() && (
-          <div
-            className="flex overflow-hidden rounded-md border border-slate-300 text-sm"
-            role="group"
-            aria-label="Feed sort order"
-          >
-            <button
-              type="button"
-              onClick={() => setFeedMode("latest")}
-              className={`px-3 py-2 transition-colors ${
-                feedMode === "latest"
-                  ? "bg-slate-800 text-white"
-                  : "bg-white text-slate-700 hover:bg-slate-50"
-              }`}
-            >
-              Latest
-            </button>
-            <button
-              type="button"
-              onClick={() => user && setFeedMode("recommended")}
-              disabled={!user}
-              title={
-                !user
-                  ? "Sign in to see personalized recommendations"
-                  : undefined
-              }
-              className={`border-l border-slate-300 px-3 py-2 transition-colors ${
-                feedMode === "recommended"
-                  ? "bg-slate-800 text-white"
-                  : !user
-                    ? "cursor-not-allowed bg-white text-slate-400"
-                    : "bg-white text-slate-700 hover:bg-slate-50"
-              }`}
-            >
-              Recommended
-            </button>
+        {!showSearch && (
+          <div className="flex shrink-0 justify-end sm:justify-start">
+            <FeedModeToggle
+              feedMode={feedMode}
+              onFeedModeChange={setFeedMode}
+              disabledRecommended={!user}
+            />
           </div>
         )}
       </div>
+
+      {(!showSearch ||
+        (!loading && !error && visibleTrips.length > 0)) && (
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={listPageSize}
+          totalItems={totalTrips}
+          itemLabel="trips"
+          onPageChange={setCurrentPage}
+        />
+      )}
+
+      {!debouncedQuery.trim() &&
+        feedMode === "recommended" &&
+        browsePage?.feedSource === "latest-fallback" && (
+          <p className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            Showing latest trips — we could not find close matches for your likes yet.
+          </p>
+        )}
 
       {loading && <p className="mt-6 text-slate-500">Loading trips…</p>}
       {error && (
@@ -229,14 +221,6 @@ export function HomePage() {
 
       {!loading && !error && visibleTrips.length > 0 && (
         <>
-          <PaginationControls
-            currentPage={currentPage}
-            totalPages={totalPages}
-            pageSize={listPageSize}
-            totalItems={totalTrips}
-            itemLabel="trips"
-            onPageChange={setCurrentPage}
-          />
           <ul className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
             {showSearch
               ? searchItems.map((t) => (
