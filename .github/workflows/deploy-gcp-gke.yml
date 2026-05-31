@@ -71,19 +71,15 @@ jobs:
             echo "Missing required secret: TRIPPLANNING_GOOGLE_MAPS_API_KEY"
             exit 1
           }
-          # GKE SPA is served from https://k8s.tbd-htwg.de; the frontend HTTPS LB routes /api/*
-          # to api-router on the same host. Do not bake https://api.k8s.tbd-htwg.de — that causes
-          # cross-origin CORS failures in the browser.
+          # Do not bake https://api.k8s.tbd-htwg.de — that subdomain is tooling-only and causes
+          # cross-origin CORS failures in the browser. https://k8s.tbd-htwg.de is valid (same host as SPA).
           case "${VITE_API_BASE_URL}" in
-            ""|https://k8s.tbd-htwg.de|https://k8s.tbd-htwg.de/)
-              VITE_API_BASE_URL=""
-              ;;
             https://api.k8s.tbd-htwg.de|https://api.k8s.tbd-htwg.de/)
               echo "WARNING: GCP_FRONTEND_API_BASE_URL points at api.k8s.tbd-htwg.de; using same-origin /api/v2 instead."
               VITE_API_BASE_URL=""
               ;;
             *)
-              echo "Using custom VITE_API_BASE_URL='${VITE_API_BASE_URL}'"
+              echo "Using VITE_API_BASE_URL='${VITE_API_BASE_URL:-<same-origin /api/v2>}'"
               ;;
           esac
           echo "Effective VITE_API_BASE_URL='${VITE_API_BASE_URL:-<same-origin /api/v2>}'"
