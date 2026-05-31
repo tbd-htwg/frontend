@@ -203,8 +203,10 @@ export async function listTrips(
   return listTripsFeed("latest", page, size);
 }
 
+export type FeedMode = 'latest' | 'recommended' | 'liked'
+
 export async function listTripsFeed(
-  mode: "latest" | "recommended" = "latest",
+  mode: FeedMode = 'latest',
   page = 1,
   size = 10,
 ): Promise<PaginatedResponse<TripListItemResponse>> {
@@ -216,7 +218,9 @@ export async function listTripsFeed(
   const payload = await requestJson<TripFeedPageDto<TripFeedItemDto>>(
     `/trips/feed?${params.toString()}`,
     { method: "GET" },
-    mode === "recommended" ? { forceBearer: true } : undefined,
+    mode === "recommended" || mode === "liked"
+      ? { forceBearer: true }
+      : undefined,
   );
   return toTripPage(payload);
 }
