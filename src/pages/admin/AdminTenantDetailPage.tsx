@@ -5,6 +5,7 @@ import { ConfirmDialog } from '../../components/admin/ConfirmDialog'
 import { ProvisioningTimeline } from '../../components/admin/ProvisioningTimeline'
 import { TenantCostHint } from '../../components/admin/TenantCostHint'
 import { TenantStatusBadge } from '../../components/admin/TenantStatusBadge'
+import { StubProvisioningBanner } from '../../components/admin/StubProvisioningBanner'
 import { TenantTierBadge } from '../../components/admin/TenantTierBadge'
 import { useMockTenantRefresh } from '../../hooks/useMockTenantRefresh'
 import type { Tenant } from '../../types/tenant'
@@ -115,6 +116,7 @@ export function AdminTenantDetailPage() {
 
   return (
     <div className="space-y-6">
+      <StubProvisioningBanner />
       <div>
         <Link to="/admin/tenants" className="text-sm text-blue-600 hover:underline">
           ← Back to tenants

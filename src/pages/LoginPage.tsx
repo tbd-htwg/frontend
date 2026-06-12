@@ -64,6 +64,9 @@ export function LoginPage() {
   const [devName, setDevName] = useState(DEFAULT_DEV_NAME)
   const [devSubmitting, setDevSubmitting] = useState(false)
 
+  const showEmailAuth = branding.enabledAuthProviders.includes('password')
+  const showGoogleAuth = branding.enabledAuthProviders.includes('google')
+
   function applyTenantAuthScope() {
     const auth = getFirebaseAuth()
     auth.tenantId = branding.identityPlatformTenantId ?? null
@@ -153,6 +156,7 @@ export function LoginPage() {
         </div>
       )}
 
+      {showEmailAuth && (
       <div className="mt-6">
         <div className="flex gap-2 text-sm">
           <button
@@ -243,8 +247,11 @@ export function LoginPage() {
           </button>
         </form>
       </div>
+      )}
 
-      <div className="mt-6">
+      {showGoogleAuth && (
+      <div className={showEmailAuth ? 'mt-6' : 'mt-6'}>
+        {showEmailAuth && (
         <div className="relative flex items-center py-1">
           <div className="grow border-t border-slate-200" />
           <span className="mx-3 shrink-0 text-xs font-medium uppercase tracking-wide text-slate-400">
@@ -252,6 +259,7 @@ export function LoginPage() {
           </span>
           <div className="grow border-t border-slate-200" />
         </div>
+        )}
         <button
           type="button"
           onClick={() => void handleGoogleSignIn()}
@@ -262,6 +270,13 @@ export function LoginPage() {
           {googleSubmitting ? 'Signing in…' : 'Sign in with Google'}
         </button>
       </div>
+      )}
+
+      {!showEmailAuth && !showGoogleAuth && (
+        <p className="mt-6 text-sm text-slate-600">
+          No sign-in methods are enabled for this tenant. Contact your administrator.
+        </p>
+      )}
 
       {import.meta.env.DEV && (
         <div className="mt-10 border-t border-slate-200 pt-6">

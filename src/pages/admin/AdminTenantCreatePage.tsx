@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { checkTenantSlugAvailability, createTenant } from '../../api/tenants'
+import { StubProvisioningBanner } from '../../components/admin/StubProvisioningBanner'
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import type { TenantTier } from '../../types/tenant'
 
@@ -93,6 +94,7 @@ export function AdminTenantCreatePage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
+      <StubProvisioningBanner />
       <div>
         <Link to="/admin/tenants" className="text-sm text-blue-600 hover:underline">
           ← Back to tenants

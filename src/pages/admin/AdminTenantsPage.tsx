@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { listTenants } from '../../api/tenants'
 import { TenantCostHint } from '../../components/admin/TenantCostHint'
 import { TenantStatusBadge } from '../../components/admin/TenantStatusBadge'
+import { StubProvisioningBanner } from '../../components/admin/StubProvisioningBanner'
 import { TenantTierBadge } from '../../components/admin/TenantTierBadge'
 import { useMockTenantRefresh } from '../../hooks/useMockTenantRefresh'
 import type { Tenant, TenantStatus, TenantTier } from '../../types/tenant'
@@ -45,6 +46,7 @@ export function AdminTenantsPage() {
 
   return (
     <div className="space-y-6">
+      <StubProvisioningBanner />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Tenant management</h1>
