@@ -11,6 +11,11 @@ import { requestJson, requestVoid } from './client'
 
 export type { PublicTenantConfig }
 
+export type TenantSlugAvailability = {
+  available: boolean
+  reason: string | null
+}
+
 function adminPath(path: string): string {
   return `/admin/tenants${path}`
 }
@@ -45,6 +50,21 @@ export async function listTenants(filters: TenantListFilters = {}): Promise<Tena
   if (filters.status) params.set('status', filters.status)
   const q = params.toString()
   return requestJson<Tenant[]>(adminPath(q ? `?${q}` : ''), { method: 'GET' }, { forceBearer: true })
+}
+
+export async function checkTenantSlugAvailability(
+  slug: string,
+): Promise<TenantSlugAvailability> {
+  const normalized = slug.trim().toLowerCase()
+  if (isDemoMode()) {
+    return mockTenantStore.checkSlugAvailability(normalized)
+  }
+  const params = new URLSearchParams({ slug: normalized })
+  return requestJson<TenantSlugAvailability>(
+    adminPath(`/slug-availability?${params}`),
+    { method: 'GET' },
+    { forceBearer: true },
+  )
 }
 
 export async function getTenant(id: string): Promise<Tenant | null> {

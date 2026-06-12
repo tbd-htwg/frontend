@@ -1,15 +1,21 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { createTenant } from '../../api/tenants'
+import { checkTenantSlugAvailability, createTenant } from '../../api/tenants'
+import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import type { TenantTier } from '../../types/tenant'
 
-const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+type SlugAvailabilityState = 'idle' | 'checking' | 'available' | 'unavailable'
 
 const tierHelp: Record<Exclude<TenantTier, 'FREE'>, string> = {
   STANDARD:
-    'Shared tripplanning-standard namespace — DB per tenant, index per tenant, Valkey/Firestore prefixes',
-  PREMIUM:
-    'Dedicated tripplanning-{slug} namespace — isolated Postgres, OpenSearch, Valkey, Firestore DB, GCS bucket',
+    '{slug}.k8s.tbd-htwg.de — shared namespace; Terraform dispatch for DNS/DB; std:{slug} Valkey prefix',
+  ENTERPRISE:
+    '{slug}.enterprise.k8s.tbd-htwg.de — tripplanning-ent-{slug} namespace; Terraform + GitOps dispatch',
+}
+
+const tierLabels: Record<Exclude<TenantTier, 'FREE'>, string> = {
+  STANDARD: 'Standard',
+  ENTERPRISE: 'Enterprise',
 }
 
 export function AdminTenantCreatePage() {
@@ -19,18 +25,50 @@ export function AdminTenantCreatePage() {
   const [tier, setTier] = useState<Exclude<TenantTier, 'FREE'>>('STANDARD')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [slugAvailability, setSlugAvailability] = useState<SlugAvailabilityState>('idle')
+  const [slugAvailabilityReason, setSlugAvailabilityReason] = useState<string | null>(null)
+  const debouncedSlug = useDebouncedValue(slug.trim().toLowerCase(), 300)
+
+  useEffect(() => {
+    if (!debouncedSlug) {
+      setSlugAvailability('idle')
+      setSlugAvailabilityReason(null)
+      return
+    }
+
+    let cancelled = false
+    setSlugAvailability('checking')
+    setSlugAvailabilityReason(null)
+
+    void checkTenantSlugAvailability(debouncedSlug).then((result) => {
+      if (cancelled) return
+      if (result.available) {
+        setSlugAvailability('available')
+        setSlugAvailabilityReason(null)
+      } else {
+        setSlugAvailability('unavailable')
+        setSlugAvailabilityReason(result.reason ?? 'Slug is not available')
+      }
+    }).catch(() => {
+      if (cancelled) return
+      setSlugAvailability('unavailable')
+      setSlugAvailabilityReason('Could not verify slug availability')
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [debouncedSlug])
+
+  const slugReady = slugAvailability === 'available'
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
 
     const normalizedSlug = slug.trim().toLowerCase()
-    if (!SLUG_RE.test(normalizedSlug)) {
-      setError('Slug must be lowercase letters, numbers, and hyphens only.')
-      return
-    }
-    if (normalizedSlug === 'free') {
-      setError('The free slug is reserved for the shared pool.')
+    if (!slugReady) {
+      setError(slugAvailabilityReason ?? 'Choose an available slug before creating.')
       return
     }
     if (!displayName.trim()) {
@@ -76,12 +114,40 @@ export function AdminTenantCreatePage() {
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
             placeholder="acme-corp"
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className={[
+              'w-full rounded-md border px-3 py-2 text-sm',
+              slugAvailability === 'available'
+                ? 'border-emerald-400'
+                : slugAvailability === 'unavailable'
+                  ? 'border-red-400'
+                  : 'border-slate-300',
+            ].join(' ')}
             required
+            aria-invalid={slugAvailability === 'unavailable'}
+            aria-describedby="slug-availability-hint"
           />
           <span className="text-xs text-slate-500">
             Host: {slug.trim() ? `${slug.trim().toLowerCase()}.k8s.tbd-htwg.de` : '…'}
           </span>
+          <p
+            id="slug-availability-hint"
+            className={[
+              'text-xs',
+              slugAvailability === 'checking'
+                ? 'text-slate-500'
+                : slugAvailability === 'available'
+                  ? 'text-emerald-700'
+                  : slugAvailability === 'unavailable'
+                    ? 'text-red-700'
+                    : 'text-slate-500',
+            ].join(' ')}
+            aria-live="polite"
+          >
+            {slugAvailability === 'idle' && 'Lowercase letters, numbers, and hyphens only.'}
+            {slugAvailability === 'checking' && 'Checking availability…'}
+            {slugAvailability === 'available' && 'Slug is available'}
+            {slugAvailability === 'unavailable' && (slugAvailabilityReason ?? 'Slug is not available')}
+          </p>
         </label>
 
         <label className="block space-y-1">
@@ -98,7 +164,7 @@ export function AdminTenantCreatePage() {
 
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium text-slate-700">Tier</legend>
-          {(['STANDARD', 'PREMIUM'] as const).map((t) => (
+          {(['STANDARD', 'ENTERPRISE'] as const).map((t) => (
             <label
               key={t}
               className={`flex cursor-pointer gap-3 rounded-lg border p-3 ${
@@ -114,7 +180,7 @@ export function AdminTenantCreatePage() {
                 className="mt-1"
               />
               <span>
-                <span className="font-medium text-slate-900">{t}</span>
+                <span className="font-medium text-slate-900">{tierLabels[t]}</span>
                 <p className="text-xs text-slate-600">{tierHelp[t]}</p>
               </span>
             </label>
@@ -129,7 +195,7 @@ export function AdminTenantCreatePage() {
 
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || !slugReady}
           className="w-full rounded-md bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900 disabled:opacity-50"
         >
           {submitting ? 'Creating…' : 'Create and provision'}

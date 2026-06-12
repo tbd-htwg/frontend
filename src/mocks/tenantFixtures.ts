@@ -6,16 +6,30 @@ import type {
 } from '../types/tenant'
 
 const HOST_BASE = 'k8s.tbd-htwg.de'
+const ENTERPRISE_HOST_BASE = 'enterprise.k8s.tbd-htwg.de'
 
-export function hostUrlForSlug(slug: string): string {
-  if (slug === 'free') return `https://${HOST_BASE}`
+export function hostUrlForSlug(slug: string, tier: TenantTier = 'STANDARD'): string {
+  if (slug === 'free' || tier === 'FREE') return `https://${HOST_BASE}`
+  if (tier === 'ENTERPRISE') return `https://${slug}.${ENTERPRISE_HOST_BASE}`
   return `https://${slug}.${HOST_BASE}`
 }
 
 export function namespaceForTier(slug: string, tier: TenantTier): string {
   if (tier === 'FREE') return 'tripplanning-free'
   if (tier === 'STANDARD') return 'tripplanning-standard'
-  return `tripplanning-${slug}`
+  return `tripplanning-ent-${slug}`
+}
+
+export function dbNameForTier(slug: string, tier: TenantTier): string | null {
+  if (tier === 'FREE') return 'tripplanning'
+  if (tier === 'STANDARD') return `tripplanning_std_${slug.replace(/-/g, '_')}`
+  return `tripplanning_ent_${slug.replace(/-/g, '_')}`
+}
+
+export function frontendPathForTier(slug: string, tier: TenantTier): string | null {
+  if (tier === 'STANDARD') return `/standard/${slug}/`
+  if (tier === 'ENTERPRISE') return `/enterprise/${slug}/`
+  return null
 }
 
 export function estimatedCostForTier(tier: TenantTier): number {
@@ -38,8 +52,10 @@ export function standardSteps(
 ): ProvisioningStep[] {
   const keys: ProvisioningStep[] = [
     step('registry', 'Registry entry', 'pending'),
-    step('database', 'Create database', 'pending'),
-    step('search_index', 'Create search index', 'pending'),
+    step('identity_platform', 'Identity Platform tenant', 'pending'),
+    step('terraform_infra', 'Terraform DNS + DB + secrets', 'pending'),
+    step('gitops', 'API router + tenant config', 'pending'),
+    step('search_index', 'Search index bootstrap', 'pending'),
   ]
   return keys.map((s, i) => {
     if (failedAt !== undefined && i === failedAt) return { ...s, status: 'failed' }
@@ -49,16 +65,17 @@ export function standardSteps(
   })
 }
 
-export function premiumSteps(
+export function enterpriseSteps(
   doneThrough: number,
   failedAt?: number,
 ): ProvisioningStep[] {
   const keys: ProvisioningStep[] = [
     step('registry', 'Registry entry', 'pending'),
-    step('entry_routing', 'Identity Platform + DNS + load balancer', 'pending'),
-    step('gitops', 'Flux GitOps namespace', 'pending'),
-    step('database', 'Dedicated Postgres', 'pending'),
-    step('search_index', 'Dedicated OpenSearch', 'pending'),
+    step('identity_platform', 'Identity Platform tenant', 'pending'),
+    step('terraform_infra', 'Terraform DNS + Cloud SQL + bucket', 'pending'),
+    step('gitops', 'Namespace + HelmRelease + LB', 'pending'),
+    step('database', 'Dedicated Postgres ready', 'pending'),
+    step('search_index', 'Dedicated OpenSearch ready', 'pending'),
     step('gcp_resources', 'Firestore + GCS bucket', 'pending'),
   ]
   return keys.map((s, i) => {
@@ -70,7 +87,7 @@ export function premiumSteps(
 }
 
 function activeSteps(tier: TenantTier): ProvisioningStep[] {
-  const steps = tier === 'PREMIUM' ? premiumSteps(6) : standardSteps(3)
+  const steps = tier === 'ENTERPRISE' ? enterpriseSteps(7) : standardSteps(5)
   return steps.map((s) => ({ ...s, status: 'done' as const }))
 }
 
@@ -124,15 +141,17 @@ function baseTenant(
     displayName,
     tier,
     status,
-    hostUrl: hostUrlForSlug(slug),
+    hostUrl: hostUrlForSlug(slug, tier),
     namespace: namespaceForTier(slug, tier),
     createdAt: now,
     updatedAt: now,
     archivedAt: null,
-    dbName: tier === 'FREE' ? 'tripplanning' : tier === 'STANDARD' ? `tenant_${slug.replace(/-/g, '_')}` : `tripplanning_${slug}`,
+    dbName: dbNameForTier(slug, tier),
     searchIndex: tier === 'FREE' ? 'tripentity' : `tripentity-${slug}`,
-    firestoreDatabase: tier === 'PREMIUM' ? `(default)-${slug}` : null,
-    gcsBucket: tier === 'PREMIUM' ? `tbd-cloudappdev-images-${slug}` : null,
+    firestoreDatabase: tier === 'ENTERPRISE' ? `(default)-${slug}` : null,
+    gcsBucket: tier === 'ENTERPRISE' ? `tripplanning-ent-${slug}-images` : null,
+    frontendPath: frontendPathForTier(slug, tier),
+    imageTag: tier === 'ENTERPRISE' ? `enterprise-${slug}` : null,
     provisioningError: null,
     estimatedMonthlyCostEur: estimatedCostForTier(tier),
     provisioningSteps: status === 'ACTIVE' || status === 'ARCHIVED'
@@ -156,17 +175,17 @@ export const SEED_TENANTS: Tenant[] = [
   baseTenant('tenant-startup-io', 'startup-io', 'Startup.io', 'STANDARD', 'PROVISIONING', {
     createdAt: '2026-06-08T09:00:00Z',
     updatedAt: '2026-06-08T09:02:00Z',
-    provisioningSteps: standardSteps(1),
+    provisioningSteps: standardSteps(2),
   }),
-  baseTenant('tenant-enterprise-ltd', 'enterprise-ltd', 'Enterprise Ltd', 'PREMIUM', 'PROVISIONING', {
+  baseTenant('tenant-enterprise-ltd', 'enterprise-ltd', 'Enterprise Ltd', 'ENTERPRISE', 'PROVISIONING', {
     createdAt: '2026-06-08T08:00:00Z',
     updatedAt: '2026-06-08T08:06:00Z',
-    provisioningSteps: premiumSteps(2),
+    provisioningSteps: enterpriseSteps(3),
   }),
   baseTenant('tenant-broken-demo', 'broken-demo', 'Broken Demo', 'STANDARD', 'FAILED', {
     createdAt: '2026-05-20T11:00:00Z',
-    provisioningError: 'OpenSearch index creation timed out after 120s (tripplanning-standard/opensearch-0 unreachable)',
-    provisioningSteps: standardSteps(1, 2),
+    provisioningError: 'Terraform apply failed: OpenSearch index bootstrap timed out (tripplanning-standard)',
+    provisioningSteps: standardSteps(3, 4),
   }),
   baseTenant('tenant-old-beta', 'old-beta', 'Old Beta', 'STANDARD', 'ARCHIVED', {
     createdAt: '2025-11-01T12:00:00Z',

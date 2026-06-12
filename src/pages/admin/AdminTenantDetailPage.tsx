@@ -184,10 +184,20 @@ export function AdminTenantDetailPage() {
         </div>
       )}
 
-      {(tenant.status === 'PROVISIONING' || tenant.status === 'PENDING') && (
+      {((tenant.status === 'PROVISIONING' || tenant.status === 'PENDING') ||
+        (tenant.status === 'ACTIVE' && tenant.provisioningSteps.length > 0)) && (
         <section>
           <h2 className="mb-3 text-lg font-semibold text-slate-900">Provisioning steps</h2>
-          <ProvisioningTimeline steps={tenant.provisioningSteps} />
+          {tenant.status === 'ACTIVE' ? (
+            <details className="group [&_ol]:mt-3">
+              <summary className="cursor-pointer list-none text-sm font-medium text-slate-600 underline decoration-slate-300 underline-offset-2 hover:text-slate-900 [&::-webkit-details-marker]:hidden">
+                Provisioning completed — view steps
+              </summary>
+              <ProvisioningTimeline steps={tenant.provisioningSteps} />
+            </details>
+          ) : (
+            <ProvisioningTimeline steps={tenant.provisioningSteps} />
+          )}
         </section>
       )}
 

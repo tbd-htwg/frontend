@@ -1,8 +1,10 @@
 import {
+  dbNameForTier,
   estimatedCostForTier,
+  frontendPathForTier,
   hostUrlForSlug,
   namespaceForTier,
-  premiumSteps,
+  enterpriseSteps,
   SEED_TENANTS,
   standardSteps,
 } from './tenantFixtures'
@@ -25,12 +27,24 @@ function nowIso(): string {
 }
 
 function stepsForTier(tier: TenantTier) {
-  return tier === 'PREMIUM' ? premiumSteps(0) : standardSteps(0)
+  return tier === 'ENTERPRISE' ? enterpriseSteps(0) : standardSteps(0)
 }
 
 function stepCount(tier: TenantTier): number {
-  return tier === 'PREMIUM' ? 6 : 3
+  return tier === 'ENTERPRISE' ? 7 : 5
 }
+
+const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+const RESERVED_SLUGS = new Set([
+  'free',
+  'admin',
+  'api',
+  'www',
+  'platform',
+  'gateway',
+  'flux',
+  'default',
+])
 
 class MockTenantStore {
   private tenants: Tenant[] = clone(SEED_TENANTS)
@@ -78,6 +92,26 @@ class MockTenantStore {
     return t ? clone(t) : null
   }
 
+  checkSlugAvailability(slug: string): { available: boolean; reason: string | null } {
+    const normalized = slug.trim().toLowerCase()
+    if (!normalized) {
+      return { available: false, reason: 'Slug is required' }
+    }
+    if (!SLUG_PATTERN.test(normalized)) {
+      return {
+        available: false,
+        reason: 'Slug must be lowercase letters, numbers, and hyphens only',
+      }
+    }
+    if (RESERVED_SLUGS.has(normalized)) {
+      return { available: false, reason: `Slug is reserved: ${normalized}` }
+    }
+    if (this.findBySlug(normalized)) {
+      return { available: false, reason: 'Tenant slug already exists' }
+    }
+    return { available: true, reason: null }
+  }
+
   createTenant(req: TenantCreateRequest): Tenant {
     const slug = req.slug.trim().toLowerCase()
     if (this.findBySlug(slug)) {
@@ -90,15 +124,17 @@ class MockTenantStore {
       displayName: req.displayName.trim(),
       tier: req.tier,
       status: 'PROVISIONING',
-      hostUrl: hostUrlForSlug(slug),
+      hostUrl: hostUrlForSlug(slug, req.tier),
       namespace: namespaceForTier(slug, req.tier),
       createdAt: nowIso(),
       updatedAt: nowIso(),
       archivedAt: null,
-      dbName: req.tier === 'STANDARD' ? `tenant_${slug.replace(/-/g, '_')}` : `tripplanning_${slug}`,
+      dbName: dbNameForTier(slug, req.tier),
       searchIndex: `tripentity-${slug}`,
-      firestoreDatabase: req.tier === 'PREMIUM' ? `(default)-${slug}` : null,
-      gcsBucket: req.tier === 'PREMIUM' ? `tbd-cloudappdev-images-${slug}` : null,
+      firestoreDatabase: req.tier === 'ENTERPRISE' ? `(default)-${slug}` : null,
+      gcsBucket: req.tier === 'ENTERPRISE' ? `tripplanning-ent-${slug}-images` : null,
+      frontendPath: frontendPathForTier(slug, req.tier),
+      imageTag: req.tier === 'ENTERPRISE' ? `enterprise-${slug}` : null,
       provisioningError: null,
       estimatedMonthlyCostEur: estimatedCostForTier(req.tier),
       provisioningSteps: stepsForTier(req.tier),
@@ -125,11 +161,11 @@ class MockTenantStore {
       }
 
       const total = stepCount(tenant.tier)
-      const steps = tenant.tier === 'PREMIUM' ? premiumSteps(stepIndex) : standardSteps(stepIndex)
+      const steps = tenant.tier === 'ENTERPRISE' ? enterpriseSteps(stepIndex) : standardSteps(stepIndex)
 
       if (stepIndex >= total) {
         tenant.status = 'ACTIVE'
-        tenant.provisioningSteps = tenant.tier === 'PREMIUM' ? premiumSteps(total) : standardSteps(total)
+        tenant.provisioningSteps = tenant.tier === 'ENTERPRISE' ? enterpriseSteps(total) : standardSteps(total)
         tenant.updatedAt = nowIso()
         clearInterval(timer)
         this.timers.delete(id)
@@ -221,11 +257,11 @@ class MockTenantStore {
 
       if (done >= total) {
         t.status = 'ACTIVE'
-        t.provisioningSteps = t.tier === 'PREMIUM' ? premiumSteps(total) : standardSteps(total)
+        t.provisioningSteps = t.tier === 'ENTERPRISE' ? enterpriseSteps(total) : standardSteps(total)
         t.updatedAt = nowIso()
         clearInterval(timer)
       } else {
-        t.provisioningSteps = t.tier === 'PREMIUM' ? premiumSteps(done + 1) : standardSteps(done + 1)
+        t.provisioningSteps = t.tier === 'ENTERPRISE' ? enterpriseSteps(done + 1) : standardSteps(done + 1)
         t.updatedAt = nowIso()
       }
       this.notify()

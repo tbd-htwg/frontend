@@ -4,8 +4,10 @@ const GCP_CALCULATOR_URL = 'https://cloud.google.com/products/calculator'
 
 const hints: Record<TenantTier, string> = {
   FREE: 'Sparse in-cluster pool, HPA off, shared Postgres/OpenSearch',
-  STANDARD: 'Shared tripplanning-standard namespace, DB + index per tenant',
-  PREMIUM: 'Dedicated namespace, backing StatefulSets, Firestore DB + GCS bucket',
+  STANDARD:
+    'Shared tripplanning-standard namespace; Terraform dispatch for DNS/DB; DB + index per tenant',
+  ENTERPRISE:
+    'Dedicated tripplanning-ent-{slug} namespace; Terraform + GitOps dispatch; dedicated backing services',
 }
 
 export function TenantCostHint({

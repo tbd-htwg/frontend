@@ -49,7 +49,7 @@ export function AdminTenantsPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Tenant management</h1>
           <p className="mt-1 text-sm text-slate-600">
-            Cross-tier overview — Free, Standard pool, and Premium silos
+            Cross-tier overview — Free, Standard pool, and Enterprise silos
           </p>
         </div>
         <Link
@@ -71,7 +71,7 @@ export function AdminTenantsPage() {
             <option value="">All</option>
             <option value="FREE">Free</option>
             <option value="STANDARD">Standard</option>
-            <option value="PREMIUM">Premium</option>
+            <option value="ENTERPRISE">Enterprise</option>
           </select>
         </label>
         <label className="flex items-center gap-2 text-sm">

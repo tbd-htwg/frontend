@@ -1,4 +1,4 @@
-export type TenantTier = 'FREE' | 'STANDARD' | 'PREMIUM'
+export type TenantTier = 'FREE' | 'STANDARD' | 'ENTERPRISE'
 
 export type TenantStatus =
   | 'PENDING'
@@ -11,7 +11,8 @@ export type ProvisioningStepStatus = 'pending' | 'running' | 'done' | 'failed'
 
 export type ProvisioningStepKey =
   | 'registry'
-  | 'entry_routing'
+  | 'identity_platform'
+  | 'terraform_infra'
   | 'gitops'
   | 'database'
   | 'search_index'
