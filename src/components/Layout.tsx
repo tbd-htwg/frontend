@@ -6,8 +6,11 @@ import {
   faRightFromBracket,
   faRightToBracket,
   faUser,
+  faUsers,
+  faShieldHalved,
 } from '@fortawesome/free-solid-svg-icons'
-import { useAuth } from '../context/AuthContext'
+import { useAppAuth, useIsPlatformAdmin } from '../demo/DemoAuthProvider'
+import { DemoBanner } from '../demo/DemoBanner'
 import { ProfileModalProvider } from '../context/ProfileModalContext'
 import { TripModalProvider, useTripModal } from '../context/TripModalContext'
 import { AppBrand } from './AppBrand'
@@ -35,7 +38,10 @@ function LayoutShell() {
     <div className="flex min-h-screen flex-col bg-slate-100 text-slate-900">
       <header className="border-b border-slate-300 bg-white">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-4">
-          <AppBrand />
+          <div className="flex items-center gap-3">
+            <AppBrand />
+            <DemoBanner />
+          </div>
           <LayoutNav />
         </div>
       </header>
@@ -67,7 +73,8 @@ function LayoutShell() {
 }
 
 function LayoutNav() {
-  const { user, logout } = useAuth()
+  const { user, logout } = useAppAuth()
+  const isAdmin = useIsPlatformAdmin()
   const { openCreateTrip } = useTripModal()
 
   return (
@@ -78,6 +85,20 @@ function LayoutNav() {
           Home
         </span>
       </NavLink>
+      <NavLink to="/users" className={navLinkClass} aria-label="Community users">
+        <span className="inline-flex items-center gap-2">
+          <FontAwesomeIcon icon={faUsers} aria-hidden="true" />
+          Users
+        </span>
+      </NavLink>
+      {isAdmin && (
+        <NavLink to="/admin/tenants" className={navLinkClass} aria-label="Admin">
+          <span className="inline-flex items-center gap-2">
+            <FontAwesomeIcon icon={faShieldHalved} aria-hidden="true" />
+            Admin
+          </span>
+        </NavLink>
+      )}
       {user ? (
         <>
           <NavLink to="/profile" className={navLinkClass} aria-label="Profile">

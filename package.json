@@ -7,6 +7,7 @@
     "dev": "vite",
     "dev:k8s": "vite --mode k8s",
     "dev:minikube": "vite --mode minikube",
+    "dev:demo": "vite --mode demo",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"

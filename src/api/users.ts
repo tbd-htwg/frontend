@@ -8,7 +8,7 @@ import type {
   UserPutRequest,
   UserResponse,
 } from '../types/api'
-import { ApiError, requestJson, requestVoid, requestText, uploadFileToSignedUrl } from './client'
+import { ApiError, requestJson, requestVoid, uploadFileToSignedUrl } from './client'
 import { embeddedItems, idFromEntity } from './hal'
 
 type UserEntityBody = {
@@ -82,28 +82,13 @@ export async function getUserById(
     { method: 'GET' },
     authenticated ? { forceBearer: true } : undefined,
   )
-  let imageUrl = profile.profileImageUrl ?? ''
-  if (authenticated && !imageUrl) {
-    imageUrl = (await fetchUserProfileImageUrl(id)) ?? imageUrl
-  }
+  const imageUrl = profile.profileImageUrl ?? ''
   return {
     id: profile.id ?? id,
     email: profile.email ?? '',
     name: profile.name ?? '',
     imageUrl,
     description: profile.description ?? '',
-  }
-}
-
-/** Authenticated second stage: signed read URL when the public profile response omits it. */
-export async function fetchUserProfileImageUrl(id: number): Promise<string | null> {
-  try {
-    const url = await requestText(`/users/${id}/image`, { method: 'GET' })
-    const trimmed = url.trim()
-    return trimmed.length > 0 ? trimmed : null
-  } catch (e) {
-    if (e instanceof ApiError && (e.status === 404 || e.status === 401)) return null
-    throw e
   }
 }
 

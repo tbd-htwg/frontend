@@ -1,11 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  APP_ICON_SRC,
-  APP_TITLE,
-  APP_TITLE_RETRACT_TO_INITIALS,
-  appTitleInitials,
-} from '../branding'
+import { useTenantBranding } from '../context/TenantBrandingContext'
+import { APP_TITLE_RETRACT_TO_INITIALS, appTitleInitials } from '../branding'
 
 const RETRACT_DELAY_MS = 1000
 /** Matches opacity / max-width in index.css (.app-brand__retract). */
@@ -33,10 +29,12 @@ function segmentsForRetractAnimation(title: string): TitleSegment[] {
 }
 
 export function AppBrand() {
-  const initials = appTitleInitials(APP_TITLE)
+  const branding = useTenantBranding()
+  const title = branding.title
+  const initials = appTitleInitials(title)
   const segments = useMemo(
-    () => (APP_TITLE_RETRACT_TO_INITIALS ? segmentsForRetractAnimation(APP_TITLE) : []),
-    [],
+    () => (APP_TITLE_RETRACT_TO_INITIALS ? segmentsForRetractAnimation(title) : []),
+    [title],
   )
 
   const [expanded, setExpanded] = useState(
@@ -44,7 +42,7 @@ export function AppBrand() {
   )
 
   useEffect(() => {
-    document.title = APP_TITLE
+    document.title = title
     if (!APP_TITLE_RETRACT_TO_INITIALS) return
 
     const retractTimer = window.setTimeout(() => {
@@ -52,7 +50,7 @@ export function AppBrand() {
     }, RETRACT_DELAY_MS)
 
     return () => window.clearTimeout(retractTimer)
-  }, [])
+  }, [title])
 
   useEffect(() => {
     if (!APP_TITLE_RETRACT_TO_INITIALS || expanded) return
@@ -62,16 +60,16 @@ export function AppBrand() {
     }, RETRACT_DURATION_MS)
 
     return () => window.clearTimeout(settleTimer)
-  }, [expanded, initials])
+  }, [expanded, initials, title])
 
   return (
     <Link
       to="/"
-      aria-label={`${APP_TITLE} home`}
+      aria-label={`${title} home`}
       className="inline-flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-900"
     >
       <img
-        src={APP_ICON_SRC}
+        src={branding.iconUrl}
         alt=""
         className="h-7 w-7 shrink-0"
         width={28}
@@ -91,10 +89,10 @@ export function AppBrand() {
               </span>
             ),
           )}
-          <span className="sr-only">{expanded ? APP_TITLE : initials}</span>
+          <span className="sr-only">{expanded ? title : initials}</span>
         </span>
       ) : (
-        <span>{APP_TITLE}</span>
+        <span>{title}</span>
       )}
     </Link>
   )
