@@ -198,6 +198,17 @@ class MockTenantStore {
     return clone(tenant)
   }
 
+  updateBranding(id: string, body: { primaryColor?: string | null; headerTitle?: string | null; iconUrl?: string | null }): Tenant {
+    const tenant = this.find(id)
+    if (!tenant) throw new Error('Tenant not found')
+    if (body.primaryColor !== undefined) tenant.primaryColor = body.primaryColor
+    if (body.headerTitle !== undefined) tenant.headerTitle = body.headerTitle
+    if (body.iconUrl !== undefined) tenant.iconUrl = body.iconUrl
+    tenant.updatedAt = nowIso()
+    this.notify()
+    return clone(tenant)
+  }
+
   retryTenant(id: string): Tenant | null {
     const tenant = this.find(id)
     if (!tenant || tenant.status !== 'FAILED') return null

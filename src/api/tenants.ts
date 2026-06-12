@@ -89,14 +89,28 @@ export async function createTenant(req: TenantCreateRequest): Promise<Tenant> {
   )
 }
 
+export type PlatformInfo = {
+  stubProvisioning: boolean
+  message: string
+}
+
+export async function fetchPlatformInfo(): Promise<PlatformInfo | null> {
+  if (isDemoMode()) {
+    return { stubProvisioning: true, message: 'Demo mode — frontend mocks only' }
+  }
+  try {
+    return await requestJson<PlatformInfo>('/admin/platform-info', { method: 'GET' }, { forceBearer: true })
+  } catch {
+    return null
+  }
+}
+
 export async function updateTenantBranding(
   id: string,
   body: TenantBrandingUpdateRequest,
 ): Promise<Tenant> {
   if (isDemoMode()) {
-    const t = mockTenantStore.getTenant(id)
-    if (!t) throw new Error('Tenant not found')
-    return t
+    return mockTenantStore.updateBranding(id, body)
   }
   return requestJson<Tenant>(
     adminPath(`/${encodeURIComponent(id)}/branding`),

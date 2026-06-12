@@ -5,8 +5,6 @@ import { defineConfig, loadEnv, type ProxyOptions } from 'vite'
 // Browser always uses same-origin /api/v2 and /api/search; Vite proxies to backend services.
 // Route order mirrors backend/k8s/local/chart/values-local.yaml ingressRoutes (first match wins).
 const DEFAULT_TRIP_PROXY = 'http://localhost:8080'
-const DEFAULT_SOCIAL_PROXY = 'http://localhost:8081'
-const DEFAULT_EXTERNAL_PROXY = 'http://localhost:8082'
 const DEFAULT_PLATFORM_PROXY = 'http://localhost:8083'
 
 function simpleProxy(target: string): ProxyOptions {
