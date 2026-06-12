@@ -10,6 +10,7 @@ import {
 import { authDevLogin, authFirebase, authMe, type LoginResponse } from '../api/auth'
 import { ApiError, setApiAccessToken } from '../api/client'
 import { SESSION_STORAGE_KEY } from '../auth/sessionStorageKey'
+import { DEMO_TOKEN, DEMO_USER, isDemoMode } from '../demo/demoMode'
 import type { UserResponse } from '../types/api'
 
 type AuthContextValue = {
@@ -72,19 +73,24 @@ function applyLoginResponse(setAccessToken: (t: string) => void, setUser: (u: Us
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const initial = loadStoredSession()
-  const [accessToken, setAccessToken] = useState<string | null>(initial?.accessToken ?? null)
-  const [user, setUser] = useState<UserResponse | null>(null)
+  const demo = isDemoMode()
+  const initial = demo ? null : loadStoredSession()
+  const [accessToken, setAccessToken] = useState<string | null>(
+    demo ? DEMO_TOKEN : (initial?.accessToken ?? null),
+  )
+  const [user, setUser] = useState<UserResponse | null>(demo ? DEMO_USER : null)
 
   useEffect(() => {
     setApiAccessToken(accessToken)
   }, [accessToken])
 
   useEffect(() => {
+    if (demo) return
     persistSession(accessToken, user)
-  }, [accessToken, user])
+  }, [accessToken, user, demo])
 
   useEffect(() => {
+    if (demo) return
     if (!accessToken) return
     if (user) return
     let cancelled = false
@@ -103,24 +109,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [accessToken, user])
+  }, [accessToken, user, demo])
 
   const loginWithFirebaseToken = useCallback(async (credential: string) => {
+    if (demo) return
     const r = await authFirebase(credential)
     applyLoginResponse(setAccessToken, setUser, r)
-  }, [])
+  }, [demo])
 
   const loginWithGoogle = loginWithFirebaseToken
 
   const loginDev = useCallback(async (email: string, name?: string) => {
+    if (demo) return
     const r = await authDevLogin(email, name)
     applyLoginResponse(setAccessToken, setUser, r)
-  }, [])
+  }, [demo])
 
   const logout = useCallback(() => {
+    if (demo) return
     setAccessToken(null)
     setUser(null)
-  }, [])
+  }, [demo])
 
   const updateSessionUser = useCallback((u: UserResponse) => {
     setUser(u)

@@ -211,14 +211,22 @@ export async function requestJson<T>(
   return parseJson<T>(res)
 }
 
-export async function requestVoid(path: string, init?: RequestInit): Promise<void> {
-  await request(path, {
-    ...init,
-    headers: {
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-      ...init?.headers,
+export async function requestVoid(
+  path: string,
+  init?: RequestInit,
+  options?: { forceBearer?: boolean },
+): Promise<void> {
+  await request(
+    path,
+    {
+      ...init,
+      headers: {
+        ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+        ...init?.headers,
+      },
     },
-  })
+    options,
+  )
 }
 
 export async function requestText(

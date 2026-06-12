@@ -10,8 +10,10 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faMicrochip } from '@fortawesome/free-solid-svg-icons'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useTenantBranding } from '../context/TenantBrandingContext'
 import { getFirebaseAuth } from '../lib/firebaseApp'
 import { firebaseAuthErrorMessage } from '../lib/firebaseAuthErrors'
+import { PLATFORM_ADMIN_EMAIL } from '../lib/platformAdmin'
 
 type EmailMode = 'sign-in' | 'sign-up'
 
@@ -43,6 +45,7 @@ function GoogleLogo({ className }: { className?: string }) {
 
 export function LoginPage() {
   const { loginWithFirebaseToken, loginDev } = useAuth()
+  const branding = useTenantBranding()
   const navigate = useNavigate()
   const location = useLocation()
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/'
@@ -61,6 +64,11 @@ export function LoginPage() {
   const [devName, setDevName] = useState(DEFAULT_DEV_NAME)
   const [devSubmitting, setDevSubmitting] = useState(false)
 
+  function applyTenantAuthScope() {
+    const auth = getFirebaseAuth()
+    auth.tenantId = branding.identityPlatformTenantId ?? null
+  }
+
   async function exchangeFirebaseSession() {
     const auth = getFirebaseAuth()
     const user = auth.currentUser
@@ -76,6 +84,7 @@ export function LoginPage() {
     setError(null)
     setGoogleSubmitting(true)
     try {
+      applyTenantAuthScope()
       const auth = getFirebaseAuth()
       const provider = new GoogleAuthProvider()
       await signInWithPopup(auth, provider)
@@ -92,6 +101,7 @@ export function LoginPage() {
     setError(null)
     setEmailSubmitting(true)
     try {
+      applyTenantAuthScope()
       const auth = getFirebaseAuth()
       const trimmedEmail = email.trim()
       if (emailMode === 'sign-in') {
@@ -307,6 +317,8 @@ export function LoginPage() {
           <p className="mt-2 text-xs text-slate-500">
             Uses <span className="font-mono">{DEFAULT_DEV_EMAIL}</span> when not customized.
             Requires backend <code className="rounded bg-slate-100 px-1">local</code> profile.
+            Sign in to <span className="font-mono">{PLATFORM_ADMIN_EMAIL}</span> via Google
+            Identity for tenant management features.
           </p>
         </div>
       )}
