@@ -61,6 +61,11 @@ export function AdminTenantCreatePage() {
     }
   }, [debouncedSlug])
 
+  const normalizedSlug = slug.trim().toLowerCase()
+  const hostPreview =
+    tier === 'ENTERPRISE'
+      ? `${normalizedSlug || '…'}.enterprise.k8s.tbd-htwg.de`
+      : `${normalizedSlug || '…'}.k8s.tbd-htwg.de`
   const slugReady = slugAvailability === 'available'
 
   async function onSubmit(e: FormEvent) {
@@ -129,7 +134,7 @@ export function AdminTenantCreatePage() {
             aria-describedby="slug-availability-hint"
           />
           <span className="text-xs text-slate-500">
-            Host: {slug.trim() ? `${slug.trim().toLowerCase()}.k8s.tbd-htwg.de` : '…'}
+            Host: {hostPreview}
           </span>
           <p
             id="slug-availability-hint"

@@ -58,7 +58,7 @@ export function AdminTenantDetailPage() {
   }, [id, refreshTick])
 
   useEffect(() => {
-    if (!id || tenant?.status !== 'PROVISIONING') return
+    if (!id || (tenant?.status !== 'PROVISIONING' && tenant?.status !== 'PENDING')) return
     const interval = setInterval(() => {
       getTenant(id).then((t) => {
         if (t) setTenant(t)
@@ -147,7 +147,14 @@ export function AdminTenantDetailPage() {
 
       {tenant.status === 'PROVISIONING' && (
         <div className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-          Provisioning in progress — this may take a few minutes. Steps update automatically.
+          Provisioning in progress — this may take several minutes while Terraform and GitOps
+          complete. Steps update automatically.
+        </div>
+      )}
+
+      {tenant.status === 'PENDING' && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Tenant is queued for provisioning.
         </div>
       )}
 

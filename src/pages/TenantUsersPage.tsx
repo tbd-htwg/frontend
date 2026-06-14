@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { listPublicTenantUsers, resolveTenantSlug } from '../api/tenantUsers'
-import { getTenant } from '../api/tenants'
+import { fetchPublicTenantConfig } from '../api/tenants'
 import { mockTenantStore } from '../mocks/mockTenantStore'
 import { TenantUserRow } from '../components/admin/TenantUserRow'
 import { isDemoMode } from '../demo/demoMode'
@@ -50,8 +50,12 @@ export function TenantUsersPage() {
       })
       .catch(async () => {
         if (!cancelled) {
-          const t = await getTenant(`tenant-${slug}`)
-          setNotReady(!t || t.status !== 'ACTIVE')
+          try {
+            const cfg = await fetchPublicTenantConfig(slug)
+            setNotReady(cfg.status !== 'ACTIVE')
+          } catch {
+            setNotReady(true)
+          }
           setUsers([])
         }
       })
