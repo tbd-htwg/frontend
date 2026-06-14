@@ -11,6 +11,8 @@ import { APP_ICON_SRC, APP_TITLE } from '../branding'
 import { resolveTenantSlugFromHost } from '../lib/tenantHost'
 import { isDemoMode } from '../demo/demoMode'
 
+import type { TenantStatus } from '../types/tenant'
+
 export type TenantBranding = {
   slug: string
   title: string
@@ -19,6 +21,7 @@ export type TenantBranding = {
   identityPlatformTenantId: string | null
   enabledAuthProviders: string[]
   frontendPath: string | null
+  status: TenantStatus | null
 }
 
 const defaultBranding: TenantBranding = {
@@ -29,6 +32,7 @@ const defaultBranding: TenantBranding = {
   identityPlatformTenantId: null,
   enabledAuthProviders: ['google', 'password'],
   frontendPath: null,
+  status: 'ACTIVE',
 }
 
 const TenantBrandingContext = createContext<TenantBranding>(defaultBranding)
@@ -56,6 +60,7 @@ export function TenantBrandingProvider({ children }: { children: ReactNode }) {
           identityPlatformTenantId: cfg.identityPlatformTenantId,
           enabledAuthProviders: cfg.enabledAuthProviders ?? ['google', 'password'],
           frontendPath: cfg.frontendPath,
+          status: cfg.status,
         }
         setBranding(next)
         if (cfg.primaryColor) {
@@ -66,7 +71,7 @@ export function TenantBrandingProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         if (!cancelled) {
-          setBranding({ ...defaultBranding, slug })
+          setBranding({ ...defaultBranding, slug, status: null })
         }
       })
 

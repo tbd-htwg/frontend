@@ -14,6 +14,7 @@ import { DemoBanner } from '../demo/DemoBanner'
 import { ProfileModalProvider } from '../context/ProfileModalContext'
 import { TripModalProvider, useTripModal } from '../context/TripModalContext'
 import { AppBrand } from './AppBrand'
+import { TenantNotReadyGate } from './TenantNotReadyGate'
 import { ProfileFormModal } from './profile/ProfileFormModal'
 import { TripFormModal } from './trip/TripFormModal'
 
@@ -47,7 +48,9 @@ function LayoutShell() {
       </header>
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
-        <Outlet />
+        <TenantNotReadyGate>
+          <Outlet />
+        </TenantNotReadyGate>
       </main>
       <TripFormModal />
       <ProfileFormModal />

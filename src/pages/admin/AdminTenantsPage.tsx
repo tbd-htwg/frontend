@@ -44,6 +44,22 @@ export function AdminTenantsPage() {
     }
   }, [tierFilter, statusFilter, showArchived, refreshTick])
 
+  const hasInProgressTenants = tenants.some(
+    (t) => t.status === 'PROVISIONING' || t.status === 'PENDING',
+  )
+
+  useEffect(() => {
+    if (!hasInProgressTenants) return
+    const interval = setInterval(() => {
+      listTenants({
+        tier: tierFilter || undefined,
+        status: statusFilter || undefined,
+        includeArchived: showArchived,
+      }).then((data) => setTenants(data))
+    }, 2000)
+    return () => clearInterval(interval)
+  }, [hasInProgressTenants, tierFilter, statusFilter, showArchived])
+
   return (
     <div className="space-y-6">
       <StubProvisioningBanner />
@@ -85,6 +101,7 @@ export function AdminTenantsPage() {
           >
             <option value="">All</option>
             <option value="ACTIVE">Active</option>
+            <option value="PENDING">Pending</option>
             <option value="PROVISIONING">Provisioning</option>
             <option value="FAILED">Failed</option>
             <option value="ARCHIVED">Archived</option>
@@ -140,15 +157,18 @@ export function AdminTenantsPage() {
                     <TenantStatusBadge status={t.status} />
                   </td>
                   <td className="px-4 py-3">
-                    <a
-                      href={t.hostUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
-                      onClick={(e) => e.preventDefault()}
-                    >
-                      {t.hostUrl.replace('https://', '')}
-                    </a>
+                    {t.status === 'ACTIVE' ? (
+                      <a
+                        href={t.hostUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline"
+                      >
+                        {t.hostUrl.replace('https://', '')}
+                      </a>
+                    ) : (
+                      <span className="text-slate-500">{t.hostUrl.replace('https://', '')}</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <TenantCostHint
