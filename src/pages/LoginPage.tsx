@@ -332,8 +332,8 @@ export function LoginPage() {
           <p className="mt-2 text-xs text-slate-500">
             Uses <span className="font-mono">{DEFAULT_DEV_EMAIL}</span> when not customized.
             Requires backend <code className="rounded bg-slate-100 px-1">local</code> profile.
-            Sign in to <span className="font-mono">{PLATFORM_ADMIN_EMAIL}</span> via Google
-            Identity for tenant management features.
+            Sign in or create an Identity Platform account for{' '}
+            <span className="font-mono">{PLATFORM_ADMIN_EMAIL}</span> to access tenant management.
           </p>
         </div>
       )}

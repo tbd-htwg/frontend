@@ -24,6 +24,9 @@ export function firebaseAuthErrorMessage(err: unknown): string {
       return 'Sign-in was cancelled.'
     case 'auth/network-request-failed':
       return 'Network error. Check your connection and try again.'
+    case 'auth/api-key-not-valid.-please-pass-a-valid-api-key.':
+    case 'auth/api-key-not-found.-please-pass-a-valid-api-key.':
+      return 'Login is temporarily misconfigured: the deployed frontend has no valid Identity Platform API key.'
     default:
       return err instanceof Error ? err.message : 'Authentication failed.'
   }
