@@ -30,7 +30,7 @@ const defaultBranding: TenantBranding = {
   iconUrl: APP_ICON_SRC,
   primaryColor: null,
   identityPlatformTenantId: null,
-  enabledAuthProviders: ['google', 'password'],
+  enabledAuthProviders: ['password'],
   frontendPath: null,
   status: 'ACTIVE',
 }
@@ -58,7 +58,7 @@ export function TenantBrandingProvider({ children }: { children: ReactNode }) {
           iconUrl: cfg.iconUrl ?? APP_ICON_SRC,
           primaryColor: cfg.primaryColor,
           identityPlatformTenantId: cfg.identityPlatformTenantId,
-          enabledAuthProviders: cfg.enabledAuthProviders ?? ['google', 'password'],
+          enabledAuthProviders: cfg.enabledAuthProviders ?? ['password'],
           frontendPath: cfg.frontendPath,
           status: cfg.status,
         }
