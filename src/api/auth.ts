@@ -12,7 +12,7 @@ export async function authFirebase(credential: string): Promise<LoginResponse> {
   return requestJson<LoginResponse>('/auth/firebase', {
     method: 'POST',
     body: JSON.stringify({ credential }),
-  })
+  }, { anonymous: true })
 }
 
 /** @deprecated Prefer {@link authFirebase}. */
@@ -24,7 +24,7 @@ export async function authDevLogin(email: string, name?: string): Promise<LoginR
   return requestJson<LoginResponse>('/auth/dev-login', {
     method: 'POST',
     body: JSON.stringify({ email, name: name ?? '' }),
-  })
+  }, { anonymous: true })
 }
 
 export async function authMe(): Promise<UserResponse> {
