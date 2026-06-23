@@ -73,9 +73,33 @@ export function getApiBaseUrl(): string {
   if (!/^https?:\/\//.test(normalized)) return normalized
 
   const parsed = new URL(normalized)
+  if (isTenantHost(windowLocationHostname()) && parsed.hostname !== windowLocationHostname()) {
+    return '/api/v2'
+  }
   const parsedPath = parsed.pathname.replace(/\/$/, '')
   const basePath = !parsedPath || parsedPath === '/' ? '/api/v2' : parsedPath
   return `${parsed.origin}${basePath}`
+}
+
+function windowLocationHostname(): string {
+  return typeof window === 'undefined' ? '' : window.location.hostname
+}
+
+function isTenantHost(hostname: string): boolean {
+  if (!hostname) return false
+
+  const hostBase = import.meta.env.VITE_PLATFORM_HOST_BASE ?? 'k8s.tbd-htwg.de'
+  const enterpriseHostBase =
+    import.meta.env.VITE_PLATFORM_ENTERPRISE_HOST_BASE ?? `enterprise.${hostBase}`
+
+  return (
+    isSubdomainOf(hostname, hostBase) ||
+    isSubdomainOf(hostname, enterpriseHostBase)
+  )
+}
+
+function isSubdomainOf(hostname: string, base: string): boolean {
+  return hostname !== base && hostname.endsWith(`.${base}`)
 }
 
 export class ApiError extends Error {
