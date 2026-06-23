@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   updateProfile,
@@ -58,6 +59,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [emailSubmitting, setEmailSubmitting] = useState(false)
+  const [passwordResetMessage, setPasswordResetMessage] = useState<string | null>(null)
 
   const [devCustomize, setDevCustomize] = useState(false)
   const [devEmail, setDevEmail] = useState(DEFAULT_DEV_EMAIL)
@@ -102,6 +104,7 @@ export function LoginPage() {
   async function handleEmailSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    setPasswordResetMessage(null)
     setEmailSubmitting(true)
     try {
       applyTenantAuthScope()
@@ -117,6 +120,29 @@ export function LoginPage() {
         }
       }
       await exchangeFirebaseSession()
+    } catch (err) {
+      setError(firebaseAuthErrorMessage(err))
+    } finally {
+      setEmailSubmitting(false)
+    }
+  }
+
+  async function handlePasswordReset() {
+    setError(null)
+    setPasswordResetMessage(null)
+    const trimmedEmail = email.trim()
+    if (!trimmedEmail) {
+      setError('Enter your email address first.')
+      return
+    }
+
+    setEmailSubmitting(true)
+    try {
+      applyTenantAuthScope()
+      await sendPasswordResetEmail(getFirebaseAuth(), trimmedEmail)
+      setPasswordResetMessage(
+        'Password-reset email sent. Check your inbox and spam folder.',
+      )
     } catch (err) {
       setError(firebaseAuthErrorMessage(err))
     } finally {
@@ -153,6 +179,15 @@ export function LoginPage() {
           role="alert"
         >
           {error}
+        </div>
+      )}
+
+      {passwordResetMessage && (
+        <div
+          className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
+          role="status"
+        >
+          {passwordResetMessage}
         </div>
       )}
 
@@ -245,6 +280,16 @@ export function LoginPage() {
                 ? 'Sign in'
                 : 'Create account'}
           </button>
+          {emailMode === 'sign-in' && (
+            <button
+              type="button"
+              onClick={() => void handlePasswordReset()}
+              disabled={emailSubmitting || googleSubmitting}
+              className="w-full text-sm font-medium text-slate-600 hover:text-slate-900 disabled:opacity-50"
+            >
+              Forgot password?
+            </button>
+          )}
         </form>
       </div>
       )}

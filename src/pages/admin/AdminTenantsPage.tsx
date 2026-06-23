@@ -71,6 +71,12 @@ export function AdminTenantsPage() {
           </p>
         </div>
         <Link
+          to="/admin/platform-admins"
+          className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+        >
+          Manage admins
+        </Link>
+        <Link
           to="/admin/tenants/new"
           className="rounded-md bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900"
         >

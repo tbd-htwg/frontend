@@ -8,6 +8,7 @@ import { AdminTenantCreatePage } from './pages/admin/AdminTenantCreatePage'
 import { AdminTenantDetailPage } from './pages/admin/AdminTenantDetailPage'
 import { AdminTenantUsersPage } from './pages/admin/AdminTenantUsersPage'
 import { AdminTenantsPage } from './pages/admin/AdminTenantsPage'
+import { AdminPlatformAdminsPage } from './pages/admin/AdminPlatformAdminsPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { ProfilePage } from './pages/ProfilePage'
@@ -60,6 +61,14 @@ export function App() {
               element={
                 <AdminRoute>
                   <Navigate to="/admin/tenants" replace />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="admin/platform-admins"
+              element={
+                <AdminRoute>
+                  <AdminPlatformAdminsPage />
                 </AdminRoute>
               }
             />
