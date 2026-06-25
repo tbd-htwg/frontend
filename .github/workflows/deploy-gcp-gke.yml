@@ -128,6 +128,29 @@ jobs:
           gcloud storage objects update "gs://${FRONTEND_BUCKET}/index.html" \
             --cache-control="no-cache, max-age=0, must-revalidate"
 
+          # Publish the known client-side routes as index.html aliases. This
+          # avoids stale negative-cache entries for common SPA deep links;
+          # the load balancer's custom 404 policy covers dynamic routes.
+          while IFS= read -r route; do
+            gcloud storage cp \
+              "gs://${FRONTEND_BUCKET}/index.html" \
+              "gs://${FRONTEND_BUCKET}/${route}"
+            gcloud storage objects update \
+              "gs://${FRONTEND_BUCKET}/${route}" \
+              --cache-control="no-cache, max-age=0, must-revalidate" \
+              --content-type="text/html"
+          done <<'ROUTES'
+          users
+          login
+          profile
+          impressum
+          trips/new
+          admin
+          admin/platform-admins
+          admin/tenants
+          admin/tenants/new
+          ROUTES
+
       - name: Invalidate Cloud CDN Cache
         run: |
           gcloud compute url-maps invalidate-cdn-cache "${URL_MAP_NAME}" --path="/*"
