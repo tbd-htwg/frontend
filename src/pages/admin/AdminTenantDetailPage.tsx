@@ -137,7 +137,7 @@ export function AdminTenantDetailPage() {
           </a>
           {' · '}
           <Link
-            to={`/users?tenant=${tenant.slug}`}
+            to={`/users/?tenant=${tenant.slug}`}
             className="font-medium underline"
           >
             View public user directory

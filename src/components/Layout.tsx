@@ -88,7 +88,7 @@ function LayoutNav() {
           Home
         </span>
       </NavLink>
-      <NavLink to="/users" className={navLinkClass} aria-label="Community users">
+      <NavLink to="/users/" className={navLinkClass} aria-label="Community users">
         <span className="inline-flex items-center gap-2">
           <FontAwesomeIcon icon={faUsers} aria-hidden="true" />
           Users
