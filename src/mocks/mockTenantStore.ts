@@ -198,15 +198,31 @@ class MockTenantStore {
     return clone(tenant)
   }
 
-  updateBranding(id: string, body: { primaryColor?: string | null; headerTitle?: string | null; iconUrl?: string | null }): Tenant {
+  updateBranding(id: string, body: { primaryColor?: string | null; headerTitle?: string | null; iconUrl?: string | null; titleRetractToInitials?: boolean | null; invertHeaderIcon?: boolean | null }): Tenant {
     const tenant = this.find(id)
     if (!tenant) throw new Error('Tenant not found')
-    if (body.primaryColor !== undefined) tenant.primaryColor = body.primaryColor
+    if (body.primaryColor !== undefined) tenant.primaryColor = body.primaryColor || null
     if (body.headerTitle !== undefined) tenant.headerTitle = body.headerTitle
-    if (body.iconUrl !== undefined) tenant.iconUrl = body.iconUrl
+    if (body.iconUrl !== undefined) tenant.iconUrl = body.iconUrl || null
+    if (body.titleRetractToInitials !== undefined && body.titleRetractToInitials !== null) {
+      tenant.titleRetractToInitials = body.titleRetractToInitials
+    }
+    if (body.invertHeaderIcon !== undefined && body.invertHeaderIcon !== null) {
+      tenant.invertHeaderIcon = body.invertHeaderIcon
+    }
     tenant.updatedAt = nowIso()
     this.notify()
     return clone(tenant)
+  }
+
+  uploadBrandingIcon(id: string, file: File): string {
+    const tenant = this.find(id)
+    if (!tenant) throw new Error('Tenant not found')
+    const objectUrl = URL.createObjectURL(file)
+    tenant.iconUrl = objectUrl
+    tenant.updatedAt = nowIso()
+    this.notify()
+    return objectUrl
   }
 
   retryTenant(id: string): Tenant | null {

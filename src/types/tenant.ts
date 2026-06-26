@@ -53,6 +53,8 @@ export type Tenant = {
   primaryColor?: string | null
   headerTitle?: string | null
   iconUrl?: string | null
+  titleRetractToInitials?: boolean
+  invertHeaderIcon?: boolean
   frontendPath?: string | null
   imageTag?: string | null
 }
@@ -67,6 +69,8 @@ export type PublicTenantConfig = {
   primaryColor: string | null
   headerTitle: string | null
   iconUrl: string | null
+  titleRetractToInitials: boolean
+  invertHeaderIcon: boolean
   frontendPath: string | null
 }
 
@@ -74,6 +78,8 @@ export type TenantBrandingUpdateRequest = {
   primaryColor?: string | null
   headerTitle?: string | null
   iconUrl?: string | null
+  titleRetractToInitials?: boolean | null
+  invertHeaderIcon?: boolean | null
 }
 
 export type TenantCreateRequest = {

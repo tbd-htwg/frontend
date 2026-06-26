@@ -271,13 +271,24 @@ export async function uploadFileToSignedUrl(
   uploadUrl: string,
   file: File,
   contentType: string,
-): Promise<void> {
-  const res = await fetch(uploadUrl, {
+): Promise<string | undefined> {
+  const headers = new Headers({
+    'Content-Type': contentType,
+  })
+  const authPath = uploadUrl.startsWith('http')
+    ? new URL(uploadUrl).pathname
+    : uploadUrl
+  if (shouldAttachBearer(authPath, 'PUT')) {
+    const token = bearerToken()
+    if (token) headers.set('Authorization', `Bearer ${token}`)
+  }
+  const url = /^https?:\/\//.test(uploadUrl) ? uploadUrl : resolveApiUrl(uploadUrl)
+  const res = await fetch(url, {
     method: 'PUT',
-    headers: {
-      'Content-Type': contentType,
-    },
+    headers,
     body: file,
+    cache: 'no-store',
+    credentials: 'omit',
   })
   if (!res.ok) {
     const errText = await res.text()
@@ -286,5 +297,13 @@ export async function uploadFileToSignedUrl(
       res.status,
       errText,
     )
+  }
+  const text = await res.text()
+  if (!text) return undefined
+  try {
+    const json = JSON.parse(text) as { signedReadUrl?: unknown }
+    return typeof json.signedReadUrl === 'string' ? json.signedReadUrl : undefined
+  } catch {
+    return undefined
   }
 }

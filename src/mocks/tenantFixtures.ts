@@ -158,6 +158,8 @@ function baseTenant(
       ? activeSteps(tier)
       : [],
     users: usersForTenant(slug),
+    titleRetractToInitials: slug === 'free',
+    invertHeaderIcon: slug === 'free',
     ...overrides,
   }
 }

@@ -7,7 +7,8 @@ import type {
   TenantCreateRequest,
   TenantListFilters,
 } from '../types/tenant'
-import { requestJson, requestVoid } from './client'
+import type { SignedImageUploadRequest, SignedImageUploadResponse } from '../types/api'
+import { requestJson, requestVoid, uploadFileToSignedUrl } from './client'
 
 export type { PublicTenantConfig }
 
@@ -34,6 +35,8 @@ export async function fetchPublicTenantConfig(slug: string): Promise<PublicTenan
       primaryColor: tenant.primaryColor ?? null,
       headerTitle: tenant.headerTitle ?? tenant.displayName,
       iconUrl: tenant.iconUrl ?? null,
+      titleRetractToInitials: tenant.titleRetractToInitials ?? tenant.slug === 'free',
+      invertHeaderIcon: tenant.invertHeaderIcon ?? tenant.slug === 'free',
       frontendPath: tenant.frontendPath ?? null,
     }
   }
@@ -117,6 +120,29 @@ export async function updateTenantBranding(
     { method: 'PUT', body: JSON.stringify(body) },
     { forceBearer: true },
   )
+}
+
+export async function uploadTenantBrandingIcon(tenantId: string, file: File): Promise<string> {
+  const contentType = file.type?.trim()
+  if (!contentType.startsWith('image/')) {
+    throw new Error('Only image files are allowed.')
+  }
+  if (isDemoMode()) {
+    return mockTenantStore.uploadBrandingIcon(tenantId, file)
+  }
+  const signed = await requestJson<SignedImageUploadResponse>(
+    adminPath(`/${encodeURIComponent(tenantId)}/branding/icon`),
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        fileName: file.name,
+        contentType,
+      } satisfies SignedImageUploadRequest),
+    },
+    { forceBearer: true },
+  )
+  const stubReadUrl = await uploadFileToSignedUrl(signed.uploadUrl, file, signed.contentType)
+  return stubReadUrl || signed.signedReadUrl
 }
 
 export async function archiveTenant(id: string): Promise<Tenant | null> {

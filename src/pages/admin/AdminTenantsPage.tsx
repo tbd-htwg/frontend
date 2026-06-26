@@ -133,18 +133,18 @@ export function AdminTenantsPage() {
         <p className="text-sm text-slate-600">Loading tenants…</p>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <table className="tenant-admin-table min-w-full text-left text-sm">
+            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-3">Tenant</th>
-                <th className="px-4 py-3">Tier</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Host</th>
-                <th className="px-4 py-3">Est. cost</th>
-                <th className="px-4 py-3">Created</th>
+                <th className="border-b border-slate-200 px-4 py-3">Tenant</th>
+                <th className="border-b border-slate-200 px-4 py-3">Tier</th>
+                <th className="border-b border-slate-200 px-4 py-3">Status</th>
+                <th className="border-b border-slate-200 px-4 py-3">Host</th>
+                <th className="border-b border-slate-200 px-4 py-3">Est. cost</th>
+                <th className="border-b border-slate-200 px-4 py-3">Created</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="[&>tr]:border-t [&>tr]:border-slate-200">
               {tenants.map((t) => (
                 <tr key={t.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3">

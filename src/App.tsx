@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AdminRoute } from './components/AdminRoute'
 import { Layout } from './components/Layout'
 import { ProtectedRoute } from './components/ProtectedRoute'
+import { ColorSchemeProvider } from './context/ColorSchemeContext'
 import { TenantBrandingProvider } from './context/TenantBrandingContext'
 import { AppAuthProvider } from './demo/DemoAuthProvider'
 import { AdminTenantCreatePage } from './pages/admin/AdminTenantCreatePage'
@@ -22,6 +23,7 @@ import { UserProfilePage } from './pages/UserProfilePage'
 export function App() {
   return (
     <AppAuthProvider>
+      <ColorSchemeProvider>
       <TenantBrandingProvider>
       <BrowserRouter>
         <Routes>
@@ -109,6 +111,7 @@ export function App() {
         </Routes>
       </BrowserRouter>
       </TenantBrandingProvider>
+      </ColorSchemeProvider>
     </AppAuthProvider>
   )
 }
