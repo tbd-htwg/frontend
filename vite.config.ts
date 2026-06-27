@@ -49,15 +49,14 @@ function buildApiProxy(targets: {
 }): Record<string, ProxyOptions> {
   const { trip, social, external, platform, customfield } = targets
   return {
-    // customfield-service (more specific admin path before /api/v2/admin)
-    '/api/v2/admin/custom-fields': platformServiceProxy(customfield),
-    '/api/v2/custom-fields': simpleProxy(customfield),
-    '^/api/v2/trips/[^/]+/custom-fields$': simpleProxy(customfield),
-
-    // platform-service (M3): auth issuance + tenant admin
+    // platform-service (M3): auth issuance + tenant admin (incl. custom-fields via X-Admin-Tenant-Slug)
     '/api/v2/admin': platformServiceProxy(platform),
     '/api/v2/auth': platformServiceProxy(platform),
     '/api/v2/tenants': platformServiceProxy(platform),
+
+    // customfield-service (tenant-scoped trip values; public declaration list on enterprise hosts)
+    '/api/v2/custom-fields': simpleProxy(customfield),
+    '^/api/v2/trips/[^/]+/custom-fields$': simpleProxy(customfield),
 
     // social-service
     '/api/v2/comments': simpleProxy(social),
