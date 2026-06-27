@@ -1,4 +1,4 @@
-export type TenantTier = 'FREE' | 'STANDARD' | 'ENTERPRISE'
+export type TenantTier = 'FREE' | 'STANDARD' | 'ENTERPRISE' | 'DEVELOP'
 
 export type TenantStatus =
   | 'PENDING'
@@ -111,7 +111,7 @@ export type TenantBrandingUpdateRequest = {
 export type TenantCreateRequest = {
   slug: string
   displayName: string
-  tier: Exclude<TenantTier, 'FREE'>
+  tier: Exclude<TenantTier, 'FREE' | 'DEVELOP'>
 }
 
 export type TenantListFilters = {
