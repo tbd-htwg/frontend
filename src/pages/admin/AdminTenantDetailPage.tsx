@@ -1,7 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faCheck, faXmark } from '@fortawesome/free-solid-svg-icons'
+import { faArrowUpRightFromSquare, faChartLine, faCheck, faCopy, faXmark } from '@fortawesome/free-solid-svg-icons'
 import {
   archiveTenant,
   getTenant,
@@ -29,7 +29,7 @@ import { useTenantBrandingOverride } from '../../context/TenantBrandingContext'
 import { useMockTenantRefresh } from '../../hooks/useMockTenantRefresh'
 import type { ResourceSize, Tenant, TenantResourceConfig, TenantServiceResource } from '../../types/tenant'
 
-type Tab = 'overview' | 'branding' | 'resources' | 'users' | 'cost'
+type Tab = 'overview' | 'branding' | 'resources' | 'monitoring' | 'users' | 'cost'
 
 type BrandingSaveStatus = 'idle' | 'success' | 'error'
 type ResourceSaveStatus = 'idle' | 'success' | 'error'
@@ -46,6 +46,70 @@ const resourceLabels = {
   social: 'Social service',
   externalInfo: 'External info',
 } satisfies Record<keyof Omit<TenantResourceConfig, 'autoscalingEnabled'>, string>
+
+type MonitoringQuery = {
+  label: string
+  query: string
+}
+
+function monitoringScopeLabel(tenant: Tenant): string {
+  if (tenant.tier === 'STANDARD') return 'Standard shared pool'
+  if (tenant.tier === 'ENTERPRISE') return tenant.displayName
+  return 'Free shared pool'
+}
+
+function monitoringPromQl(tenant: Tenant): MonitoringQuery[] {
+  const namespace = tenant.namespace
+  return [
+    {
+      label: 'Request rate',
+      query: `sum by (method, uri, status) (rate(http_server_requests_seconds_count{namespace="${namespace}"}[5m]))`,
+    },
+    {
+      label: '5xx errors',
+      query: `sum by (method, uri, status) (rate(http_server_requests_seconds_count{namespace="${namespace}",status=~"5.."}[5m]))`,
+    },
+    {
+      label: 'P95 latency',
+      query: `histogram_quantile(0.95, sum by (le, uri) (rate(http_server_requests_seconds_bucket{namespace="${namespace}"}[5m])))`,
+    },
+    {
+      label: 'CPU',
+      query: `sum by (pod) (rate(container_cpu_usage_seconds_total{namespace="${namespace}",container!="",container!="POD"}[5m]))`,
+    },
+    {
+      label: 'Memory',
+      query: `sum by (pod) (container_memory_working_set_bytes{namespace="${namespace}",container!="",container!="POD"})`,
+    },
+    {
+      label: 'JVM memory',
+      query: `sum by (area) (jvm_memory_used_bytes{namespace="${namespace}"})`,
+    },
+  ]
+}
+
+function gcpProjectId(): string {
+  return import.meta.env.VITE_GCP_PROJECT_ID ?? import.meta.env.VITE_FIREBASE_PROJECT_ID ?? 'tbd-cloudappdev'
+}
+
+function cloudMonitoringUrl(): string {
+  return `https://console.cloud.google.com/monitoring/metrics-explorer?project=${encodeURIComponent(gcpProjectId())}`
+}
+
+function cloudLogsUrl(tenant: Tenant): string {
+  const query = `resource.type="k8s_container"\nresource.labels.namespace_name="${tenant.namespace}"`
+  return `https://console.cloud.google.com/logs/query;query=${encodeURIComponent(query)}?project=${encodeURIComponent(gcpProjectId())}`
+}
+
+function grafanaUrl(tenant: Tenant): string | null {
+  const base = import.meta.env.VITE_GRAFANA_URL?.replace(/\/$/, '')
+  if (!base) return null
+  const params = new URLSearchParams({
+    'var-namespace': tenant.namespace,
+    'var-tenant': tenant.tier === 'ENTERPRISE' ? tenant.slug : 'standard-shared',
+  })
+  return `${base}/d/tripplanning-tenant/tenant-monitoring?${params}`
+}
 
 function savedBrandingPreview(tenant: Tenant) {
   return {
@@ -236,6 +300,7 @@ export function AdminTenantDetailPage() {
     ].join(' ')
 
   const savedBranding = savedBrandingPreview(tenant)
+  const tenantGrafanaUrl = grafanaUrl(tenant)
 
   return (
     <div className="space-y-6">
@@ -359,6 +424,9 @@ export function AdminTenantDetailPage() {
         )}
         <button type="button" className={tabClass('users')} onClick={() => setTab('users')}>
           Users
+        </button>
+        <button type="button" className={tabClass('monitoring')} onClick={() => setTab('monitoring')}>
+          Monitoring
         </button>
         <button type="button" className={tabClass('cost')} onClick={() => setTab('cost')}>
           Cost
@@ -738,6 +806,86 @@ export function AdminTenantDetailPage() {
           <p className="mt-2 text-sm text-slate-600">
             {tenant.users.length} user{tenant.users.length === 1 ? '' : 's'} in this tenant
           </p>
+        </div>
+      )}
+
+      {tab === 'monitoring' && (
+        <div className="space-y-5">
+          <dl className="grid gap-4 rounded-lg border border-slate-200 bg-white p-6 sm:grid-cols-3">
+            <div>
+              <dt className="text-xs uppercase text-slate-500">Scope</dt>
+              <dd className="mt-1 text-sm font-semibold text-slate-900">{monitoringScopeLabel(tenant)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase text-slate-500">Namespace</dt>
+              <dd className="mt-1 font-mono text-sm text-slate-900">{tenant.namespace}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase text-slate-500">Metrics backend</dt>
+              <dd className="mt-1 text-sm text-slate-900">Google Managed Prometheus</dd>
+            </div>
+          </dl>
+
+          {tenant.tier === 'STANDARD' && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              Standard tenants share application pods, so CPU and memory are shown for the shared
+              standard namespace. Per-tenant request metrics need application-level tenant labels.
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            {tenantGrafanaUrl && (
+              <a
+                href={tenantGrafanaUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
+              >
+                <FontAwesomeIcon icon={faChartLine} className="h-3.5 w-3.5" aria-hidden="true" />
+                Open Grafana
+              </a>
+            )}
+            <a
+              href={cloudMonitoringUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="h-3.5 w-3.5" aria-hidden="true" />
+              Metrics explorer
+            </a>
+            <a
+              href={cloudLogsUrl(tenant)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="h-3.5 w-3.5" aria-hidden="true" />
+              Logs
+            </a>
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-2">
+            {monitoringPromQl(tenant).map((item) => (
+              <div key={item.label} className="rounded-lg border border-slate-200 bg-white p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h2 className="text-sm font-semibold text-slate-900">{item.label}</h2>
+                  <button
+                    type="button"
+                    onClick={() => void navigator.clipboard?.writeText(item.query)}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 text-slate-600 hover:bg-slate-50"
+                    title={`Copy ${item.label} query`}
+                    aria-label={`Copy ${item.label} query`}
+                  >
+                    <FontAwesomeIcon icon={faCopy} className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                </div>
+                <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-slate-950 p-3 text-xs text-slate-100">
+                  {item.query}
+                </pre>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

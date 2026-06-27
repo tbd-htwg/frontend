@@ -18,6 +18,10 @@ interface ImportMetaEnv {
   readonly VITE_PLATFORM_ENTERPRISE_HOST_BASE?: string
   /** Vite dev-server proxy target for platform-service API (local multitenancy). */
   readonly VITE_DEV_PLATFORM_PROXY_TARGET?: string
+  /** GCP project used for Cloud Monitoring and Logging links. */
+  readonly VITE_GCP_PROJECT_ID?: string
+  /** Optional Grafana base URL when an external Grafana instance is available. */
+  readonly VITE_GRAFANA_URL?: string
 }
 
 interface ImportMeta {
