@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import { fetchPublicTenantConfig, type PublicTenantConfig } from '../api/tenants'
+import { setTenantPublicTripAccess } from '../api/client'
 import {
   APP_ICON_SRC,
   APP_INVERT_HEADER_ICON,
@@ -103,6 +104,7 @@ export function TenantBrandingProvider({ children }: { children: ReactNode }) {
     applyFreeTenantShell()
     const slug = resolveTenantSlugFromHost()
     if (slug === 'free' && !isDemoMode()) {
+      setTenantPublicTripAccess(true)
       setBranding(defaultBranding)
       setBrandingStatus('ready')
       return
@@ -112,6 +114,8 @@ export function TenantBrandingProvider({ children }: { children: ReactNode }) {
     fetchPublicTenantConfig(slug)
       .then((cfg: PublicTenantConfig) => {
         if (cancelled) return
+        const publicTrip = cfg.publicTripAccess ?? true
+        setTenantPublicTripAccess(publicTrip)
         const next: TenantBranding = {
           slug: cfg.slug,
           title: cfg.headerTitle ?? cfg.slug,
@@ -123,7 +127,7 @@ export function TenantBrandingProvider({ children }: { children: ReactNode }) {
           enabledAuthProviders: cfg.enabledAuthProviders ?? ['password'],
           frontendPath: cfg.frontendPath,
           status: cfg.status,
-          publicTripAccess: cfg.publicTripAccess ?? true,
+          publicTripAccess: publicTrip,
           publicImageAccess: cfg.publicImageAccess ?? true,
         }
         setBranding(next)
@@ -131,6 +135,7 @@ export function TenantBrandingProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         if (!cancelled) {
+          setTenantPublicTripAccess(true)
           setBranding({ ...defaultBranding, slug, status: null })
           setBrandingStatus('ready')
         }

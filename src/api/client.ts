@@ -3,8 +3,15 @@ import { SESSION_STORAGE_KEY } from '../auth/sessionStorageKey'
 /** In-memory token from AuthContext (avoids sessionStorage races during login / authMe). */
 let apiAccessToken: string | null = null
 
+/** From tenant public-config; when false, trip feed/search require Bearer for logged-in users. */
+let tenantPublicTripAccess = true
+
 export function setApiAccessToken(token: string | null): void {
   apiAccessToken = token
+}
+
+export function setTenantPublicTripAccess(publicAccess: boolean): void {
+  tenantPublicTripAccess = publicAccess
 }
 
 function bearerToken(): string | undefined {
@@ -41,6 +48,10 @@ export function isAnonymousPublicRead(path: string, method = 'GET'): boolean {
   if (verb !== 'GET' && verb !== 'HEAD') return false
 
   const p = normalizeApiPath(path)
+  // Login-gated tenants: feed/search need Bearer when the user is signed in.
+  if (!tenantPublicTripAccess && (p.startsWith('/api/search') || p.startsWith('/trips/feed'))) {
+    return false
+  }
   if (p.startsWith('/api/search')) return true
   if (p.startsWith('/external/')) return true
   if (p === '/trips/feed-location-images') return false
