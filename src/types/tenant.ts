@@ -76,6 +76,7 @@ export type TenantResourceConfig = {
   trip: TenantServiceResource
   social: TenantServiceResource
   externalInfo: TenantServiceResource
+  customfield: TenantServiceResource
 }
 
 export type PublicTenantConfig = {

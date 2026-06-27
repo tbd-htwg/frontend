@@ -20,7 +20,7 @@ import { TenantCostHint } from '../../components/admin/TenantCostHint'
 import { TenantStatusBadge } from '../../components/admin/TenantStatusBadge'
 import { StubProvisioningBanner } from '../../components/admin/StubProvisioningBanner'
 import { TenantTierBadge } from '../../components/admin/TenantTierBadge'
-import { tierSupportsCustomFields } from '../../lib/tenantTier'
+import { tierSupportsCustomFields, tierSupportsResourceScaling } from '../../lib/tenantTier'
 import { APP_ICON_SRC } from '../../branding'
 import {
   tenantHeaderChromeBackground,
@@ -51,12 +51,14 @@ const defaultResourceConfig: TenantResourceConfig = {
   trip: { size: 'SMALL', replicas: 1, minReplicas: 1, maxReplicas: 4 },
   social: { size: 'SMALL', replicas: 1, minReplicas: 1, maxReplicas: 3 },
   externalInfo: { size: 'SMALL', replicas: 1, minReplicas: 1, maxReplicas: 3 },
+  customfield: { size: 'SMALL', replicas: 1, minReplicas: 1, maxReplicas: 3 },
 }
 
 const resourceLabels = {
   trip: 'Trip service',
   social: 'Social service',
   externalInfo: 'External info',
+  customfield: 'Custom fields',
 } satisfies Record<keyof Omit<TenantResourceConfig, 'autoscalingEnabled'>, string>
 
 type MonitoringQuery = {
@@ -174,7 +176,7 @@ export function AdminTenantDetailPage() {
             setBrandingIcon(t.iconUrl ?? '')
             setBrandingRetract(t.titleRetractToInitials ?? false)
             setBrandingInvertIcon(t.invertHeaderIcon ?? t.slug === 'free')
-            setResourceConfig(t.resourceConfig ?? defaultResourceConfig)
+            setResourceConfig({ ...defaultResourceConfig, ...(t.resourceConfig ?? {}) })
             setPublicTripAccess(t.publicTripAccess ?? true)
             setPublicImageAccess(t.publicImageAccess ?? true)
             setIconCleared(false)
@@ -229,6 +231,16 @@ export function AdminTenantDetailPage() {
   ])
 
   useEffect(() => () => setBrandingOverride(null), [setBrandingOverride])
+
+  useEffect(() => {
+    if (!tenant) return
+    if (tab === 'customFields' && !tierSupportsCustomFields(tenant.tier)) {
+      setTab('overview')
+    }
+    if (tab === 'resources' && !tierSupportsResourceScaling(tenant.tier)) {
+      setTab('overview')
+    }
+  }, [tenant, tab])
 
   useEffect(() => {
     if (brandingSaveStatus === 'idle') return
@@ -440,22 +452,11 @@ export function AdminTenantDetailPage() {
         <button type="button" className={tabClass('branding')} onClick={() => setTab('branding')}>
           Branding
         </button>
-        {tenant.tier === 'ENTERPRISE' && (
-          <button type="button" className={tabClass('resources')} onClick={() => setTab('resources')}>
-            Resources
-          </button>
-        )}
-        <button type="button" className={tabClass('security')} onClick={() => setTab('security')}>
-          Security
-        </button>
         <button type="button" className={tabClass('users')} onClick={() => setTab('users')}>
           Users
         </button>
-        <button type="button" className={tabClass('monitoring')} onClick={() => setTab('monitoring')}>
-          Monitoring
-        </button>
-        <button type="button" className={tabClass('cost')} onClick={() => setTab('cost')}>
-          Cost
+        <button type="button" className={tabClass('security')} onClick={() => setTab('security')}>
+          Security
         </button>
         {tierSupportsCustomFields(tenant.tier) && (
           <button
@@ -466,6 +467,17 @@ export function AdminTenantDetailPage() {
             Custom fields
           </button>
         )}
+        {tierSupportsResourceScaling(tenant.tier) && (
+          <button type="button" className={tabClass('resources')} onClick={() => setTab('resources')}>
+            Resources
+          </button>
+        )}
+        <button type="button" className={tabClass('monitoring')} onClick={() => setTab('monitoring')}>
+          Monitoring
+        </button>
+        <button type="button" className={tabClass('cost')} onClick={() => setTab('cost')}>
+          Cost
+        </button>
       </nav>
 
       {tab === 'overview' && (
@@ -708,7 +720,7 @@ export function AdminTenantDetailPage() {
         </form>
       )}
 
-      {tab === 'resources' && tenant.tier === 'ENTERPRISE' && (
+      {tab === 'resources' && tierSupportsResourceScaling(tenant.tier) && (
         <form
           className="space-y-5 rounded-lg border border-slate-200 bg-white p-6"
           onSubmit={(e) => {
@@ -731,7 +743,10 @@ export function AdminTenantDetailPage() {
             />
           </label>
 
-          {(['trip', 'social', 'externalInfo'] as const).map((service) => (
+          {(tierSupportsCustomFields(tenant.tier)
+            ? (['trip', 'social', 'externalInfo', 'customfield'] as const)
+            : (['trip', 'social', 'externalInfo'] as const)
+          ).map((service) => (
             <fieldset key={service} className="grid gap-3 rounded-md border border-slate-200 p-4 sm:grid-cols-4">
               <legend className="px-1 text-sm font-semibold text-slate-900">
                 {resourceLabels[service]}
