@@ -15,6 +15,7 @@ import { ProfileModalProvider } from '../context/ProfileModalContext'
 import { TripModalProvider, useTripModal } from '../context/TripModalContext'
 import { AppBrand } from './AppBrand'
 import { ColorSchemeToggle } from './ColorSchemeToggle'
+import { useBrandingOverrideActive } from '../context/TenantBrandingContext'
 import { TenantNotReadyGate } from './TenantNotReadyGate'
 import { ProfileFormModal } from './profile/ProfileFormModal'
 import { TripFormModal } from './trip/TripFormModal'
@@ -30,12 +31,19 @@ export function Layout() {
 }
 
 function LayoutShell() {
+  const brandingPreviewActive = useBrandingOverrideActive()
+
   return (
     <div className="tenant-layout flex min-h-screen flex-col">
       <header className="tenant-chrome border-b">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-4">
           <div className="flex items-center gap-3">
             <AppBrand />
+            {brandingPreviewActive && (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">
+                Preview
+              </span>
+            )}
             <DemoBanner />
           </div>
           <LayoutNav />

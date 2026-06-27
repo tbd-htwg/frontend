@@ -56,11 +56,16 @@ export function loadFeedImagesPhased(
   }
 }
 
-/** Per-card skeleton until the first-phase response has settled for that trip id. */
+/** Per-card skeleton while signed URLs load; only when the list item says the trip has photos. */
 export function isFeedImageLoadingForTrip(
   showLocationImages: boolean,
+  hasLocationImages: boolean | undefined,
   settledTripIds: ReadonlySet<number>,
   tripId: number,
 ): boolean {
-  return showLocationImages && !settledTripIds.has(tripId)
+  return (
+    showLocationImages &&
+    hasLocationImages === true &&
+    !settledTripIds.has(tripId)
+  )
 }

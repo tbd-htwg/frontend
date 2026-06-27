@@ -44,8 +44,9 @@ export function isAnonymousPublicRead(path: string, method = 'GET'): boolean {
   if (p.startsWith('/api/search')) return true
   if (p.startsWith('/external/')) return true
   if (p === '/trips/feed-location-images') return false
+  if (p === '/trips/feed/by-user') return false
+  if (/^\/trips\/\d+\/detail$/.test(p)) return false
   if (p.startsWith('/trips/feed')) return true
-  if (/^\/trips\/\d+\/detail$/.test(p)) return true
   if (/^\/trips\/\d+\/community$/.test(p)) return true
   if (/^\/trips\/\d+\/comments$/.test(p)) return true
   if (p === '/trips/search/countLikes') return true
@@ -59,6 +60,19 @@ export function isAnonymousPublicRead(path: string, method = 'GET'): boolean {
 /** Whether to attach the session Bearer token (mutations, auth, optional-auth image batches). */
 export function shouldAttachBearer(path: string, method = 'GET'): boolean {
   return !isAnonymousPublicRead(path, method)
+}
+
+/** GCS V4 signed URLs authenticate via query params; never send Bearer (breaks CORS preflight). */
+export function isGcsSignedStorageUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url.startsWith('http') ? url : resolveApiUrl(url))
+    return (
+      parsed.hostname === 'storage.googleapis.com' ||
+      parsed.hostname.endsWith('.storage.googleapis.com')
+    )
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -278,7 +292,10 @@ export async function uploadFileToSignedUrl(
   const authPath = uploadUrl.startsWith('http')
     ? new URL(uploadUrl).pathname
     : uploadUrl
-  if (shouldAttachBearer(authPath, 'PUT')) {
+  if (
+    !isGcsSignedStorageUrl(uploadUrl) &&
+    shouldAttachBearer(authPath, 'PUT')
+  ) {
     const token = bearerToken()
     if (token) headers.set('Authorization', `Bearer ${token}`)
   }

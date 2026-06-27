@@ -215,6 +215,19 @@ class MockTenantStore {
     return clone(tenant)
   }
 
+  updateSecurity(
+    id: string,
+    body: { publicTripAccess: boolean; publicImageAccess: boolean },
+  ): Tenant {
+    const tenant = this.find(id)
+    if (!tenant) throw new Error('Tenant not found')
+    tenant.publicTripAccess = body.publicTripAccess
+    tenant.publicImageAccess = body.publicImageAccess
+    tenant.updatedAt = nowIso()
+    this.notify()
+    return clone(tenant)
+  }
+
   uploadBrandingIcon(id: string, file: File): string {
     const tenant = this.find(id)
     if (!tenant) throw new Error('Tenant not found')

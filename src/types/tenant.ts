@@ -58,6 +58,8 @@ export type Tenant = {
   frontendPath?: string | null
   imageTag?: string | null
   resourceConfig?: TenantResourceConfig
+  publicTripAccess?: boolean
+  publicImageAccess?: boolean
 }
 
 export type ResourceSize = 'SMALL' | 'MEDIUM' | 'LARGE'
@@ -89,6 +91,13 @@ export type PublicTenantConfig = {
   titleRetractToInitials: boolean
   invertHeaderIcon: boolean
   frontendPath: string | null
+  publicTripAccess: boolean
+  publicImageAccess: boolean
+}
+
+export type TenantSecurityUpdateRequest = {
+  publicTripAccess: boolean
+  publicImageAccess: boolean
 }
 
 export type TenantBrandingUpdateRequest = {

@@ -111,6 +111,11 @@ export function tenantPreviewBodyBackground(
   return `color-mix(in srgb, ${normalized} 12%, #f8fafc)`
 }
 
+/** Free-pool shell before tenant config loads (respects data-color-scheme from index.html). */
+export function applyFreeTenantShell(): void {
+  applyTenantTheme(null)
+}
+
 /** Apply tenant palette CSS variables on :root (light + dark via CSS). */
 export function applyTenantTheme(primaryColor: string | null | undefined): void {
   const root = document.documentElement

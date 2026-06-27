@@ -7,8 +7,27 @@ export type TripFeedBrowseOptions = {
   isOwned?: boolean
   /** When true, authorLabel is omitted (e.g. profile trip lists). */
   omitAuthorLabel?: boolean
-  /** Trip ids that finished the first-phase image fetch (per-card skeleton). */
   feedImagesSettledTripIds?: ReadonlySet<number>
+}
+
+function feedImageProps(
+  showLocationImages: boolean,
+  tripId: number,
+  hasLocationImages: boolean | undefined,
+  feedImagesByTripId: Record<number, string[]>,
+  feedImagesSettledTripIds: ReadonlySet<number> | undefined,
+): Pick<TripFeedCardProps, 'showLocationImages' | 'locationImagesLoading' | 'locationImageUrls'> {
+  const locationImagesLoading = isFeedImageLoadingForTrip(
+    showLocationImages,
+    hasLocationImages,
+    feedImagesSettledTripIds ?? new Set(),
+    tripId,
+  )
+  return {
+    showLocationImages,
+    locationImagesLoading,
+    locationImageUrls: feedImagesByTripId[tripId],
+  }
 }
 
 export function tripFeedPropsFromBrowse(
@@ -32,14 +51,15 @@ export function tripFeedPropsFromBrowse(
     locations: t.locations,
     accommodationNames: t.accommodationNames,
     transportRoutes: t.transportRoutes,
-    showLocationImages,
-    locationImagesLoading: isFeedImageLoadingForTrip(
+    ...feedImageProps(
       showLocationImages,
-      options?.feedImagesSettledTripIds ?? new Set(),
       t.id,
+      t.hasLocationImages,
+      feedImagesByTripId,
+      options?.feedImagesSettledTripIds,
     ),
-    locationImageUrls: feedImagesByTripId[t.id],
     isOwned,
+    visible: t.visible,
   }
 }
 
@@ -48,7 +68,7 @@ export function tripFeedPropsFromSearch(
   showLocationImages: boolean,
   feedImagesByTripId: Record<number, string[]>,
   currentUserId: number | undefined,
-  feedImagesSettledTripIds: ReadonlySet<number> = new Set(),
+  feedImagesSettledTripIds?: ReadonlySet<number>,
 ): TripFeedCardProps {
   return {
     id: t.id,
@@ -60,13 +80,13 @@ export function tripFeedPropsFromSearch(
     locations: t.locations,
     accommodationNames: t.accommodationNames,
     transportRoutes: t.transportRoutes,
-    showLocationImages,
-    locationImagesLoading: isFeedImageLoadingForTrip(
+    ...feedImageProps(
       showLocationImages,
-      feedImagesSettledTripIds,
       t.id,
+      t.hasLocationImages,
+      feedImagesByTripId,
+      feedImagesSettledTripIds,
     ),
-    locationImageUrls: feedImagesByTripId[t.id],
     isOwned: currentUserId != null && t.userId === currentUserId,
   }
 }

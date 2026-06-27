@@ -8,9 +8,14 @@ import {
   type ReactNode,
 } from 'react'
 import { fetchPublicTenantConfig, type PublicTenantConfig } from '../api/tenants'
-import { APP_ICON_SRC, APP_INVERT_HEADER_ICON, APP_TITLE, APP_TITLE_RETRACT_TO_INITIALS } from '../branding'
+import {
+  APP_ICON_SRC,
+  APP_INVERT_HEADER_ICON,
+  APP_TITLE,
+  APP_TITLE_RETRACT_TO_INITIALS,
+} from '../branding'
 import { resolveTenantSlugFromHost } from '../lib/tenantHost'
-import { applyTenantTheme } from '../lib/tenantTheme'
+import { applyFreeTenantShell, applyTenantTheme } from '../lib/tenantTheme'
 import { isDemoMode } from '../demo/demoMode'
 import type { TenantStatus } from '../types/tenant'
 
@@ -25,6 +30,8 @@ export type TenantBranding = {
   enabledAuthProviders: string[]
   frontendPath: string | null
   status: TenantStatus | null
+  publicTripAccess: boolean
+  publicImageAccess: boolean
 }
 
 export type TenantBrandingOverride = Partial<
@@ -34,8 +41,12 @@ export type TenantBrandingOverride = Partial<
   >
 >
 
+export type BrandingStatus = 'pending' | 'ready'
+
 type TenantBrandingContextValue = {
   branding: TenantBranding
+  brandingStatus: BrandingStatus
+  brandingOverrideActive: boolean
   setBrandingOverride: (override: TenantBrandingOverride | null) => void
 }
 
@@ -50,10 +61,19 @@ const defaultBranding: TenantBranding = {
   enabledAuthProviders: ['google', 'password'],
   frontendPath: null,
   status: 'ACTIVE',
+  publicTripAccess: true,
+  publicImageAccess: true,
+}
+
+function initialBrandingStatus(): BrandingStatus {
+  const slug = resolveTenantSlugFromHost()
+  return slug === 'free' && !isDemoMode() ? 'ready' : 'pending'
 }
 
 const TenantBrandingContext = createContext<TenantBrandingContextValue>({
   branding: defaultBranding,
+  brandingStatus: 'pending',
+  brandingOverrideActive: false,
   setBrandingOverride: () => {},
 })
 
@@ -67,6 +87,7 @@ function mergeBranding(
 
 export function TenantBrandingProvider({ children }: { children: ReactNode }) {
   const [branding, setBranding] = useState<TenantBranding>(defaultBranding)
+  const [brandingStatus, setBrandingStatus] = useState<BrandingStatus>(initialBrandingStatus)
   const [override, setOverride] = useState<TenantBrandingOverride | null>(null)
 
   const setBrandingOverride = useCallback((next: TenantBrandingOverride | null) => {
@@ -79,10 +100,11 @@ export function TenantBrandingProvider({ children }: { children: ReactNode }) {
   )
 
   useEffect(() => {
+    applyFreeTenantShell()
     const slug = resolveTenantSlugFromHost()
     if (slug === 'free' && !isDemoMode()) {
       setBranding(defaultBranding)
-      applyTenantTheme(null)
+      setBrandingStatus('ready')
       return
     }
 
@@ -101,12 +123,16 @@ export function TenantBrandingProvider({ children }: { children: ReactNode }) {
           enabledAuthProviders: cfg.enabledAuthProviders ?? ['password'],
           frontendPath: cfg.frontendPath,
           status: cfg.status,
+          publicTripAccess: cfg.publicTripAccess ?? true,
+          publicImageAccess: cfg.publicImageAccess ?? true,
         }
         setBranding(next)
+        setBrandingStatus('ready')
       })
       .catch(() => {
         if (!cancelled) {
           setBranding({ ...defaultBranding, slug, status: null })
+          setBrandingStatus('ready')
         }
       })
 
@@ -116,15 +142,21 @@ export function TenantBrandingProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    if (brandingStatus !== 'ready') {
+      applyFreeTenantShell()
+      return
+    }
     applyTenantTheme(effectiveBranding.primaryColor)
-  }, [effectiveBranding.primaryColor])
+  }, [brandingStatus, effectiveBranding.primaryColor])
 
   const value = useMemo(
     () => ({
       branding: effectiveBranding,
+      brandingStatus,
+      brandingOverrideActive: override !== null,
       setBrandingOverride,
     }),
-    [effectiveBranding, setBrandingOverride],
+    [effectiveBranding, brandingStatus, override, setBrandingOverride],
   )
 
   return (
@@ -134,6 +166,18 @@ export function TenantBrandingProvider({ children }: { children: ReactNode }) {
 
 export function useTenantBranding(): TenantBranding {
   return useContext(TenantBrandingContext).branding
+}
+
+export function usePublicTripAccess(): boolean {
+  return useContext(TenantBrandingContext).branding.publicTripAccess
+}
+
+export function useBrandingStatus(): BrandingStatus {
+  return useContext(TenantBrandingContext).brandingStatus
+}
+
+export function useBrandingOverrideActive(): boolean {
+  return useContext(TenantBrandingContext).brandingOverrideActive
 }
 
 export function useTenantBrandingOverride(): (
