@@ -1048,7 +1048,7 @@ export function AdminTenantDetailPage() {
       )}
 
       {tab === 'customFields' && tierSupportsCustomFields(tenant.tier) && (
-        <AdminTenantCustomFieldsTab tenantId={tenant.id} />
+        <AdminTenantCustomFieldsTab tenantSlug={tenant.slug} tenantId={tenant.id} />
       )}
 
       <ConfirmDialog

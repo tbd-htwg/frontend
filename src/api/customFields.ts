@@ -3,42 +3,59 @@ import { mockCustomFieldStore } from '../mocks/mockCustomFieldStore'
 import type { CustomFieldDeclaration, TripCustomFieldValue } from '../types/customField'
 import { requestJson } from './client'
 
-function adminPath(tenantId: string, suffix = ''): string {
-  return `/admin/tenants/${encodeURIComponent(tenantId)}/custom-fields${suffix}`
+export const ADMIN_TENANT_SLUG_HEADER = 'X-Admin-Tenant-Slug'
+
+const ADMIN_CUSTOM_FIELDS_PATH = '/admin/custom-fields'
+
+function adminHeaders(tenantSlug: string): HeadersInit {
+  return { [ADMIN_TENANT_SLUG_HEADER]: tenantSlug }
 }
 
-export async function listAdminCustomFields(tenantId: string): Promise<CustomFieldDeclaration[]> {
+export async function listAdminCustomFields(
+  tenantSlug: string,
+  tenantIdForDemo?: string,
+): Promise<CustomFieldDeclaration[]> {
   if (isDemoMode()) {
-    return mockCustomFieldStore.listDeclarations(tenantId)
+    return mockCustomFieldStore.listDeclarations(tenantIdForDemo ?? tenantSlug)
   }
-  return requestJson<CustomFieldDeclaration[]>(adminPath(tenantId), { method: 'GET' }, { forceBearer: true })
+  return requestJson<CustomFieldDeclaration[]>(
+    ADMIN_CUSTOM_FIELDS_PATH,
+    { method: 'GET', headers: adminHeaders(tenantSlug) },
+    { forceBearer: true },
+  )
 }
 
 export async function createAdminCustomField(
-  tenantId: string,
+  tenantSlug: string,
   body: { id: string; name: string; type: string },
+  tenantIdForDemo?: string,
 ): Promise<CustomFieldDeclaration> {
   if (isDemoMode()) {
-    return mockCustomFieldStore.createDeclaration(tenantId, body)
+    return mockCustomFieldStore.createDeclaration(tenantIdForDemo ?? tenantSlug, body)
   }
   return requestJson<CustomFieldDeclaration>(
-    adminPath(tenantId),
-    { method: 'POST', body: JSON.stringify(body) },
+    ADMIN_CUSTOM_FIELDS_PATH,
+    { method: 'POST', body: JSON.stringify(body), headers: adminHeaders(tenantSlug) },
     { forceBearer: true },
   )
 }
 
 export async function archiveAdminCustomField(
-  tenantId: string,
+  tenantSlug: string,
   fieldId: string,
   archived: boolean,
+  tenantIdForDemo?: string,
 ): Promise<CustomFieldDeclaration> {
   if (isDemoMode()) {
-    return mockCustomFieldStore.setArchived(tenantId, fieldId, archived)
+    return mockCustomFieldStore.setArchived(tenantIdForDemo ?? tenantSlug, fieldId, archived)
   }
   return requestJson<CustomFieldDeclaration>(
-    adminPath(tenantId, `/${encodeURIComponent(fieldId)}`),
-    { method: 'PATCH', body: JSON.stringify({ archived }) },
+    `${ADMIN_CUSTOM_FIELDS_PATH}/${encodeURIComponent(fieldId)}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ archived }),
+      headers: adminHeaders(tenantSlug),
+    },
     { forceBearer: true },
   )
 }

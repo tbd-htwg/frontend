@@ -9,10 +9,11 @@ import { CUSTOM_FIELD_TYPE_LABELS } from '../../types/customField'
 import { CustomFieldCreateModal } from './CustomFieldCreateModal'
 
 type AdminTenantCustomFieldsTabProps = {
+  tenantSlug: string
   tenantId: string
 }
 
-export function AdminTenantCustomFieldsTab({ tenantId }: AdminTenantCustomFieldsTabProps) {
+export function AdminTenantCustomFieldsTab({ tenantSlug, tenantId }: AdminTenantCustomFieldsTabProps) {
   const [fields, setFields] = useState<CustomFieldDeclaration[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -23,7 +24,7 @@ export function AdminTenantCustomFieldsTab({ tenantId }: AdminTenantCustomFields
   async function load() {
     setLoading(true)
     try {
-      setFields(await listAdminCustomFields(tenantId))
+      setFields(await listAdminCustomFields(tenantSlug, tenantId))
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load custom fields')
@@ -34,7 +35,7 @@ export function AdminTenantCustomFieldsTab({ tenantId }: AdminTenantCustomFields
 
   useEffect(() => {
     void load()
-  }, [tenantId])
+  }, [tenantSlug, tenantId])
 
   const visibleFields = useMemo(
     () => fields.filter((f) => showArchived || !f.archived),
@@ -45,7 +46,7 @@ export function AdminTenantCustomFieldsTab({ tenantId }: AdminTenantCustomFields
     setActionId(field.id)
     setError(null)
     try {
-      const updated = await archiveAdminCustomField(tenantId, field.id, !field.archived)
+      const updated = await archiveAdminCustomField(tenantSlug, field.id, !field.archived, tenantId)
       setFields((prev) => prev.map((f) => (f.id === updated.id ? updated : f)))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update field')
@@ -149,7 +150,7 @@ export function AdminTenantCustomFieldsTab({ tenantId }: AdminTenantCustomFields
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onSubmit={async (payload) => {
-          const created = await createAdminCustomField(tenantId, payload)
+          const created = await createAdminCustomField(tenantSlug, payload, tenantId)
           setFields((prev) => [...prev, created].sort((a, b) => a.id.localeCompare(b.id)))
         }}
       />

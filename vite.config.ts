@@ -49,14 +49,15 @@ function buildApiProxy(targets: {
 }): Record<string, ProxyOptions> {
   const { trip, social, external, platform, customfield } = targets
   return {
+    // customfield-service (more specific admin path before /api/v2/admin)
+    '/api/v2/admin/custom-fields': platformServiceProxy(customfield),
+    '/api/v2/custom-fields': simpleProxy(customfield),
+    '^/api/v2/trips/[^/]+/custom-fields$': simpleProxy(customfield),
+
     // platform-service (M3): auth issuance + tenant admin
     '/api/v2/admin': platformServiceProxy(platform),
     '/api/v2/auth': platformServiceProxy(platform),
     '/api/v2/tenants': platformServiceProxy(platform),
-
-    // customfield-service
-    '/api/v2/custom-fields': simpleProxy(customfield),
-    '^/api/v2/trips/[^/]+/custom-fields$': simpleProxy(customfield),
 
     // social-service
     '/api/v2/comments': simpleProxy(social),
