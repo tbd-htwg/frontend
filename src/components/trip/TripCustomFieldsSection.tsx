@@ -107,7 +107,7 @@ export function TripCustomFieldsSection({
       <>
         <hr className="my-8 w-full border-0 border-t border-slate-300" aria-hidden="true" />
         <section>
-          <TripSectionHeader title="Custom fields" addAriaLabel="Custom fields" />
+          <TripSectionHeader title="Custom fields" count={0} addAriaLabel="Custom fields" />
           <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="alert">
             {loadError}
           </p>
