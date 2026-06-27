@@ -34,3 +34,8 @@ export function isEnterpriseHost(host = window.location.host): boolean {
   if (isLocalDevHost(hostname)) return true
   return hostname.endsWith(`.${ENTERPRISE_HOST_BASE.toLowerCase()}`)
 }
+
+/** Custom field trip values are only served on enterprise (and local develop) hosts. */
+export function hostSupportsTripCustomFields(host = window.location.host): boolean {
+  return isEnterpriseHost(host)
+}

@@ -59,6 +59,10 @@ export function TripCustomFieldsSection({
         if (!cancelled) {
           setAvailable(false)
           setFields([])
+          if (err instanceof ApiError && err.status === 404) {
+            setLoadError(null)
+            return
+          }
           setLoadError(
             err instanceof ApiError
               ? err.body || `Could not load custom fields (${err.status})`

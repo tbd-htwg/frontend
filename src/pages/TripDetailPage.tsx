@@ -82,6 +82,7 @@ import { AccommodationActivityInfo } from '../components/ViatorTourEntry'
 import { LocationTravelInfo } from '../components/LocationTravelInfo'
 import { TransportRoutePanel } from '../components/TransportRoutePanel'
 import { TripCustomFieldsSection } from '../components/trip/TripCustomFieldsSection'
+import { hostSupportsTripCustomFields } from '../lib/tenantHost'
 import { TripSectionHeader } from '../components/TripSectionHeader'
 import { ImageLightbox } from '../components/ImageLightbox'
 import { TripHiddenBadge } from '../components/TripHiddenBadge'
@@ -1979,11 +1980,13 @@ export function TripDetailPage() {
 
           </section>
 
-          <TripCustomFieldsSection
-            tripId={tripId}
-            isOwner={isOwner}
-            showTripManagement={showTripManagement}
-          />
+          {hostSupportsTripCustomFields() && (
+            <TripCustomFieldsSection
+              tripId={tripId}
+              isOwner={isOwner}
+              showTripManagement={showTripManagement}
+            />
+          )}
 
           <hr className="my-8 w-full border-0 border-t border-slate-300" aria-hidden="true" />
 
