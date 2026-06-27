@@ -2,7 +2,13 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCheck, faXmark } from '@fortawesome/free-solid-svg-icons'
-import { archiveTenant, getTenant, retryTenant, updateTenantBranding } from '../../api/tenants'
+import {
+  archiveTenant,
+  getTenant,
+  retryTenant,
+  updateTenantBranding,
+  updateTenantResources,
+} from '../../api/tenants'
 import { AppBrand } from '../../components/AppBrand'
 import { BrandingIconUpload } from '../../components/admin/BrandingIconUpload'
 import { ColorPickerField } from '../../components/admin/ColorPickerField'
@@ -21,11 +27,25 @@ import {
 import { useColorScheme } from '../../context/ColorSchemeContext'
 import { useTenantBrandingOverride } from '../../context/TenantBrandingContext'
 import { useMockTenantRefresh } from '../../hooks/useMockTenantRefresh'
-import type { Tenant } from '../../types/tenant'
+import type { ResourceSize, Tenant, TenantResourceConfig, TenantServiceResource } from '../../types/tenant'
 
-type Tab = 'overview' | 'branding' | 'users' | 'cost'
+type Tab = 'overview' | 'branding' | 'resources' | 'users' | 'cost'
 
 type BrandingSaveStatus = 'idle' | 'success' | 'error'
+type ResourceSaveStatus = 'idle' | 'success' | 'error'
+
+const defaultResourceConfig: TenantResourceConfig = {
+  autoscalingEnabled: false,
+  trip: { size: 'SMALL', replicas: 1, minReplicas: 1, maxReplicas: 3 },
+  social: { size: 'SMALL', replicas: 1, minReplicas: 1, maxReplicas: 2 },
+  externalInfo: { size: 'SMALL', replicas: 1, minReplicas: 1, maxReplicas: 2 },
+}
+
+const resourceLabels = {
+  trip: 'Trip service',
+  social: 'Social service',
+  externalInfo: 'External info',
+} satisfies Record<keyof Omit<TenantResourceConfig, 'autoscalingEnabled'>, string>
 
 function savedBrandingPreview(tenant: Tenant) {
   return {
@@ -53,6 +73,8 @@ export function AdminTenantDetailPage() {
   const [brandingInvertIcon, setBrandingInvertIcon] = useState(false)
   const [iconCleared, setIconCleared] = useState(false)
   const [brandingSaveStatus, setBrandingSaveStatus] = useState<BrandingSaveStatus>('idle')
+  const [resourceConfig, setResourceConfig] = useState<TenantResourceConfig>(defaultResourceConfig)
+  const [resourceSaveStatus, setResourceSaveStatus] = useState<ResourceSaveStatus>('idle')
   const refreshTick = useMockTenantRefresh()
   const setBrandingOverride = useTenantBrandingOverride()
   const { colorScheme } = useColorScheme()
@@ -73,6 +95,7 @@ export function AdminTenantDetailPage() {
             setBrandingIcon(t.iconUrl ?? '')
             setBrandingRetract(t.titleRetractToInitials ?? false)
             setBrandingInvertIcon(t.invertHeaderIcon ?? t.slug === 'free')
+            setResourceConfig(t.resourceConfig ?? defaultResourceConfig)
             setIconCleared(false)
           }
         }
@@ -132,6 +155,12 @@ export function AdminTenantDetailPage() {
     return () => window.clearTimeout(timer)
   }, [brandingSaveStatus])
 
+  useEffect(() => {
+    if (resourceSaveStatus === 'idle') return
+    const timer = window.setTimeout(() => setResourceSaveStatus('idle'), 1500)
+    return () => window.clearTimeout(timer)
+  }, [resourceSaveStatus])
+
   async function handleRetry() {
     if (!id) return
     setActionLoading(true)
@@ -151,6 +180,33 @@ export function AdminTenantDetailPage() {
       await archiveTenant(id)
       setArchiveOpen(false)
       navigate('/admin/tenants')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  function updateResourceService(
+    service: keyof Omit<TenantResourceConfig, 'autoscalingEnabled'>,
+    patch: Partial<TenantServiceResource>,
+  ) {
+    setResourceConfig((current) => ({
+      ...current,
+      [service]: { ...current[service], ...patch },
+    }))
+  }
+
+  async function handleResourceSave() {
+    if (!tenant) return
+    setResourceSaveStatus('idle')
+    setActionLoading(true)
+    try {
+      const updated = await updateTenantResources(tenant.id, resourceConfig)
+      setTenant(updated)
+      setResourceConfig(updated.resourceConfig ?? resourceConfig)
+      setResourceSaveStatus('success')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to save resources')
+      setResourceSaveStatus('error')
     } finally {
       setActionLoading(false)
     }
@@ -296,6 +352,11 @@ export function AdminTenantDetailPage() {
         <button type="button" className={tabClass('branding')} onClick={() => setTab('branding')}>
           Branding
         </button>
+        {tenant.tier === 'ENTERPRISE' && (
+          <button type="button" className={tabClass('resources')} onClick={() => setTab('resources')}>
+            Resources
+          </button>
+        )}
         <button type="button" className={tabClass('users')} onClick={() => setTab('users')}>
           Users
         </button>
@@ -538,6 +599,131 @@ export function AdminTenantDetailPage() {
               'Save branding'
             )}
           </button>
+        </form>
+      )}
+
+      {tab === 'resources' && tenant.tier === 'ENTERPRISE' && (
+        <form
+          className="space-y-5 rounded-lg border border-slate-200 bg-white p-6"
+          onSubmit={(e) => {
+            e.preventDefault()
+            void handleResourceSave()
+          }}
+        >
+          <label className="flex cursor-pointer items-center justify-between gap-4 border-b border-slate-200 pb-4 text-sm text-slate-800">
+            <span className="font-semibold">Horizontal autoscaling</span>
+            <input
+              type="checkbox"
+              checked={resourceConfig.autoscalingEnabled}
+              onChange={(e) =>
+                setResourceConfig((current) => ({
+                  ...current,
+                  autoscalingEnabled: e.target.checked,
+                }))
+              }
+              className="h-4 w-4 rounded border-slate-300"
+            />
+          </label>
+
+          {(['trip', 'social', 'externalInfo'] as const).map((service) => (
+            <fieldset key={service} className="grid gap-3 rounded-md border border-slate-200 p-4 sm:grid-cols-4">
+              <legend className="px-1 text-sm font-semibold text-slate-900">
+                {resourceLabels[service]}
+              </legend>
+              <label className="block space-y-1">
+                <span className="text-xs uppercase text-slate-500">Size</span>
+                <select
+                  value={resourceConfig[service].size}
+                  onChange={(e) =>
+                    updateResourceService(service, { size: e.target.value as ResourceSize })
+                  }
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                >
+                  <option value="SMALL">Small</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="LARGE">Large</option>
+                </select>
+              </label>
+              {!resourceConfig.autoscalingEnabled ? (
+                <label className="block space-y-1">
+                  <span className="text-xs uppercase text-slate-500">Replicas</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={4}
+                    value={resourceConfig[service].replicas}
+                    onChange={(e) =>
+                      updateResourceService(service, { replicas: Number(e.target.value) })
+                    }
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  />
+                </label>
+              ) : (
+                <>
+                  <label className="block space-y-1">
+                    <span className="text-xs uppercase text-slate-500">Min</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={6}
+                      value={resourceConfig[service].minReplicas}
+                      onChange={(e) =>
+                        updateResourceService(service, { minReplicas: Number(e.target.value) })
+                      }
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                    />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="text-xs uppercase text-slate-500">Max</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={6}
+                      value={resourceConfig[service].maxReplicas}
+                      onChange={(e) =>
+                        updateResourceService(service, { maxReplicas: Number(e.target.value) })
+                      }
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                    />
+                  </label>
+                </>
+              )}
+            </fieldset>
+          ))}
+
+          <div className="flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={actionLoading || resourceSaveStatus !== 'idle'}
+              className={[
+                'inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white disabled:opacity-50',
+                resourceSaveStatus === 'success'
+                  ? 'bg-emerald-700'
+                  : resourceSaveStatus === 'error'
+                    ? 'bg-red-700'
+                    : 'bg-slate-900 hover:bg-slate-800',
+              ].join(' ')}
+            >
+              {actionLoading ? (
+                'Saving…'
+              ) : resourceSaveStatus === 'success' ? (
+                <>
+                  <FontAwesomeIcon icon={faCheck} className="h-3.5 w-3.5" aria-hidden="true" />
+                  Queued
+                </>
+              ) : resourceSaveStatus === 'error' ? (
+                <>
+                  <FontAwesomeIcon icon={faXmark} className="h-3.5 w-3.5" aria-hidden="true" />
+                  Error
+                </>
+              ) : (
+                'Apply resources'
+              )}
+            </button>
+            <p className="text-sm text-slate-600">
+              Updates are applied by GitOps and may take a few minutes.
+            </p>
+          </div>
         </form>
       )}
 

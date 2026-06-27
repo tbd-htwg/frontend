@@ -57,6 +57,23 @@ export type Tenant = {
   invertHeaderIcon?: boolean
   frontendPath?: string | null
   imageTag?: string | null
+  resourceConfig?: TenantResourceConfig
+}
+
+export type ResourceSize = 'SMALL' | 'MEDIUM' | 'LARGE'
+
+export type TenantServiceResource = {
+  size: ResourceSize
+  replicas: number
+  minReplicas: number
+  maxReplicas: number
+}
+
+export type TenantResourceConfig = {
+  autoscalingEnabled: boolean
+  trip: TenantServiceResource
+  social: TenantServiceResource
+  externalInfo: TenantServiceResource
 }
 
 export type PublicTenantConfig = {

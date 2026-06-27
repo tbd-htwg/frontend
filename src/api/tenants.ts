@@ -6,6 +6,7 @@ import type {
   TenantBrandingUpdateRequest,
   TenantCreateRequest,
   TenantListFilters,
+  TenantResourceConfig,
 } from '../types/tenant'
 import type { SignedImageUploadRequest, SignedImageUploadResponse } from '../types/api'
 import { requestJson, requestVoid, uploadFileToSignedUrl } from './client'
@@ -117,6 +118,22 @@ export async function updateTenantBranding(
   }
   return requestJson<Tenant>(
     adminPath(`/${encodeURIComponent(id)}/branding`),
+    { method: 'PUT', body: JSON.stringify(body) },
+    { forceBearer: true },
+)
+}
+
+export async function updateTenantResources(
+  id: string,
+  body: TenantResourceConfig,
+): Promise<Tenant> {
+  if (isDemoMode()) {
+    const tenant = mockTenantStore.getTenant(id)
+    if (!tenant) throw new Error('Tenant not found')
+    return { ...tenant, resourceConfig: body }
+  }
+  return requestJson<Tenant>(
+    adminPath(`/${encodeURIComponent(id)}/resources`),
     { method: 'PUT', body: JSON.stringify(body) },
     { forceBearer: true },
   )
