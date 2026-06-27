@@ -48,6 +48,7 @@ export function isAnonymousPublicRead(path: string, method = 'GET'): boolean {
   if (/^\/trips\/\d+\/detail$/.test(p)) return true
   if (/^\/trips\/\d+\/community$/.test(p)) return true
   if (/^\/trips\/\d+\/comments$/.test(p)) return true
+  if (/^\/trips\/\d+\/custom-fields$/.test(p)) return true
   if (p === '/trips/search/countLikes') return true
   if (/^\/users\/\d+\/profile$/.test(p)) return true
   if (/^\/users\/\d+\/likedTrips\/\d+$/.test(p)) return true

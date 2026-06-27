@@ -8,6 +8,8 @@ const hints: Record<TenantTier, string> = {
     'Shared tripplanning-standard namespace; Terraform dispatch for DNS/DB; DB + index per tenant',
   ENTERPRISE:
     'Dedicated tripplanning-ent-{slug} namespace; Terraform + GitOps dispatch; dedicated backing services',
+  DEVELOP:
+    'Local JVM stack (./scripts/dev.sh); enterprise features on shared stub services; localhost only',
 }
 
 export function TenantCostHint({

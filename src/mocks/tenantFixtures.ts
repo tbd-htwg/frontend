@@ -10,6 +10,7 @@ const ENTERPRISE_HOST_BASE = 'enterprise.k8s.tbd-htwg.de'
 
 export function hostUrlForSlug(slug: string, tier: TenantTier = 'STANDARD'): string {
   if (slug === 'free' || tier === 'FREE') return `https://${HOST_BASE}`
+  if (tier === 'DEVELOP') return 'http://localhost'
   if (tier === 'ENTERPRISE') return `https://${slug}.${ENTERPRISE_HOST_BASE}`
   return `https://${slug}.${HOST_BASE}`
 }
@@ -21,19 +22,19 @@ export function namespaceForTier(slug: string, tier: TenantTier): string {
 }
 
 export function dbNameForTier(slug: string, tier: TenantTier): string | null {
-  if (tier === 'FREE') return 'tripplanning'
+  if (tier === 'FREE' || tier === 'DEVELOP' || tier === 'ENTERPRISE') return 'tripplanning'
   if (tier === 'STANDARD') return `tripplanning_std_${slug.replace(/-/g, '_')}`
   return `tripplanning_ent_${slug.replace(/-/g, '_')}`
 }
 
 export function frontendPathForTier(slug: string, tier: TenantTier): string | null {
   if (tier === 'STANDARD') return `/standard/${slug}/`
-  if (tier === 'ENTERPRISE') return `/enterprise/${slug}/`
+  if (tier === 'ENTERPRISE' || tier === 'DEVELOP') return `/enterprise/${slug}/`
   return null
 }
 
 export function estimatedCostForTier(tier: TenantTier): number {
-  if (tier === 'FREE') return 0
+  if (tier === 'FREE' || tier === 'DEVELOP') return 0
   if (tier === 'STANDARD') return 45
   return 180
 }
@@ -87,7 +88,8 @@ export function enterpriseSteps(
 }
 
 function activeSteps(tier: TenantTier): ProvisioningStep[] {
-  const steps = tier === 'ENTERPRISE' ? enterpriseSteps(7) : standardSteps(5)
+  const steps =
+    tier === 'ENTERPRISE' || tier === 'DEVELOP' ? enterpriseSteps(7) : standardSteps(5)
   return steps.map((s) => ({ ...s, status: 'done' as const }))
 }
 
@@ -148,10 +150,11 @@ function baseTenant(
     archivedAt: null,
     dbName: dbNameForTier(slug, tier),
     searchIndex: tier === 'FREE' ? 'tripentity' : `tripentity-${slug}`,
-    firestoreDatabase: tier === 'ENTERPRISE' ? `(default)-${slug}` : null,
-    gcsBucket: tier === 'ENTERPRISE' ? `tripplanning-ent-${slug}-images` : null,
+    firestoreDatabase: tier === 'ENTERPRISE' || tier === 'DEVELOP' ? `(default)-${slug}` : null,
+    gcsBucket:
+      tier === 'ENTERPRISE' || tier === 'DEVELOP' ? `tripplanning-ent-${slug}-images` : null,
     frontendPath: frontendPathForTier(slug, tier),
-    imageTag: tier === 'ENTERPRISE' ? `enterprise-${slug}` : null,
+    imageTag: tier === 'ENTERPRISE' || tier === 'DEVELOP' ? `enterprise-${slug}` : null,
     provisioningError: null,
     estimatedMonthlyCostEur: estimatedCostForTier(tier),
     provisioningSteps: status === 'ACTIVE' || status === 'ARCHIVED'
@@ -169,6 +172,11 @@ export const SEED_TENANTS: Tenant[] = [
     createdAt: '2025-01-15T08:00:00Z',
     dbName: 'tripplanning',
     searchIndex: 'tripentity',
+  }),
+  baseTenant('tenant-develop', 'develop', 'Local Development', 'DEVELOP', 'ACTIVE', {
+    hostUrl: 'http://localhost',
+    headerTitle: 'Trip Planner (Dev)',
+    provisioningSteps: activeSteps('DEVELOP'),
   }),
   baseTenant('tenant-acme-corp', 'acme-corp', 'Acme Corp', 'STANDARD', 'ACTIVE', {
     createdAt: '2026-03-10T14:30:00Z',

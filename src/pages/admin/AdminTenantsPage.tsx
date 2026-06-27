@@ -96,6 +96,7 @@ export function AdminTenantsPage() {
             <option value="FREE">Free</option>
             <option value="STANDARD">Standard</option>
             <option value="ENTERPRISE">Enterprise</option>
+            <option value="DEVELOP">Develop</option>
           </select>
         </label>
         <label className="flex items-center gap-2 text-sm">

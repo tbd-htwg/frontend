@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCheck, faXmark } from '@fortawesome/free-solid-svg-icons'
 import { archiveTenant, getTenant, retryTenant, updateTenantBranding } from '../../api/tenants'
+import { AdminTenantCustomFieldsTab } from '../../components/admin/AdminTenantCustomFieldsTab'
 import { AppBrand } from '../../components/AppBrand'
 import { BrandingIconUpload } from '../../components/admin/BrandingIconUpload'
 import { ColorPickerField } from '../../components/admin/ColorPickerField'
@@ -12,6 +13,7 @@ import { TenantCostHint } from '../../components/admin/TenantCostHint'
 import { TenantStatusBadge } from '../../components/admin/TenantStatusBadge'
 import { StubProvisioningBanner } from '../../components/admin/StubProvisioningBanner'
 import { TenantTierBadge } from '../../components/admin/TenantTierBadge'
+import { tierSupportsCustomFields } from '../../lib/tenantTier'
 import { APP_ICON_SRC } from '../../branding'
 import {
   tenantHeaderChromeBackground,
@@ -23,7 +25,7 @@ import { useTenantBrandingOverride } from '../../context/TenantBrandingContext'
 import { useMockTenantRefresh } from '../../hooks/useMockTenantRefresh'
 import type { Tenant } from '../../types/tenant'
 
-type Tab = 'overview' | 'branding' | 'users' | 'cost'
+type Tab = 'overview' | 'branding' | 'users' | 'cost' | 'customFields'
 
 type BrandingSaveStatus = 'idle' | 'success' | 'error'
 
@@ -302,6 +304,15 @@ export function AdminTenantDetailPage() {
         <button type="button" className={tabClass('cost')} onClick={() => setTab('cost')}>
           Cost
         </button>
+        {tierSupportsCustomFields(tenant.tier) && (
+          <button
+            type="button"
+            className={tabClass('customFields')}
+            onClick={() => setTab('customFields')}
+          >
+            Custom fields
+          </button>
+        )}
       </nav>
 
       {tab === 'overview' && (
@@ -574,6 +585,10 @@ export function AdminTenantDetailPage() {
             Open GCP Pricing Calculator
           </a>
         </div>
+      )}
+
+      {tab === 'customFields' && tierSupportsCustomFields(tenant.tier) && (
+        <AdminTenantCustomFieldsTab tenantId={tenant.id} />
       )}
 
       <ConfirmDialog

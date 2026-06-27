@@ -27,16 +27,21 @@ function nowIso(): string {
 }
 
 function stepsForTier(tier: TenantTier) {
-  return tier === 'ENTERPRISE' ? enterpriseSteps(0) : standardSteps(0)
+  return tier === 'ENTERPRISE' || tier === 'DEVELOP' ? enterpriseSteps(0) : standardSteps(0)
 }
 
 function stepCount(tier: TenantTier): number {
-  return tier === 'ENTERPRISE' ? 7 : 5
+  return tier === 'ENTERPRISE' || tier === 'DEVELOP' ? 7 : 5
+}
+
+function isEnterpriseLike(tier: TenantTier): boolean {
+  return tier === 'ENTERPRISE' || tier === 'DEVELOP'
 }
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const RESERVED_SLUGS = new Set([
   'free',
+  'develop',
   'admin',
   'api',
   'www',
@@ -131,10 +136,10 @@ class MockTenantStore {
       archivedAt: null,
       dbName: dbNameForTier(slug, req.tier),
       searchIndex: `tripentity-${slug}`,
-      firestoreDatabase: req.tier === 'ENTERPRISE' ? `(default)-${slug}` : null,
-      gcsBucket: req.tier === 'ENTERPRISE' ? `tripplanning-ent-${slug}-images` : null,
+      firestoreDatabase: isEnterpriseLike(req.tier) ? `(default)-${slug}` : null,
+      gcsBucket: isEnterpriseLike(req.tier) ? `tripplanning-ent-${slug}-images` : null,
       frontendPath: frontendPathForTier(slug, req.tier),
-      imageTag: req.tier === 'ENTERPRISE' ? `enterprise-${slug}` : null,
+      imageTag: isEnterpriseLike(req.tier) ? `enterprise-${slug}` : null,
       provisioningError: null,
       estimatedMonthlyCostEur: estimatedCostForTier(req.tier),
       provisioningSteps: stepsForTier(req.tier),
@@ -161,11 +166,11 @@ class MockTenantStore {
       }
 
       const total = stepCount(tenant.tier)
-      const steps = tenant.tier === 'ENTERPRISE' ? enterpriseSteps(stepIndex) : standardSteps(stepIndex)
+      const steps = isEnterpriseLike(tenant.tier) ? enterpriseSteps(stepIndex) : standardSteps(stepIndex)
 
       if (stepIndex >= total) {
         tenant.status = 'ACTIVE'
-        tenant.provisioningSteps = tenant.tier === 'ENTERPRISE' ? enterpriseSteps(total) : standardSteps(total)
+        tenant.provisioningSteps = isEnterpriseLike(tenant.tier) ? enterpriseSteps(total) : standardSteps(total)
         tenant.updatedAt = nowIso()
         clearInterval(timer)
         this.timers.delete(id)
@@ -284,11 +289,11 @@ class MockTenantStore {
 
       if (done >= total) {
         t.status = 'ACTIVE'
-        t.provisioningSteps = t.tier === 'ENTERPRISE' ? enterpriseSteps(total) : standardSteps(total)
+        t.provisioningSteps = isEnterpriseLike(t.tier) ? enterpriseSteps(total) : standardSteps(total)
         t.updatedAt = nowIso()
         clearInterval(timer)
       } else {
-        t.provisioningSteps = t.tier === 'ENTERPRISE' ? enterpriseSteps(done + 1) : standardSteps(done + 1)
+        t.provisioningSteps = isEnterpriseLike(t.tier) ? enterpriseSteps(done + 1) : standardSteps(done + 1)
         t.updatedAt = nowIso()
       }
       this.notify()
