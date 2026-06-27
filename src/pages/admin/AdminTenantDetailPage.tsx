@@ -35,10 +35,10 @@ type BrandingSaveStatus = 'idle' | 'success' | 'error'
 type ResourceSaveStatus = 'idle' | 'success' | 'error'
 
 const defaultResourceConfig: TenantResourceConfig = {
-  autoscalingEnabled: false,
-  trip: { size: 'SMALL', replicas: 1, minReplicas: 1, maxReplicas: 3 },
-  social: { size: 'SMALL', replicas: 1, minReplicas: 1, maxReplicas: 2 },
-  externalInfo: { size: 'SMALL', replicas: 1, minReplicas: 1, maxReplicas: 2 },
+  autoscalingEnabled: true,
+  trip: { size: 'SMALL', replicas: 1, minReplicas: 1, maxReplicas: 4 },
+  social: { size: 'SMALL', replicas: 1, minReplicas: 1, maxReplicas: 3 },
+  externalInfo: { size: 'SMALL', replicas: 1, minReplicas: 1, maxReplicas: 3 },
 }
 
 const resourceLabels = {
@@ -611,7 +611,7 @@ export function AdminTenantDetailPage() {
           }}
         >
           <label className="flex cursor-pointer items-center justify-between gap-4 border-b border-slate-200 pb-4 text-sm text-slate-800">
-            <span className="font-semibold">Horizontal autoscaling</span>
+            <span className="font-semibold">Autoscale pod count</span>
             <input
               type="checkbox"
               checked={resourceConfig.autoscalingEnabled}
@@ -646,7 +646,7 @@ export function AdminTenantDetailPage() {
               </label>
               {!resourceConfig.autoscalingEnabled ? (
                 <label className="block space-y-1">
-                  <span className="text-xs uppercase text-slate-500">Replicas</span>
+                  <span className="text-xs uppercase text-slate-500">Pods</span>
                   <input
                     type="number"
                     min={1}
@@ -661,7 +661,7 @@ export function AdminTenantDetailPage() {
               ) : (
                 <>
                   <label className="block space-y-1">
-                    <span className="text-xs uppercase text-slate-500">Min</span>
+                    <span className="text-xs uppercase text-slate-500">Min pods</span>
                     <input
                       type="number"
                       min={1}
@@ -674,7 +674,7 @@ export function AdminTenantDetailPage() {
                     />
                   </label>
                   <label className="block space-y-1">
-                    <span className="text-xs uppercase text-slate-500">Max</span>
+                    <span className="text-xs uppercase text-slate-500">Max pods</span>
                     <input
                       type="number"
                       min={1}
