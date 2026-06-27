@@ -8,6 +8,10 @@ import {
 
   faGear,
 
+  faEye,
+
+  faEyeSlash,
+
   faHeart,
 
   faHotel,
@@ -62,7 +66,7 @@ import {
 
 } from '../api/tripLocations'
 
-import { countTripLikes, deleteTrip } from '../api/trips'
+import { countTripLikes, deleteTrip, patchTrip } from '../api/trips'
 
 import { useAuth } from '../context/AuthContext'
 
@@ -77,8 +81,10 @@ import { transportWithPlaceCoords } from '../utils/transportGeo'
 import { AccommodationActivityInfo } from '../components/ViatorTourEntry'
 import { LocationTravelInfo } from '../components/LocationTravelInfo'
 import { TransportRoutePanel } from '../components/TransportRoutePanel'
+import { TripCustomFieldsSection } from '../components/trip/TripCustomFieldsSection'
 import { TripSectionHeader } from '../components/TripSectionHeader'
 import { ImageLightbox } from '../components/ImageLightbox'
+import { TripHiddenBadge } from '../components/TripHiddenBadge'
 import { AddLocationModal } from '../components/trip/AddLocationModal'
 import { AddAccommodationModal } from '../components/trip/AddAccommodationModal'
 import { AddTransportModal } from '../components/trip/AddTransportModal'
@@ -266,6 +272,7 @@ export function TripDetailPage() {
   const [showAddLocationModal, setShowAddLocationModal] = useState(false)
 
   const [deleting, setDeleting] = useState(false)
+  const [togglingVisibility, setTogglingVisibility] = useState(false)
 
   const [liking, setLiking] = useState(false)
 
@@ -488,6 +495,20 @@ export function TripDetailPage() {
 
 
 
+
+  async function handleToggleVisibility() {
+    if (!trip || !isOwner) return
+    const nextVisible = !(trip.visible ?? true)
+    setTogglingVisibility(true)
+    try {
+      const updated = await patchTrip(trip.id, { visible: nextVisible })
+      setTrip((prev) => (prev ? { ...prev, visible: updated.visible ?? nextVisible } : prev))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Could not update trip visibility.')
+    } finally {
+      setTogglingVisibility(false)
+    }
+  }
 
   async function handleDelete() {
 
@@ -1190,7 +1211,12 @@ export function TripDetailPage() {
 
             <div>
 
-              <h1 className="text-2xl font-semibold text-slate-900">{trip.title}</h1>
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-semibold text-slate-900">{trip.title}</h1>
+                {isOwner && !showTripManagement && !(trip.visible ?? true) ? (
+                  <TripHiddenBadge />
+                ) : null}
+              </div>
 
               <p className="mt-1 text-slate-600">
 
@@ -1227,6 +1253,37 @@ export function TripDetailPage() {
             {isOwner && showTripManagement && (
 
               <div className="flex flex-wrap gap-2">
+
+                <button
+
+                  type="button"
+
+                  onClick={() => void handleToggleVisibility()}
+
+                  disabled={togglingVisibility}
+
+                  aria-label={
+                    trip.visible ?? true
+                      ? 'Hide trip from others'
+                      : 'Make trip visible to others'
+                  }
+
+                  className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+
+                >
+
+                  <FontAwesomeIcon
+                    icon={trip.visible ?? true ? faEye : faEyeSlash}
+                    aria-hidden="true"
+                  />
+
+                  {togglingVisibility
+                    ? 'Updating…'
+                    : trip.visible ?? true
+                      ? 'Hide'
+                      : 'Show'}
+
+                </button>
 
                 <button
 
@@ -1921,6 +1978,12 @@ export function TripDetailPage() {
             )}
 
           </section>
+
+          <TripCustomFieldsSection
+            tripId={tripId}
+            isOwner={isOwner}
+            showTripManagement={showTripManagement}
+          />
 
           <hr className="my-8 w-full border-0 border-t border-slate-300" aria-hidden="true" />
 

@@ -70,18 +70,20 @@ export function AdminTenantsPage() {
             Cross-tier overview — Free, Standard pool, and Enterprise silos
           </p>
         </div>
-        <Link
-          to="/admin/platform-admins"
-          className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
-        >
-          Manage admins
-        </Link>
-        <Link
-          to="/admin/tenants/new"
-          className="rounded-md bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900"
-        >
-          Create tenant
-        </Link>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Link
+            to="/admin/platform-admins"
+            className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+          >
+            Manage admins
+          </Link>
+          <Link
+            to="/admin/tenants/new"
+            className="rounded-md bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900"
+          >
+            Create tenant
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white p-4">
@@ -96,6 +98,7 @@ export function AdminTenantsPage() {
             <option value="FREE">Free</option>
             <option value="STANDARD">Standard</option>
             <option value="ENTERPRISE">Enterprise</option>
+            <option value="DEVELOP">Develop</option>
           </select>
         </label>
         <label className="flex items-center gap-2 text-sm">

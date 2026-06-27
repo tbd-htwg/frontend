@@ -7,6 +7,7 @@ import type {
   TenantCreateRequest,
   TenantListFilters,
   TenantResourceConfig,
+  TenantSecurityUpdateRequest,
 } from '../types/tenant'
 import type { SignedImageUploadRequest, SignedImageUploadResponse } from '../types/api'
 import { requestJson, requestVoid, uploadFileToSignedUrl } from './client'
@@ -39,6 +40,8 @@ export async function fetchPublicTenantConfig(slug: string): Promise<PublicTenan
       titleRetractToInitials: tenant.titleRetractToInitials ?? tenant.slug === 'free',
       invertHeaderIcon: tenant.invertHeaderIcon ?? tenant.slug === 'free',
       frontendPath: tenant.frontendPath ?? null,
+      publicTripAccess: tenant.publicTripAccess ?? true,
+      publicImageAccess: tenant.publicImageAccess ?? true,
     }
   }
   return requestJson<PublicTenantConfig>(`/tenants/${encodeURIComponent(slug)}/public-config`)
@@ -107,6 +110,20 @@ export async function fetchPlatformInfo(): Promise<PlatformInfo | null> {
   } catch {
     return null
   }
+}
+
+export async function updateTenantSecurity(
+  id: string,
+  body: TenantSecurityUpdateRequest,
+): Promise<Tenant> {
+  if (isDemoMode()) {
+    return mockTenantStore.updateSecurity(id, body)
+  }
+  return requestJson<Tenant>(
+    adminPath(`/${encodeURIComponent(id)}/security`),
+    { method: 'PUT', body: JSON.stringify(body) },
+    { forceBearer: true },
+  )
 }
 
 export async function updateTenantBranding(

@@ -1,4 +1,4 @@
-export type TenantTier = 'FREE' | 'STANDARD' | 'ENTERPRISE'
+export type TenantTier = 'FREE' | 'STANDARD' | 'ENTERPRISE' | 'DEVELOP'
 
 export type TenantStatus =
   | 'PENDING'
@@ -58,6 +58,8 @@ export type Tenant = {
   frontendPath?: string | null
   imageTag?: string | null
   resourceConfig?: TenantResourceConfig
+  publicTripAccess?: boolean
+  publicImageAccess?: boolean
 }
 
 export type ResourceSize = 'SMALL' | 'MEDIUM' | 'LARGE'
@@ -74,6 +76,7 @@ export type TenantResourceConfig = {
   trip: TenantServiceResource
   social: TenantServiceResource
   externalInfo: TenantServiceResource
+  customfield: TenantServiceResource
 }
 
 export type PublicTenantConfig = {
@@ -89,6 +92,13 @@ export type PublicTenantConfig = {
   titleRetractToInitials: boolean
   invertHeaderIcon: boolean
   frontendPath: string | null
+  publicTripAccess: boolean
+  publicImageAccess: boolean
+}
+
+export type TenantSecurityUpdateRequest = {
+  publicTripAccess: boolean
+  publicImageAccess: boolean
 }
 
 export type TenantBrandingUpdateRequest = {
@@ -102,7 +112,7 @@ export type TenantBrandingUpdateRequest = {
 export type TenantCreateRequest = {
   slug: string
   displayName: string
-  tier: Exclude<TenantTier, 'FREE'>
+  tier: Exclude<TenantTier, 'FREE' | 'DEVELOP'>
 }
 
 export type TenantListFilters = {

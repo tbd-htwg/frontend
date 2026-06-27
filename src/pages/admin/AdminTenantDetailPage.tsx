@@ -8,7 +8,9 @@ import {
   retryTenant,
   updateTenantBranding,
   updateTenantResources,
+  updateTenantSecurity,
 } from '../../api/tenants'
+import { AdminTenantCustomFieldsTab } from '../../components/admin/AdminTenantCustomFieldsTab'
 import { AppBrand } from '../../components/AppBrand'
 import { BrandingIconUpload } from '../../components/admin/BrandingIconUpload'
 import { ColorPickerField } from '../../components/admin/ColorPickerField'
@@ -18,6 +20,7 @@ import { TenantCostHint } from '../../components/admin/TenantCostHint'
 import { TenantStatusBadge } from '../../components/admin/TenantStatusBadge'
 import { StubProvisioningBanner } from '../../components/admin/StubProvisioningBanner'
 import { TenantTierBadge } from '../../components/admin/TenantTierBadge'
+import { tierSupportsCustomFields, tierSupportsResourceScaling } from '../../lib/tenantTier'
 import { APP_ICON_SRC } from '../../branding'
 import {
   tenantHeaderChromeBackground,
@@ -29,22 +32,33 @@ import { useTenantBrandingOverride } from '../../context/TenantBrandingContext'
 import { useMockTenantRefresh } from '../../hooks/useMockTenantRefresh'
 import type { ResourceSize, Tenant, TenantResourceConfig, TenantServiceResource } from '../../types/tenant'
 
-type Tab = 'overview' | 'branding' | 'resources' | 'monitoring' | 'users' | 'cost'
+type Tab =
+  | 'overview'
+  | 'branding'
+  | 'resources'
+  | 'security'
+  | 'monitoring'
+  | 'users'
+  | 'cost'
+  | 'customFields'
 
 type BrandingSaveStatus = 'idle' | 'success' | 'error'
 type ResourceSaveStatus = 'idle' | 'success' | 'error'
+type SecuritySaveStatus = 'idle' | 'success' | 'error'
 
 const defaultResourceConfig: TenantResourceConfig = {
   autoscalingEnabled: true,
   trip: { size: 'SMALL', replicas: 1, minReplicas: 1, maxReplicas: 4 },
   social: { size: 'SMALL', replicas: 1, minReplicas: 1, maxReplicas: 3 },
   externalInfo: { size: 'SMALL', replicas: 1, minReplicas: 1, maxReplicas: 3 },
+  customfield: { size: 'SMALL', replicas: 1, minReplicas: 1, maxReplicas: 3 },
 }
 
 const resourceLabels = {
   trip: 'Trip service',
   social: 'Social service',
   externalInfo: 'External info',
+  customfield: 'Custom fields',
 } satisfies Record<keyof Omit<TenantResourceConfig, 'autoscalingEnabled'>, string>
 
 type MonitoringQuery = {
@@ -139,6 +153,9 @@ export function AdminTenantDetailPage() {
   const [brandingSaveStatus, setBrandingSaveStatus] = useState<BrandingSaveStatus>('idle')
   const [resourceConfig, setResourceConfig] = useState<TenantResourceConfig>(defaultResourceConfig)
   const [resourceSaveStatus, setResourceSaveStatus] = useState<ResourceSaveStatus>('idle')
+  const [publicTripAccess, setPublicTripAccess] = useState(true)
+  const [publicImageAccess, setPublicImageAccess] = useState(true)
+  const [securitySaveStatus, setSecuritySaveStatus] = useState<SecuritySaveStatus>('idle')
   const refreshTick = useMockTenantRefresh()
   const setBrandingOverride = useTenantBrandingOverride()
   const { colorScheme } = useColorScheme()
@@ -159,7 +176,9 @@ export function AdminTenantDetailPage() {
             setBrandingIcon(t.iconUrl ?? '')
             setBrandingRetract(t.titleRetractToInitials ?? false)
             setBrandingInvertIcon(t.invertHeaderIcon ?? t.slug === 'free')
-            setResourceConfig(t.resourceConfig ?? defaultResourceConfig)
+            setResourceConfig({ ...defaultResourceConfig, ...(t.resourceConfig ?? {}) })
+            setPublicTripAccess(t.publicTripAccess ?? true)
+            setPublicImageAccess(t.publicImageAccess ?? true)
             setIconCleared(false)
           }
         }
@@ -214,6 +233,16 @@ export function AdminTenantDetailPage() {
   useEffect(() => () => setBrandingOverride(null), [setBrandingOverride])
 
   useEffect(() => {
+    if (!tenant) return
+    if (tab === 'customFields' && !tierSupportsCustomFields(tenant.tier)) {
+      setTab('overview')
+    }
+    if (tab === 'resources' && !tierSupportsResourceScaling(tenant.tier)) {
+      setTab('overview')
+    }
+  }, [tenant, tab])
+
+  useEffect(() => {
     if (brandingSaveStatus === 'idle') return
     const timer = window.setTimeout(() => setBrandingSaveStatus('idle'), 1000)
     return () => window.clearTimeout(timer)
@@ -224,6 +253,12 @@ export function AdminTenantDetailPage() {
     const timer = window.setTimeout(() => setResourceSaveStatus('idle'), 1500)
     return () => window.clearTimeout(timer)
   }, [resourceSaveStatus])
+
+  useEffect(() => {
+    if (securitySaveStatus === 'idle') return
+    const timer = window.setTimeout(() => setSecuritySaveStatus('idle'), 1000)
+    return () => window.clearTimeout(timer)
+  }, [securitySaveStatus])
 
   async function handleRetry() {
     if (!id) return
@@ -417,14 +452,26 @@ export function AdminTenantDetailPage() {
         <button type="button" className={tabClass('branding')} onClick={() => setTab('branding')}>
           Branding
         </button>
-        {tenant.tier === 'ENTERPRISE' && (
+        <button type="button" className={tabClass('users')} onClick={() => setTab('users')}>
+          Users
+        </button>
+        <button type="button" className={tabClass('security')} onClick={() => setTab('security')}>
+          Security
+        </button>
+        {tierSupportsCustomFields(tenant.tier) && (
+          <button
+            type="button"
+            className={tabClass('customFields')}
+            onClick={() => setTab('customFields')}
+          >
+            Custom fields
+          </button>
+        )}
+        {tierSupportsResourceScaling(tenant.tier) && (
           <button type="button" className={tabClass('resources')} onClick={() => setTab('resources')}>
             Resources
           </button>
         )}
-        <button type="button" className={tabClass('users')} onClick={() => setTab('users')}>
-          Users
-        </button>
         <button type="button" className={tabClass('monitoring')} onClick={() => setTab('monitoring')}>
           Monitoring
         </button>
@@ -458,7 +505,7 @@ export function AdminTenantDetailPage() {
                 } as CSSProperties
               }
             >
-              <div className="tenant-branding-preview__chrome px-4 py-3">
+              <div className="tenant-branding-preview__chrome flex items-center gap-2 px-4 py-3">
                 <AppBrand
                   preview
                   title={savedBranding.title}
@@ -467,6 +514,9 @@ export function AdminTenantDetailPage() {
                   invertHeaderIcon={savedBranding.invertHeaderIcon}
                   primaryColor={savedBranding.primaryColor}
                 />
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">
+                  Preview
+                </span>
               </div>
               <div className="tenant-branding-preview__body p-6">
                 <h2 className="text-lg font-semibold text-slate-900">Branding</h2>
@@ -670,7 +720,7 @@ export function AdminTenantDetailPage() {
         </form>
       )}
 
-      {tab === 'resources' && tenant.tier === 'ENTERPRISE' && (
+      {tab === 'resources' && tierSupportsResourceScaling(tenant.tier) && (
         <form
           className="space-y-5 rounded-lg border border-slate-200 bg-white p-6"
           onSubmit={(e) => {
@@ -693,7 +743,10 @@ export function AdminTenantDetailPage() {
             />
           </label>
 
-          {(['trip', 'social', 'externalInfo'] as const).map((service) => (
+          {(tierSupportsCustomFields(tenant.tier)
+            ? (['trip', 'social', 'externalInfo', 'customfield'] as const)
+            : (['trip', 'social', 'externalInfo'] as const)
+          ).map((service) => (
             <fieldset key={service} className="grid gap-3 rounded-md border border-slate-200 p-4 sm:grid-cols-4">
               <legend className="px-1 text-sm font-semibold text-slate-900">
                 {resourceLabels[service]}
@@ -792,6 +845,90 @@ export function AdminTenantDetailPage() {
               Updates are applied by GitOps and may take a few minutes.
             </p>
           </div>
+        </form>
+      )}
+
+      {tab === 'security' && tenant.tier !== 'FREE' && (
+        <form
+          className="space-y-6 rounded-lg border border-slate-200 bg-white p-6"
+          onSubmit={async (e) => {
+            e.preventDefault()
+            setSecuritySaveStatus('idle')
+            setActionLoading(true)
+            try {
+              const updated = await updateTenantSecurity(tenant.id, {
+                publicTripAccess,
+                publicImageAccess,
+              })
+              setTenant(updated)
+              setSecuritySaveStatus('success')
+            } catch (err: unknown) {
+              setError(err instanceof Error ? err.message : 'Failed to save security settings')
+              setSecuritySaveStatus('error')
+            } finally {
+              setActionLoading(false)
+            }
+          }}
+        >
+          <p className="text-sm text-slate-600">
+            Control who can browse trips and view location images on this tenant.
+          </p>
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              checked={publicTripAccess}
+              onChange={(e) => setPublicTripAccess(e.target.checked)}
+              className="mt-1"
+            />
+            <span>
+              <span className="block text-sm font-medium text-slate-800">Public trip listings</span>
+              <span className="block text-sm text-slate-600">
+                When off, the home feed, search, and trip detail pages require sign-in.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              checked={publicImageAccess}
+              onChange={(e) => setPublicImageAccess(e.target.checked)}
+              className="mt-1"
+            />
+            <span>
+              <span className="block text-sm font-medium text-slate-800">Public image access</span>
+              <span className="block text-sm text-slate-600">
+                When off, trip and profile images are only shown to signed-in users (legacy behavior).
+              </span>
+            </span>
+          </label>
+          <button
+            type="submit"
+            disabled={actionLoading || securitySaveStatus !== 'idle'}
+            className={[
+              'inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white disabled:opacity-50',
+              securitySaveStatus === 'success'
+                ? 'bg-emerald-700'
+                : securitySaveStatus === 'error'
+                  ? 'bg-red-700'
+                  : 'bg-slate-900 hover:bg-slate-800',
+            ].join(' ')}
+          >
+            {actionLoading ? (
+              'Saving…'
+            ) : securitySaveStatus === 'success' ? (
+              <>
+                <FontAwesomeIcon icon={faCheck} className="h-3.5 w-3.5" aria-hidden="true" />
+                Saved
+              </>
+            ) : securitySaveStatus === 'error' ? (
+              <>
+                <FontAwesomeIcon icon={faXmark} className="h-3.5 w-3.5" aria-hidden="true" />
+                Error
+              </>
+            ) : (
+              'Save security settings'
+            )}
+          </button>
         </form>
       )}
 
@@ -908,6 +1045,10 @@ export function AdminTenantDetailPage() {
             Open GCP Pricing Calculator
           </a>
         </div>
+      )}
+
+      {tab === 'customFields' && tierSupportsCustomFields(tenant.tier) && (
+        <AdminTenantCustomFieldsTab tenantId={tenant.id} />
       )}
 
       <ConfirmDialog

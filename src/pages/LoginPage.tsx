@@ -71,7 +71,10 @@ export function LoginPage() {
 
   function applyTenantAuthScope() {
     const auth = getFirebaseAuth()
-    auth.tenantId = branding.identityPlatformTenantId ?? null
+    const tenantId = branding.identityPlatformTenantId
+    // Local stub provisioner IDs (stub-idp-*) are not real GCP tenants.
+    auth.tenantId =
+      tenantId && !tenantId.startsWith('stub-idp-') ? tenantId : null
   }
 
   async function exchangeFirebaseSession() {

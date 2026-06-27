@@ -60,10 +60,14 @@ export type TripListItemResponse = {
   locations?: string[]
   accommodationNames?: string[]
   transportRoutes?: string[]
+  /** True when the trip has location photos (feed cards may show a gallery). */
+  hasLocationImages?: boolean
   /** Signed URLs for all trip-location images; populated only when authenticated. */
   locationImageUrls?: string[]
   /** Present when returned from Spring Data REST (HAL `user` link). */
   userId?: number
+  /** False when the owner hid the trip from public feeds (owner-only lists may include it). */
+  visible?: boolean
 }
 
 /** Full-text trip search hit (GET /api/search/trips). */
@@ -77,6 +81,8 @@ export type TripSearchResult = {
   locations: string[]
   accommodationNames?: string[]
   transportRoutes?: string[]
+  /** True when the trip has location photos (feed cards may show a gallery). */
+  hasLocationImages?: boolean
   /** Signed URLs for trip-location images when authenticated. */
   locationImageUrls?: string[]
   /** Author user id when returned by the search API. */
@@ -86,6 +92,7 @@ export type TripSearchResult = {
 export type TripDetailsResponse = TripListItemResponse & {
   longDescription: string
   destinationGooglePlaceId?: string
+  visible?: boolean
   tripLocations: TripLocationResponse[]
   transports: TransportResponse[]
   accommodations: AccommodationResponse[]
@@ -105,7 +112,9 @@ export type TripCreateRequest = {
 
 export type TripPutRequest = TripCreateRequest
 
-export type TripPatchRequest = Partial<TripCreateRequest>
+export type TripPatchRequest = Partial<TripCreateRequest> & {
+  visible?: boolean
+}
 
 /** Same shape as {@link UserResponse}; kept as a named type for user-profile views. */
 export type UserDetailsResponse = UserResponse

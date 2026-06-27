@@ -37,6 +37,8 @@ type TripFeedItemDto = {
   locations: string[];
   accommodationNames: string[];
   transportRoutes: string[];
+  hasLocationImages?: boolean;
+  visible?: boolean;
 };
 
 type TripFeedDetailStopDto = {
@@ -69,6 +71,7 @@ type TripFeedDetailDto = {
   startDate: string;
   shortDescription: string;
   longDescription: string;
+  visible?: boolean;
   author: TripFeedAuthorDto;
   stops: TripFeedDetailStopDto[];
   accommodations: TripFeedAccommodationDto[];
@@ -100,6 +103,8 @@ function toTripSummary(item: TripFeedItemDto): TripListItemResponse {
     locations: item.locations ?? [],
     accommodationNames: item.accommodationNames ?? [],
     transportRoutes: item.transportRoutes ?? [],
+    ...(item.hasLocationImages ? { hasLocationImages: true } : {}),
+    ...(item.visible === false ? { visible: false } : {}),
   };
 }
 
@@ -160,6 +165,7 @@ function toTripDetails(detail: TripFeedDetailDto): TripDetailsResponse {
     startDate: detail.startDate ?? "",
     shortDescription: detail.shortDescription ?? "",
     longDescription: detail.longDescription ?? "",
+    visible: detail.visible ?? true,
     authorId: detail.author?.id,
     userId: detail.author?.id,
     ...(detail.author?.name ? { authorName: detail.author.name } : {}),
@@ -179,12 +185,19 @@ function toTripRequest(
 ) {
   return {
     user: body.userId ? hrefForResource(`/users/${body.userId}`) : undefined,
-    title: body.title,
-    destination: body.destination,
-    destinationGooglePlaceId: body.destinationGooglePlaceId,
-    startDate: body.startDate,
-    shortDescription: body.shortDescription,
-    longDescription: body.longDescription,
+    ...(body.title !== undefined ? { title: body.title } : {}),
+    ...(body.destination !== undefined ? { destination: body.destination } : {}),
+    ...(body.destinationGooglePlaceId !== undefined
+      ? { destinationGooglePlaceId: body.destinationGooglePlaceId }
+      : {}),
+    ...(body.startDate !== undefined ? { startDate: body.startDate } : {}),
+    ...(body.shortDescription !== undefined
+      ? { shortDescription: body.shortDescription }
+      : {}),
+    ...(body.longDescription !== undefined
+      ? { longDescription: body.longDescription }
+      : {}),
+    ...('visible' in body && body.visible !== undefined ? { visible: body.visible } : {}),
   };
 }
 
@@ -377,6 +390,7 @@ type TripEntityBody = {
   startDate?: string;
   shortDescription?: string;
   longDescription?: string;
+  visible?: boolean;
 };
 
 function idFromHalEntity(entity: HalEntity<TripEntityBody>): number {
@@ -457,6 +471,7 @@ function summarizeTripEntity(
     startDate: entity.startDate ?? body.startDate ?? "",
     shortDescription: entity.shortDescription ?? body.shortDescription ?? "",
     longDescription: entity.longDescription ?? body.longDescription ?? "",
+    visible: entity.visible ?? ('visible' in body ? body.visible : undefined) ?? true,
     ...(body.userId ? { authorId: body.userId, userId: body.userId } : {}),
     tripLocations: [],
     transports: [],

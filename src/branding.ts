@@ -1,3 +1,6 @@
+/** Generic tab title while tenant branding is still loading. */
+export const APP_LOADING_TITLE = 'Trip Planner'
+
 /** Site / product title shown in the header and browser tab. */
 export const APP_TITLE = 'Trip Blänner Deluxe'
 
