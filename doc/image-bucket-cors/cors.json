@@ -7,8 +7,9 @@
       "http://127.0.0.1:4173",
       "http://k8s.tbd-htwg.de",
       "https://k8s.tbd-htwg.de",
-      "http://k8s.tbd-htwg.de",
-      "https://k8s.tbd-htwg.de",
+      "https://bluestd.k8s.tbd-htwg.de",
+      "https://greenstd.k8s.tbd-htwg.de",
+      "https://redent.enterprise.k8s.tbd-htwg.de",
       "https://tbd-htwg.de",
       "https://www.tbd-htwg.de",
       "https://iaas.tbd-htwg.de",
@@ -19,7 +20,7 @@
       "https://paas.tbd-htwg.de"
     ],
     "method": ["OPTIONS", "PUT", "GET", "HEAD"],
-    "responseHeader": ["Content-Type", "x-goog-resumable", "x-goog-meta-*"],
+    "responseHeader": ["Content-Type", "Authorization", "x-goog-resumable", "x-goog-meta-*"],
     "maxAgeSeconds": 3600
   }
 ]

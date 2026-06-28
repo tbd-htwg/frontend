@@ -7,14 +7,16 @@ import type { TenantTier } from '../../types/tenant'
 
 type SlugAvailabilityState = 'idle' | 'checking' | 'available' | 'unavailable'
 
-const tierHelp: Record<Exclude<TenantTier, 'FREE'>, string> = {
+type CreatableTenantTier = Exclude<TenantTier, 'FREE' | 'DEVELOP'>
+
+const tierHelp: Record<CreatableTenantTier, string> = {
   STANDARD:
     '{slug}.k8s.tbd-htwg.de — shared namespace; Terraform dispatch for DNS/DB; std:{slug} Valkey prefix',
   ENTERPRISE:
     '{slug}.enterprise.k8s.tbd-htwg.de — tripplanning-ent-{slug} namespace; Terraform + GitOps dispatch',
 }
 
-const tierLabels: Record<Exclude<TenantTier, 'FREE'>, string> = {
+const tierLabels: Record<CreatableTenantTier, string> = {
   STANDARD: 'Standard',
   ENTERPRISE: 'Enterprise',
 }
@@ -23,7 +25,7 @@ export function AdminTenantCreatePage() {
   const navigate = useNavigate()
   const [slug, setSlug] = useState('')
   const [displayName, setDisplayName] = useState('')
-  const [tier, setTier] = useState<Exclude<TenantTier, 'FREE'>>('STANDARD')
+  const [tier, setTier] = useState<CreatableTenantTier>('STANDARD')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [slugAvailability, setSlugAvailability] = useState<SlugAvailabilityState>('idle')

@@ -6,6 +6,7 @@ import { defineConfig, loadEnv, type ProxyOptions } from 'vite'
 // Route order mirrors backend/k8s/local/chart/values-local.yaml ingressRoutes (first match wins).
 const DEFAULT_TRIP_PROXY = 'http://localhost:8080'
 const DEFAULT_PLATFORM_PROXY = 'http://localhost:8083'
+const DEFAULT_CUSTOMFIELD_PROXY = 'http://localhost:8084'
 
 function simpleProxy(target: string): ProxyOptions {
   return { target, changeOrigin: true }
@@ -44,13 +45,18 @@ function buildApiProxy(targets: {
   social: string
   external: string
   platform: string
+  customfield: string
 }): Record<string, ProxyOptions> {
-  const { trip, social, external, platform } = targets
+  const { trip, social, external, platform, customfield } = targets
   return {
-    // platform-service (M3): auth issuance + tenant admin
+    // platform-service (M3): auth issuance + tenant admin (incl. custom-fields via X-Admin-Tenant-Slug)
     '/api/v2/admin': platformServiceProxy(platform),
     '/api/v2/auth': platformServiceProxy(platform),
     '/api/v2/tenants': platformServiceProxy(platform),
+
+    // customfield-service (tenant-scoped trip values; public declaration list on enterprise hosts)
+    '/api/v2/custom-fields': simpleProxy(customfield),
+    '^/api/v2/trips/[^/]+/custom-fields$': simpleProxy(customfield),
 
     // social-service
     '/api/v2/comments': simpleProxy(social),
@@ -77,6 +83,7 @@ export default defineConfig(({ mode }) => {
   const socialTarget = env.VITE_DEV_SOCIAL_PROXY_TARGET || tripTarget
   const externalTarget = env.VITE_DEV_EXTERNAL_PROXY_TARGET || tripTarget
   const platformTarget = env.VITE_DEV_PLATFORM_PROXY_TARGET || DEFAULT_PLATFORM_PROXY
+  const customfieldTarget = env.VITE_DEV_CUSTOMFIELD_PROXY_TARGET || DEFAULT_CUSTOMFIELD_PROXY
 
   return {
     plugins: [react(), tailwindcss()],
@@ -86,6 +93,7 @@ export default defineConfig(({ mode }) => {
         social: socialTarget,
         external: externalTarget,
         platform: platformTarget,
+        customfield: customfieldTarget,
       }),
     },
   }

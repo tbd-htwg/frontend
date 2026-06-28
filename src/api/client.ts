@@ -3,8 +3,15 @@ import { SESSION_STORAGE_KEY } from '../auth/sessionStorageKey'
 /** In-memory token from AuthContext (avoids sessionStorage races during login / authMe). */
 let apiAccessToken: string | null = null
 
+/** From tenant public-config; when false, trip feed/search require Bearer for logged-in users. */
+let tenantPublicTripAccess = true
+
 export function setApiAccessToken(token: string | null): void {
   apiAccessToken = token
+}
+
+export function setTenantPublicTripAccess(publicAccess: boolean): void {
+  tenantPublicTripAccess = publicAccess
 }
 
 function bearerToken(): string | undefined {
@@ -41,13 +48,19 @@ export function isAnonymousPublicRead(path: string, method = 'GET'): boolean {
   if (verb !== 'GET' && verb !== 'HEAD') return false
 
   const p = normalizeApiPath(path)
+  // Login-gated tenants: feed/search need Bearer when the user is signed in.
+  if (!tenantPublicTripAccess && (p.startsWith('/api/search') || p.startsWith('/trips/feed'))) {
+    return false
+  }
   if (p.startsWith('/api/search')) return true
   if (p.startsWith('/external/')) return true
   if (p === '/trips/feed-location-images') return false
+  if (p === '/trips/feed/by-user') return false
+  if (/^\/trips\/\d+\/detail$/.test(p)) return false
   if (p.startsWith('/trips/feed')) return true
-  if (/^\/trips\/\d+\/detail$/.test(p)) return true
   if (/^\/trips\/\d+\/community$/.test(p)) return true
   if (/^\/trips\/\d+\/comments$/.test(p)) return true
+  if (/^\/trips\/\d+\/custom-fields$/.test(p)) return true
   if (p === '/trips/search/countLikes') return true
   if (/^\/users\/\d+\/profile$/.test(p)) return true
   if (/^\/users\/\d+\/likedTrips\/\d+$/.test(p)) return true
@@ -59,6 +72,19 @@ export function isAnonymousPublicRead(path: string, method = 'GET'): boolean {
 /** Whether to attach the session Bearer token (mutations, auth, optional-auth image batches). */
 export function shouldAttachBearer(path: string, method = 'GET'): boolean {
   return !isAnonymousPublicRead(path, method)
+}
+
+/** GCS V4 signed URLs authenticate via query params; never send Bearer (breaks CORS preflight). */
+export function isGcsSignedStorageUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url.startsWith('http') ? url : resolveApiUrl(url))
+    return (
+      parsed.hostname === 'storage.googleapis.com' ||
+      parsed.hostname.endsWith('.storage.googleapis.com')
+    )
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -73,9 +99,33 @@ export function getApiBaseUrl(): string {
   if (!/^https?:\/\//.test(normalized)) return normalized
 
   const parsed = new URL(normalized)
+  if (isTenantHost(windowLocationHostname()) && parsed.hostname !== windowLocationHostname()) {
+    return '/api/v2'
+  }
   const parsedPath = parsed.pathname.replace(/\/$/, '')
   const basePath = !parsedPath || parsedPath === '/' ? '/api/v2' : parsedPath
   return `${parsed.origin}${basePath}`
+}
+
+function windowLocationHostname(): string {
+  return typeof window === 'undefined' ? '' : window.location.hostname
+}
+
+function isTenantHost(hostname: string): boolean {
+  if (!hostname) return false
+
+  const hostBase = import.meta.env.VITE_PLATFORM_HOST_BASE ?? 'k8s.tbd-htwg.de'
+  const enterpriseHostBase =
+    import.meta.env.VITE_PLATFORM_ENTERPRISE_HOST_BASE ?? `enterprise.${hostBase}`
+
+  return (
+    isSubdomainOf(hostname, hostBase) ||
+    isSubdomainOf(hostname, enterpriseHostBase)
+  )
+}
+
+function isSubdomainOf(hostname: string, base: string): boolean {
+  return hostname !== base && hostname.endsWith(`.${base}`)
 }
 
 export class ApiError extends Error {
@@ -130,14 +180,17 @@ export function resolveApiUrl(path: string): string {
 async function request(
   path: string,
   init?: RequestInit,
-  options?: { forceBearer?: boolean },
+  options?: { forceBearer?: boolean; anonymous?: boolean },
 ): Promise<Response> {
   const headers = new Headers(init?.headers)
   if (init?.body != null && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
   const method = init?.method ?? 'GET'
-  const attach = options?.forceBearer === true || shouldAttachBearer(path, method)
+  const attach =
+    options?.anonymous === true
+      ? false
+      : options?.forceBearer === true || shouldAttachBearer(path, method)
   const token = attach ? bearerToken() : undefined
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`)
@@ -200,7 +253,7 @@ export async function authorizedGet(path: string): Promise<Response> {
 export async function requestJson<T>(
   path: string,
   init?: RequestInit,
-  options?: { forceBearer?: boolean },
+  options?: { forceBearer?: boolean; anonymous?: boolean },
 ): Promise<T> {
   const res = await request(path, {
     ...init,
@@ -216,7 +269,7 @@ export async function requestJson<T>(
 export async function requestVoid(
   path: string,
   init?: RequestInit,
-  options?: { forceBearer?: boolean },
+  options?: { forceBearer?: boolean; anonymous?: boolean },
 ): Promise<void> {
   await request(
     path,
@@ -244,13 +297,27 @@ export async function uploadFileToSignedUrl(
   uploadUrl: string,
   file: File,
   contentType: string,
-): Promise<void> {
-  const res = await fetch(uploadUrl, {
+): Promise<string | undefined> {
+  const headers = new Headers({
+    'Content-Type': contentType,
+  })
+  const authPath = uploadUrl.startsWith('http')
+    ? new URL(uploadUrl).pathname
+    : uploadUrl
+  if (
+    !isGcsSignedStorageUrl(uploadUrl) &&
+    shouldAttachBearer(authPath, 'PUT')
+  ) {
+    const token = bearerToken()
+    if (token) headers.set('Authorization', `Bearer ${token}`)
+  }
+  const url = /^https?:\/\//.test(uploadUrl) ? uploadUrl : resolveApiUrl(uploadUrl)
+  const res = await fetch(url, {
     method: 'PUT',
-    headers: {
-      'Content-Type': contentType,
-    },
+    headers,
     body: file,
+    cache: 'no-store',
+    credentials: 'omit',
   })
   if (!res.ok) {
     const errText = await res.text()
@@ -259,5 +326,13 @@ export async function uploadFileToSignedUrl(
       res.status,
       errText,
     )
+  }
+  const text = await res.text()
+  if (!text) return undefined
+  try {
+    const json = JSON.parse(text) as { signedReadUrl?: unknown }
+    return typeof json.signedReadUrl === 'string' ? json.signedReadUrl : undefined
+  } catch {
+    return undefined
   }
 }

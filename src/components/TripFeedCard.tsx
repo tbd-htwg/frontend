@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons'
 import { OwnedTripBadge } from './OwnedTripBadge'
+import { TripHiddenBadge } from './TripHiddenBadge'
 
 /** First `max` items joined by comma; if more, append ", and N more". */
 export function formatTruncatedList(items: string[], max = 3): string | null {
@@ -130,11 +131,13 @@ export type TripFeedCardProps = {
   transportRoutes?: string[]
   /** When true (logged-in), gallery may render if URLs are present. */
   showLocationImages?: boolean
-  /** While signed image URLs are being fetched for the feed batch. */
+  /** While signed image URLs are being fetched for this card. */
   locationImagesLoading?: boolean
   locationImageUrls?: string[]
   /** Decorative indicator when the signed-in user owns this trip. */
   isOwned?: boolean
+  /** When false and isOwned, shows a hidden-from-others indicator. */
+  visible?: boolean
 }
 
 export function TripFeedCard(props: TripFeedCardProps) {
@@ -149,7 +152,8 @@ export function TripFeedCard(props: TripFeedCardProps) {
   const accomLine = formatTruncatedList(props.accommodationNames ?? [])
   const transLine = formatTruncatedList(props.transportRoutes ?? [])
 
-  const showGallerySkeleton = props.showLocationImages && props.locationImagesLoading
+  const showGallerySkeleton =
+    props.showLocationImages && props.locationImagesLoading
   const galleryUrls =
     props.showLocationImages && props.locationImageUrls?.length
       ? props.locationImageUrls
@@ -167,6 +171,7 @@ export function TripFeedCard(props: TripFeedCardProps) {
             {props.title}
           </Link>
           {props.isOwned ? <OwnedTripBadge /> : null}
+          {props.isOwned && props.visible === false ? <TripHiddenBadge /> : null}
         </div>
         {metaLine ? <p className="mt-1 text-sm text-slate-600">{metaLine}</p> : null}
         {props.shortDescription ? (
