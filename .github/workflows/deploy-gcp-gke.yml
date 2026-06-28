@@ -29,6 +29,7 @@ jobs:
       URL_MAP_NAME: ${{ vars.GCP_FRONTEND_URL_MAP }}
       WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
       DEPLOYER_SA_EMAIL: ${{ vars.GCP_FRONTEND_DEPLOYER_SA_EMAIL }}
+      FRONTEND_CHANNEL: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
 
     # ------------------------------------------------------------
     # Build frontend React/Vite app with API base URL baked at build-time,
@@ -121,22 +122,43 @@ jobs:
             echo "VITE_GOOGLE_MAPS_API_KEY=${VITE_GOOGLE_MAPS_API_KEY}"
           } > .env.production
           npm run build
+          jq -n \
+            --arg environment "${FRONTEND_CHANNEL}" \
+            --arg branch "${GITHUB_REF_NAME}" \
+            --arg commit "${GITHUB_SHA}" \
+            --arg repository "${GITHUB_REPOSITORY}" \
+            --arg runId "${GITHUB_RUN_ID}" \
+            --arg builtAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{
+              service: "frontend",
+              environment: $environment,
+              branch: $branch,
+              commit: $commit,
+              shortCommit: $commit[0:12],
+              repository: $repository,
+              runId: $runId,
+              builtAt: $builtAt
+            }' > dist/version.json
 
       - name: Upload files to Cloud Storage Bucket
         run: |
-          gcloud storage rsync dist "gs://${FRONTEND_BUCKET}" --recursive
-          gcloud storage objects update "gs://${FRONTEND_BUCKET}/index.html" \
+          target="gs://${FRONTEND_BUCKET}/${FRONTEND_CHANNEL}"
+          gcloud storage rsync dist "${target}" --recursive
+          gcloud storage objects update "${target}/index.html" \
             --cache-control="no-cache, max-age=0, must-revalidate"
+          gcloud storage objects update "${target}/version.json" \
+            --cache-control="no-cache, max-age=0, must-revalidate" \
+            --content-type="application/json"
 
           # Publish the known client-side routes as index.html aliases. This
           # avoids stale negative-cache entries for common SPA deep links;
           # the load balancer's custom 404 policy covers dynamic routes.
           while IFS= read -r route; do
             gcloud storage cp \
-              "gs://${FRONTEND_BUCKET}/index.html" \
-              "gs://${FRONTEND_BUCKET}/${route}"
+              "${target}/index.html" \
+              "${target}/${route}"
             gcloud storage objects update \
-              "gs://${FRONTEND_BUCKET}/${route}" \
+              "${target}/${route}" \
               --cache-control="no-cache, max-age=0, must-revalidate" \
               --content-type="text/html"
           done <<'ROUTES'
