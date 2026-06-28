@@ -23,7 +23,7 @@ export function DeploymentInfoButton({ className = '' }: DeploymentInfoButtonPro
   const [state, setState] = useState<InfoState>({ status: 'idle' })
 
   useEffect(() => {
-    if (!open || state.status !== 'idle') return
+    if (!open) return
 
     let cancelled = false
     setState({ status: 'loading' })
@@ -43,7 +43,7 @@ export function DeploymentInfoButton({ className = '' }: DeploymentInfoButtonPro
     return () => {
       cancelled = true
     }
-  }, [open, state.status])
+  }, [open])
 
   return (
     <>
@@ -126,7 +126,8 @@ function DeploymentInfoContent({
         <dl className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
           <InfoRow label="Environment" value={backend.environment} />
           <InfoRow label="Branch" value={backend.branch} />
-          <InfoRow label="Commit" value={shortHash(backend.commit)} />
+          <InfoRow label="Commit" value={backend.shortCommit ?? shortHash(backend.commit)} />
+          <InfoRow label="Built" value={backend.builtAt} />
           <InfoRow label="Tenant" value={[backend.tier, backend.tenantId].filter(Boolean).join(' / ')} />
         </dl>
         <div className="mt-3 overflow-hidden rounded-md border border-slate-200">
@@ -139,6 +140,9 @@ function DeploymentInfoContent({
                 <th scope="col" className="px-3 py-2 font-semibold">
                   Image
                 </th>
+                <th scope="col" className="px-3 py-2 font-semibold">
+                  Commit
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -150,6 +154,9 @@ function DeploymentInfoContent({
                   </td>
                   <td className="break-all px-3 py-2 font-mono text-xs text-slate-600">
                     {service.image ?? service.tag ?? 'unknown'}
+                  </td>
+                  <td className="break-all px-3 py-2 font-mono text-xs text-slate-600">
+                    {service.shortCommit ?? shortHash(service.commit ?? service.tag)}
                   </td>
                 </tr>
               ))}
