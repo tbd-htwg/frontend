@@ -15,14 +15,19 @@ export type BackendServiceInfo = {
   enabled?: boolean
   image?: string
   tag?: string
+  commit?: string
+  shortCommit?: string
+  builtAt?: string
 }
 
 export type BackendDeploymentInfo = {
   environment?: string
   branch?: string
   commit?: string
+  shortCommit?: string
   repository?: string
   runId?: string
+  builtAt?: string
   tier?: string
   tenantId?: string
   services?: Record<string, BackendServiceInfo>
