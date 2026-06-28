@@ -15,6 +15,7 @@ import { ProfileModalProvider } from '../context/ProfileModalContext'
 import { TripModalProvider, useTripModal } from '../context/TripModalContext'
 import { AppBrand } from './AppBrand'
 import { ColorSchemeToggle } from './ColorSchemeToggle'
+import { DeploymentInfoButton } from './DeploymentInfoButton'
 import { useBrandingOverrideActive } from '../context/TenantBrandingContext'
 import { TenantNotReadyGate } from './TenantNotReadyGate'
 import { ProfileFormModal } from './profile/ProfileFormModal'
@@ -74,7 +75,10 @@ function LayoutShell() {
               Impressum with team list, e-mail addresses, and matriculation numbers.
             </p>
           </div>
-          <ColorSchemeToggle />
+          <div className="flex shrink-0 items-center gap-1">
+            <DeploymentInfoButton />
+            <ColorSchemeToggle />
+          </div>
         </div>
       </footer>
     </div>
